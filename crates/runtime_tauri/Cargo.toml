@@ -6,10 +6,5 @@ edition = "2021"
 [dependencies]
 domain = { path = "../domain" }
 application = { path = "../application" }
-github_adapter = { path = "../github_adapter" }
-persistence_sqlite = { path = "../persistence_sqlite" }
-notification_adapter = { path = "../notification_adapter" }
 shared_contracts = { path = "../shared_contracts" }
 tauri = { workspace = true }
-tokio = { workspace = true }
-tracing = { workspace = true }

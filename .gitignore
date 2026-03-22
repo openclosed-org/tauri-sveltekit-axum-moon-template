@@ -1,4 +1,36 @@
-.moon/cache
+# --- OS / Editor ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# --- Logs / Runtime ---
+logs/
+*.log
+
+# --- Environment / Secrets ---
+.env
+.env.*
+!.env.example
+
+# --- AI planning artifacts ---
+.planning/
+
+# --- Rust / Cargo ---
 target/
+
+# --- moonrepo ---
+.moon/cache/
+
+# --- Node / Bun / Frontend ---
 node_modules/
-logs
+**/node_modules/
+**/.svelte-kit/
+**/build/
+**/dist/
+**/coverage/
+**/*.tsbuildinfo
+
+# --- Tauri generated ---
+apps/desktop-ui/src-tauri/target/
+apps/desktop-ui/src-tauri/gen/

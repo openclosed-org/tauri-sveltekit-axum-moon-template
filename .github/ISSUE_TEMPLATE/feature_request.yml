@@ -1,0 +1,43 @@
+name: Feature request
+description: Suggest an improvement for this template
+title: "feat: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the suggestion. Keep it minimal and template-oriented.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem statement
+      description: What problem does this solve?
+      placeholder: Describe the gap in current template behavior.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      placeholder: Describe your preferred solution.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      placeholder: Optional alternatives and trade-offs.
+
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope checks
+      options:
+        - label: This is generic enough for a public template.
+          required: true
+        - label: This does not add product-specific business logic.
+          required: true

@@ -1,1 +1,1 @@
-//! runtime_server — Axum (future)
+//! runtime_server crate: Axum runtime integration placeholder.

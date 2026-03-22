@@ -1,1 +1,1 @@
-//! runtime_tauri — Tauri commands / bootstrap
+//! runtime_tauri crate: Tauri runtime integration placeholder.
