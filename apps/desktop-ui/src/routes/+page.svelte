@@ -1,2 +1,2 @@
-<h1>geek taste</h1>
-<p>技术雷达工作台</p>
+<h1>Tauri + SvelteKit + Axum Template</h1>
+<p>Start building your desktop-first fullstack app.</p>

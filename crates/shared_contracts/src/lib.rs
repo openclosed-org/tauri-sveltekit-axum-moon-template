@@ -1,1 +1,1 @@
-//! shared_contracts — JSON schema / DTO / enum export
+//! shared_contracts crate: shared DTO/schema contract placeholder.

@@ -1,1 +1,1 @@
-//! application — 用例编排
+//! application crate: application-layer use case orchestration placeholder.

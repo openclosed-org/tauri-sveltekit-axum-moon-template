@@ -1,6 +1,5 @@
 [workspace]
 members = [
-    "apps/*",
     "apps/desktop-ui/src-tauri",
     "crates/*",
 ]
@@ -10,44 +9,6 @@ resolver = "2"
 # Tauri
 tauri = { version = "2", features = [] }
 tauri-build = "2"
-tauri-plugin-notification = "2"
 tauri-plugin-shell = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-store = "2"
-tauri-plugin-updater = "2"
-tauri-plugin-window-state = "2"
-
-# 异步运行时
-tokio = { version = "1", features = ["full"] }
-
-# HTTP
-reqwest = { version = "0.13", features = ["json", "rustls-tls"] }
-
-# GitHub API
-octocrab = "0.49"
-
-# SQLite
-rusqlite = { version = "0.38", features = ["bundled"] }
-rusqlite_migration = "2.4"
-serde_rusqlite = "0.38"
-
-# 安全存储
-keyring = { version = "3.6", features = ["apple-native", "windows-native"] }
-
-# 序列化
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-
-# 错误处理
-anyhow = "1"
-thiserror = "2"
-
-# 日志
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-
-# 时间
-chrono = "0.4"
-
-# 调度
-tokio-cron-scheduler = "0.15"

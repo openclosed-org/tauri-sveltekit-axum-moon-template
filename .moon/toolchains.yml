@@ -1,5 +1,5 @@
 rust:
-  version: '1.82.0'
+  version: 'stable'
 node:
-  version: '22.11.0'
-  packageManager: 'pnpm'
+  version: '24.0.0'
+  packageManager: 'bun'

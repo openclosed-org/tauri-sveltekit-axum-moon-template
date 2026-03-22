@@ -1,11 +1,11 @@
 tasks:
   dev:
-    command: 'pnpm dev'
+    command: 'bun run dev'
     local: true
     platform: 'system'
 
   build:
-    command: 'pnpm build'
+    command: 'bun run build'
     inputs:
       - 'src/**/*'
       - 'svelte.config.js'
@@ -14,20 +14,20 @@ tasks:
     platform: 'system'
 
   check:
-    command: 'pnpm check'
+    command: 'bun run check'
     inputs:
       - 'src/**/*'
       - 'tsconfig.json'
     platform: 'system'
 
   lint:
-    command: 'pnpm lint'
+    command: 'bun run lint'
     inputs:
       - 'src/**/*'
     platform: 'system'
 
   format:
-    command: 'pnpm format'
+    command: 'bun run format'
     inputs:
       - 'src/**/*'
     platform: 'system'
