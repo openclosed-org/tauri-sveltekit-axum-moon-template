@@ -1,3 +1,4 @@
 .moon/cache
 target/
 node_modules/
+logs
