@@ -12,6 +12,12 @@
     "lint": "biome check .",
     "format": "biome format --write ."
   },
+  "dependencies": {
+    "bits-ui": "^2.16.4"
+    // "vitepress": "^1.x",
+    // "lucide-animated": "^0.x",
+    // "lottieplayer": "^1.x"
+  },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
     "@sveltejs/adapter-static": "^3.0.0",
