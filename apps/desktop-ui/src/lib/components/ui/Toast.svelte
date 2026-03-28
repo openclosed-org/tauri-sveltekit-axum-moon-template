@@ -10,7 +10,7 @@ interface Props {
   children: Snippet;
 }
 
-let { variant = 'default', class: className, children }: Props = $props();
+const { variant = 'default', class: className, children }: Props = $props();
 
 const variants: Record<Variant, string> = {
   default:

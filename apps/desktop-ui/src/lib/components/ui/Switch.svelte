@@ -1,6 +1,6 @@
 <script lang="ts">
-import { Switch } from 'bits-ui';
 import { cn } from '$lib/utils/cn';
+import { Switch } from 'bits-ui';
 
 interface Props {
   checked?: boolean;

@@ -7,7 +7,7 @@ interface Props {
   children: Snippet;
 }
 
-let { class: className, children }: Props = $props();
+const { class: className, children }: Props = $props();
 </script>
 
 <div

@@ -1,7 +1,7 @@
 <script lang="ts">
+import { cn } from '$lib/utils/cn';
 import { DotLottieSvelte } from '@lottiefiles/dotlottie-svelte';
 import type { DotLottie } from '@lottiefiles/dotlottie-svelte';
-import { cn } from '$lib/utils/cn';
 
 interface Props {
   src: string;
@@ -14,7 +14,7 @@ interface Props {
   dotLottieRefCallback?: (ref: DotLottie) => void;
 }
 
-let {
+const {
   src,
   loop = true,
   autoplay = true,

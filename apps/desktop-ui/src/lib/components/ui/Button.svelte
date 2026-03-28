@@ -1,6 +1,6 @@
 <script lang="ts">
-import { Button } from 'bits-ui';
 import { cn } from '$lib/utils/cn';
+import { Button } from 'bits-ui';
 import type { Snippet } from 'svelte';
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'destructive';
@@ -18,7 +18,7 @@ interface Props {
   children: Snippet;
 }
 
-let {
+const {
   variant = 'primary',
   size = 'md',
   class: className,
