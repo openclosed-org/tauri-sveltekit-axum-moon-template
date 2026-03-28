@@ -6,12 +6,6 @@ tasks:
       - 'Cargo.toml'
     platform: 'system'
 
-  test:
-    command: 'cargo test'
-    inputs:
-      - '@globs(sources)'
-    platform: 'system'
-
   check:
     command: 'cargo check'
     inputs:
@@ -19,14 +13,25 @@ tasks:
       - 'Cargo.toml'
     platform: 'system'
 
-  lint:
-    command: 'cargo clippy -- -D warnings'
-    inputs:
-      - '@globs(sources)'
-    platform: 'system'
-
   format:
     command: 'cargo fmt --all'
     inputs:
       - '@globs(sources)'
+    platform: 'system'
+
+  # Aggregate tasks — run lint/test across all packages in parallel
+  lint:
+    deps:
+      - 'desktop-ui:lint'
+      - 'shared_contracts:lint'
+      - 'domain:lint'
+      - 'application:lint'
+    platform: 'system'
+
+  test:
+    deps:
+      - 'desktop-ui:check'
+      - 'shared_contracts:test'
+      - 'domain:test'
+      - 'application:test'
     platform: 'system'
