@@ -6,6 +6,7 @@ interface Props {
   children: Snippet<[boolean]>;
 }
 
+// biome-ignore lint/style/useConst: Svelte bind requires mutable variable.
 let { animate = $bindable(false), children }: Props = $props();
 </script>
 

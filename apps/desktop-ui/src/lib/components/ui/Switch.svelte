@@ -9,6 +9,7 @@ interface Props {
   onCheckedChange?: (checked: boolean) => void;
 }
 
+// biome-ignore lint/style/useConst: Svelte bind requires mutable variable.
 let { checked = $bindable(false), class: className, ...restProps }: Props = $props();
 </script>
 

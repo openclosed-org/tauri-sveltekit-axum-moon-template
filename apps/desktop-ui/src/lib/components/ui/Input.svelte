@@ -12,6 +12,7 @@ interface Props {
   oninput?: (e: Event) => void;
 }
 
+// biome-ignore lint/style/useConst: Svelte bind requires mutable variable.
 let { class: className, value = $bindable(''), type = 'text', ...restProps }: Props = $props();
 </script>
 
