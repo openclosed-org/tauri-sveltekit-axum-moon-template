@@ -7,8 +7,37 @@ resolver = "2"
 
 [workspace.dependencies]
 # Tauri
-tauri = { version = "2", features = [] }
-tauri-build = "2"
+tauri = { version = "2.10.3", features = [] }
+tauri-build = "2.5.6"
 tauri-plugin-shell = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-store = "2"
+tauri-plugin-fs = "2"
+tauri-plugin-deep-link = "2"
+tauri-plugin-window-state = "2"
+tauri-plugin-libsql = "0.1.0"
+
+# Backend - Axum stack
+axum = "0.8.8"
+tokio = { version = "1.50.0", features = ["full"] }
+reqwest = { version = "0.13.2", features = ["rustls"] }
+
+# Serialization
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1"
+
+# Database
+surrealdb = "3.0.5"
+
+# Auth
+jsonwebtoken = "10.3.0"
+
+# Utilities
+uuid = { version = "1.23.0", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+
+[profile.release]
+lto = true
+codegen-units = 1
+opt-level = "z"
+strip = true

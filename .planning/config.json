@@ -1,1 +1,18 @@
-{"mode":"yolo","granularity":"fine","parallelization":true,"commit_docs":true,"model_profile":"inherit","workflow":{"research":true,"plan_check":true,"verifier":true,"nyquist_validation":true,"auto_advance":true},"planning":{"sub_repos":[]}}
+{
+  "mode": "yolo",
+  "granularity": "fine",
+  "parallelization": true,
+  "commit_docs": true,
+  "model_profile": "inherit",
+  "workflow": {
+    "research": true,
+    "plan_check": true,
+    "verifier": true,
+    "nyquist_validation": true,
+    "auto_advance": true,
+    "_auto_chain_active": false
+  },
+  "planning": {
+    "sub_repos": []
+  }
+}

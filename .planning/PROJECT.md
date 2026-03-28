@@ -17,6 +17,10 @@ Provide a runnable, tested, production-ready boilerplate with authentication (Go
 - ✓ Axum backend server — existing
 - ✓ moon build toolchain — existing
 - ✓ Mobile-first responsive layout base — existing
+- ✓ Frontend dependencies aligned with TECH_SELECTION.md — Validated in Phase 01: package-foundation
+- ✓ Rust workspace dependencies pinned with release profile — Validated in Phase 01: package-foundation
+- ✓ All 7 Tauri plugins registered — Validated in Phase 01: package-foundation
+- ✓ moon parallel lint/test configured — Validated in Phase 01: package-foundation
 
 ### Active
 
@@ -33,7 +37,7 @@ Provide a runnable, tested, production-ready boilerplate with authentication (Go
 
 ## Context
 
-**Current state:** This is an iteration on an existing Tauri+SvelteKit+Axum boilerplate project. The base template already exists with basic scaffolding. Now extending to production-ready state.
+**Current state:** Phase 01 (package-foundation) complete — all dependencies configured, workspace resolves, ready for Phase 02 (ui-styling-infrastructure).
 
 **Tech stack:**
 - Frontend: SvelteKit + bitsUI + TailwindCSS v4 + VitePress + @pqoqubbw/icons + Lottie
@@ -86,4 +90,4 @@ For Cargo (tauri + axum): Deep dive into docs for plugins and dependencies, prel
 
 ---
 
-*Last updated: 2026-03-28 after initialization*
+*Last updated: 2026-03-27 after Phase 01 completion*
