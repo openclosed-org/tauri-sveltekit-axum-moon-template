@@ -65,23 +65,28 @@
   3. Axum server starts on configured port and responds to health check
 **Plans**: TBD
 
-### Phase 5: Rust Backend Infrastructure
-**Goal**: Local dev environment with Rust-native caching and tunneling (minimal docker dependency)
+### Phase 5: Rust Native Infrastructure (激进方案)
+**Goal**: 最大化 Rust 生态依赖，最小化传统容器依赖
 **Depends on**: Nothing (parallel track)
 **Requirements**: INFRA-01, INFRA-02, INFRA-03, INFRA-04
 **Success Criteria** (what must be TRUE):
-  1. Rust `redis-rs` client connects to embedded-redis (test) or Redis cluster (prod) with connection pooling
-  2. Session caching uses `redis-rs` with tenant-aware key namespace (`session:{tenant_id}:*`)
-  3. Tunnel: `cargo run --bin tunnel` exposes localhost to public URL using rustunnel/localtunnel alternative
-  4. nginx still used in docker-compose for production reverse proxy (industry standard, Rust 无法完全替代)
-  5. libsql embedded locally via `tauri-plugin-libsql` — no docker dependency for DB
-  6. For CI/local without docker: Fall back to pure Rust dev mode (embedded-redis + no nginx)
+  1. **Tunnel**: rathole 客户端运行并生成公网 URL (替代 ngrok/zgrok)
+  2. **Proxy**: Pingora 或 nginx 配置文件就绪 (生产环境)
+  3. **Cache**: `redis-rs` 客户端 + `embedded-redis` 测试桩，或生产级 Redis
+  4. **Storage**: Garage S3 兼容存储或 MinIO 单二进制部署
+  5. **Observability**: Vector (日志管道) + OpenObserve (日志存储) Docker/Cargo 运行
+  6. **Search** (可选): Meilisearch (全文) 或 Qdrant (向量) 集成就绪
+  7. 开发环境纯 Rust 运行: `cargo run` 启动所有后端依赖
  **Plans**: TBD
 
-**Rust生态替代方案详情**:
-- Cache: `redis = "0.25"` (async client) + `embedded-redis` for unit tests
-- Tunnel: 自建 binary 或 `expose-me` crate 实现 localhost→public URL
-- 保留 docker-compose.yml (仅用于 nginx + 可选的外部 Redis)
+**Rust 生态激进替代方案**:
+- Tunnel: `rathole` (13K+ ⭐) - 高性能 NAT 穿透，替代 ngrok
+- Proxy: `pingora` (26K+ ⭐) - Cloudflare 生产验证
+- Cache: `redis-rs` + `embedded-redis` (测试) / `lux` (生产)
+- Storage: `garage` (3.3K ⭐) - S3 兼容纯 Rust 对象存储
+- Observability: `vector` (21K ⭐) + `openobserve` (日志聚合)
+- Search: `meilisearch` (全文) / `qdrant` (向量)
+- Container: `youki` (7.3K ⭐) - OCI 运行时，评估中
 
 ### Phase 6: Google OAuth Authentication
 **Goal**: User can sign in with Google, session persists across app restarts, and tokens auto-refresh

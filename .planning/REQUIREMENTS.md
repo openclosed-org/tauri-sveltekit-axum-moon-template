@@ -18,12 +18,14 @@
 - [ ] **TENANT-02**: Query middleware automatically scopes by tenant_id
 - [ ] **TENANT-03**: User belongs to exactly one tenant on signup
 
-### Infrastructure
+### Infrastructure (激进 Rust 方案)
 
-- [ ] **INFRA-01**: Redis client via `redis-rs` with connection pooling
-- [ ] **INFRA-02**: Tunnnel binary exposes localhost via rustunnel/localtunnel alternative
-- [ ] **INFRA-03**: libsql embedded via `tauri-plugin-libsql` (no docker DB needed)
-- [ ] **INFRA-04**: Docker-compose nginx config retained for production reverse proxy
+- [ ] **INFRA-01**: Cache 层 - `redis-rs` 客户端 + `embedded-redis` 测试桩
+- [ ] **INFRA-02**: Tunnel 层 - rathole 客户端实现公网暴露 (替代 ngrok)
+- [ ] **INFRA-03**: 存储层 - libsql embedded / Garage S3 兼容存储
+- [ ] **INFRA-04**: 代理层 - nginx (生产) / Pingora 评估中 (激进方案)
+- [ ] **INFRA-05**: 可观测层 - Vector 日志管道 + OpenObserve 日志存储
+- [ ] **INFRA-06**: 搜索层 (可选) - Meilisearch 全文 / Qdrant 向量
 
 ### Desktop Features
 
