@@ -99,36 +99,90 @@ surrealdb = { version = "3", features = ["kv-rocksdb"] }
 ```json
 {
   "dependencies": {
-    // 图标 - 用户指定 lucide-animated
+    // 图标 - 用户指定 pqoqubbw/icons (动画图标，7.3K ⭐)
+    "@pqoqubbw/icons": "latest",
     "@lucide/svelte": "^1.7.0",
     // 动画 - 用户指定 lottieplayer
-    "@lottiefiles/svelte-lottie-player": "^0.3.1",
-    // 可选动画图标
-    "@jis3r/moving-icons": "latest"
+    "@lottiefiles/svelte-lottie-player": "^0.3.1"
   },
   "devDependencies": {
-    // 文档 - 用户指定 vitepress
-    "vitepress": "^1.6.4",
+    // 文档 - 推荐 mdBook (Rust 单二进制)
+    "mdbook": "^0.4",
     // 测试
     "vitest": "^3.0.0",
-    "vitest-browser-svelte": "^1.0.0"
+    "vitest-browser-svelte": "^1.0.0",
+    "playwright": "^1.50.0"
   },
   "optionalDependencies": {
-    // Svelte 5 原生图标 (备选)
-    "svelte-lucide": "latest",
-    // 文档备选 (Sveltepress)
-    "sveltepress": "latest"
+    // 文档备选 - 仅构建时需要 Node.js
+    // "vitepress": "^1.6.4",
+    // "sveltepress": "latest"
   }
 }
 ```
 
-### 3.3 图标方案 (exa 验证)
+### 3.3 图标方案 (exa 验证 + 用户指定)
 
-| 方案 | 包 | 动画 | Svelte 5 支持 |
-|------|-----|------|---------------|
-| 主选 | `@lucide/svelte` | 无 | ✅ PR#2727 |
-| 动画图标 | `@jis3r/moving-icons` | ✅ | ✅ |
-| Lottie | `@lottiefiles/svelte-lottie-player` | ✅ | ✅ |
+用户指定: **pqoqubbw/icons** (7.3K ⭐, 基于 Lucide 的动画图标)
+
+| 方案 | 包 | 动画 | Svelte 支持 | 备注 |
+|------|-----|------|-------------|------|
+| 主选静态 | `@lucide/svelte` | 无 | ✅ Svelte 5 | 基础图标 |
+| 主选动画 | `pqoqubbw/icons` | ✅ 379+ | ⚠️ 需封装 | 用户指定 |
+| Lottie | `@lottiefiles/svelte-lottie-player` | ✅ | ✅ | 复杂动画 |
+
+**pqoqubbw/icons 使用方式**:
+```bash
+# 安装
+npm install @pqoqubbw/icons
+```
+
+```svelte
+<!-- Svelte 封装使用 -->
+<script>
+  import { ArrowRight } from '@pqoqubbw/icons/svelte';
+</script>
+
+<ArrowRight class="w-5 h-5 animate-pulse" />
+```
+
+### 3.4 文档站点替代方案 (VitePress vs Rust)
+
+**问题**: VitePress 需要 Node.js 运行吗?
+
+**答案**: 
+- **开发时** (`npm run docs:dev`): 需要 Node.js 运行 Dev Server
+- **构建后** (`npm run docs:build`): 产出纯静态 HTML，可以部署到任何静态托管
+- **生产部署**: 不需要 Node.js，只需要 Nginx/Apache 或 CDN
+
+**Rust 替代方案** (无需运行时):
+
+| 工具 | 类型 | 特点 | 适用场景 |
+|------|------|------|----------|
+| **mdBook** | Rust 官方 | 单二进制，Rust 文档标准 | API 文档/内部分档 |
+| **ddoc** | Rust | 快速，简单 | 博客/简单文档 |
+| **SveltePress** | SvelteKit | SPA，可交互 | 需要动态组件 |
+| **VitePress** | Node.js | 功能最全 | 需要搜索/国际化 |
+
+**推荐**: 使用 **mdBook** 替代 VitePress
+
+```toml
+# Cargo.toml
+[dev-dependencies]
+mdbook = "0.4"
+
+# 构建命令
+cargo install mdbook
+mdbook build ./docs
+
+# 输出: docs/book/ (纯静态 HTML)
+```
+
+mdBook 优势:
+- 单二进制，无依赖
+- 主题可定制 (可用 rust-lang 主题)
+- 构建速度极快
+- 可集成到 cargo 命令 |
 
 ---
 
