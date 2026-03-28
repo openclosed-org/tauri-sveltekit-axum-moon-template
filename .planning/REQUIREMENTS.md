@@ -20,10 +20,10 @@
 
 ### Infrastructure
 
-- [ ] **INFRA-01**: Docker-compose with Redis/cache service
-- [ ] **INFRA-02**: Docker-compose with nginx reverse proxy
-- [ ] **INFRA-03**: Docker-compose with libsql database
-- [ ] **INFRA-04**: Local dev environment runs via docker-compose up
+- [ ] **INFRA-01**: Redis client via `redis-rs` with connection pooling
+- [ ] **INFRA-02**: Tunnnel binary exposes localhost via rustunnel/localtunnel alternative
+- [ ] **INFRA-03**: libsql embedded via `tauri-plugin-libsql` (no docker DB needed)
+- [ ] **INFRA-04**: Docker-compose nginx config retained for production reverse proxy
 
 ### Desktop Features
 

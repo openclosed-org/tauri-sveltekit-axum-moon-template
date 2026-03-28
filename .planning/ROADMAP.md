@@ -65,17 +65,23 @@
   3. Axum server starts on configured port and responds to health check
 **Plans**: TBD
 
-### Phase 5: Docker Infrastructure
-**Goal**: `docker-compose up` brings up full local backend infrastructure (Redis cache, nginx proxy, libsql DB)
+### Phase 5: Rust Backend Infrastructure
+**Goal**: Local dev environment with Rust-native caching and tunneling (minimal docker dependency)
 **Depends on**: Nothing (parallel track)
 **Requirements**: INFRA-01, INFRA-02, INFRA-03, INFRA-04
 **Success Criteria** (what must be TRUE):
-  1. `docker-compose up` starts Redis/cache service and it accepts connections
-  2. `docker-compose up` starts nginx reverse proxy forwarding to Axum on the configured port
-  3. `docker-compose up` starts libsql database with a mounted volume for persistence
-  4. Developer runs one command and all three services are healthy and reachable
-  5. Stopping docker-compose cleans up containers without data corruption
-**Plans**: TBD
+  1. Rust `redis-rs` client connects to embedded-redis (test) or Redis cluster (prod) with connection pooling
+  2. Session caching uses `redis-rs` with tenant-aware key namespace (`session:{tenant_id}:*`)
+  3. Tunnel: `cargo run --bin tunnel` exposes localhost to public URL using rustunnel/localtunnel alternative
+  4. nginx still used in docker-compose for production reverse proxy (industry standard, Rust 无法完全替代)
+  5. libsql embedded locally via `tauri-plugin-libsql` — no docker dependency for DB
+  6. For CI/local without docker: Fall back to pure Rust dev mode (embedded-redis + no nginx)
+ **Plans**: TBD
+
+**Rust生态替代方案详情**:
+- Cache: `redis = "0.25"` (async client) + `embedded-redis` for unit tests
+- Tunnel: 自建 binary 或 `expose-me` crate 实现 localhost→public URL
+- 保留 docker-compose.yml (仅用于 nginx + 可选的外部 Redis)
 
 ### Phase 6: Google OAuth Authentication
 **Goal**: User can sign in with Google, session persists across app restarts, and tokens auto-refresh
