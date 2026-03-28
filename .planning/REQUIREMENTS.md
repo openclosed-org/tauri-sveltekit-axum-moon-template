@@ -86,41 +86,41 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| AUTH-01 | Phase 2 | Pending |
-| AUTH-02 | Phase 2 | Pending |
-| AUTH-03 | Phase 2 | Pending |
-| AUTH-04 | Phase 2 | Pending |
-| TENANT-01 | Phase 3 | Pending |
-| TENANT-02 | Phase 3 | Pending |
-| TENANT-03 | Phase 3 | Pending |
-| INFRA-01 | Phase 1 | Pending |
-| INFRA-02 | Phase 1 | Pending |
-| INFRA-03 | Phase 1 | Pending |
-| INFRA-04 | Phase 1 | Pending |
-| DESKTOP-01 | Phase 4 | Pending |
-| DESKTOP-02 | Phase 4 | Pending |
-| DESKTOP-03 | Phase 4 | Pending |
-| DESKTOP-04 | Phase 4 | Pending |
-| BUILD-01 | Phase 1 | Pending |
-| BUILD-02 | Phase 5 | Pending |
-| BUILD-03 | Phase 1 | Pending |
-| UI-01 | Phase 1 | Pending |
-| UI-02 | Phase 1 | Pending |
-| UI-03 | Phase 1 | Pending |
-| UI-04 | Phase 1 | Pending |
-| TEST-01 | Phase 1 | Pending |
-| TEST-02 | Phase 1 | Pending |
-| TEST-03 | Phase 1 | Pending |
 | PKG-01 | Phase 1 | Pending |
 | PKG-02 | Phase 1 | Pending |
 | PKG-03 | Phase 1 | Pending |
-| PKG-04 | Phase 1 | Pending |
+| PKG-04 | Phase 4 | Pending |
+| BUILD-01 | Phase 4 | Pending |
+| BUILD-02 | Phase 9 | Pending |
+| BUILD-03 | Phase 1 | Pending |
+| UI-01 | Phase 3 | Pending |
+| UI-02 | Phase 3 | Pending |
+| UI-03 | Phase 2 | Pending |
+| UI-04 | Phase 2 | Pending |
+| INFRA-01 | Phase 5 | Pending |
+| INFRA-02 | Phase 5 | Pending |
+| INFRA-03 | Phase 5 | Pending |
+| INFRA-04 | Phase 5 | Pending |
+| AUTH-01 | Phase 6 | Pending |
+| AUTH-02 | Phase 6 | Pending |
+| AUTH-03 | Phase 6 | Pending |
+| AUTH-04 | Phase 6 | Pending |
+| TENANT-01 | Phase 7 | Pending |
+| TENANT-02 | Phase 7 | Pending |
+| TENANT-03 | Phase 7 | Pending |
+| DESKTOP-01 | Phase 8 | Pending |
+| DESKTOP-02 | Phase 8 | Pending |
+| DESKTOP-03 | Phase 8 | Pending |
+| DESKTOP-04 | Phase 8 | Pending |
+| TEST-01 | Phase 10 | Pending |
+| TEST-02 | Phase 10 | Pending |
+| TEST-03 | Phase 10 | Pending |
 
 **Coverage:**
-- v1 requirements: 28 total
-- Mapped to phases: 28
+- v1 requirements: 29 total
+- Mapped to phases: 29
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-03-28*
-*Last updated: 2026-03-28 after initial definition*
+*Last updated: 2026-03-28 after roadmap creation (10 phases, fine granularity)*
