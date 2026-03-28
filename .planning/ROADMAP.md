@@ -65,28 +65,23 @@
   3. Axum server starts on configured port and responds to health check
 **Plans**: TBD
 
-### Phase 5: Rust Native Infrastructure (激进方案)
-**Goal**: 最大化 Rust 生态依赖，最小化传统容器依赖
+### Phase 5: Database & Infrastructure (Rust 方案)
+**Goal**: SurrealDB embedded 运行，HTTP 客户端就绪，基础设施工具就位
 **Depends on**: Nothing (parallel track)
 **Requirements**: INFRA-01, INFRA-02, INFRA-03, INFRA-04
 **Success Criteria** (what must be TRUE):
-  1. **Tunnel**: rathole 客户端运行并生成公网 URL (替代 ngrok/zgrok)
-  2. **Proxy**: Pingora 或 nginx 配置文件就绪 (生产环境)
-  3. **Cache**: `redis-rs` 客户端 + `embedded-redis` 测试桩，或生产级 Redis
-  4. **Storage**: Garage S3 兼容存储或 MinIO 单二进制部署
-  5. **Observability**: Vector (日志管道) + OpenObserve (日志存储) Docker/Cargo 运行
-  6. **Search** (可选): Meilisearch (全文) 或 Qdrant (向量) 集成就绪
-  7. 开发环境纯 Rust 运行: `cargo run` 启动所有后端依赖
+  1. **Database**: SurrealDB embedded 启动成功 (`surrealdb` crate with `kv-mem`)
+  2. **HTTP Client**: `reqwest 0.13` 配置完成，可发起外部请求
+  3. **Tunnel** (可选): rathole 或 FerroTunnel 实现开发环境公网暴露
+  4. **Search** (可选): Tantivy 集成就绪，按需启用全文搜索
+  5. **Proxy**: nginx 配置就绪 (生产环境)
  **Plans**: TBD
 
-**Rust 生态激进替代方案**:
-- Tunnel: `rathole` (13K+ ⭐) - 高性能 NAT 穿透，替代 ngrok
-- Proxy: `pingora` (26K+ ⭐) - Cloudflare 生产验证
-- Cache: `redis-rs` + `embedded-redis` (测试) / `lux` (生产)
-- Storage: `garage` (3.3K ⭐) - S3 兼容纯 Rust 对象存储
-- Observability: `vector` (21K ⭐) + `openobserve` (日志聚合)
-- Search: `meilisearch` (全文) / `qdrant` (向量)
-- Container: `youki` (7.3K ⭐) - OCI 运行时，评估中
+**Rust 生态工具 (基于 rust-docs.md)**:
+- Database: `surrealdb` (embedded) - 用户明确要求
+- HTTP: `reqwest` (0.13) - rust-docs.md L287 确认
+- Tunnel: `FerroTunnel` (rust-docs.md L263) 或 `rathole`
+- Search: `Tantivy` (rust-docs.md L167) - 完全 Rust 全文搜索
 
 ### Phase 6: Google OAuth Authentication
 **Goal**: User can sign in with Google, session persists across app restarts, and tokens auto-refresh

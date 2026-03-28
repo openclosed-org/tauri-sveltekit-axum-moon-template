@@ -18,14 +18,14 @@
 - [ ] **TENANT-02**: Query middleware automatically scopes by tenant_id
 - [ ] **TENANT-03**: User belongs to exactly one tenant on signup
 
-### Infrastructure (激进 Rust 方案)
+### Infrastructure (Rust 方案)
 
-- [ ] **INFRA-01**: Cache 层 - `redis-rs` 客户端 + `embedded-redis` 测试桩
-- [ ] **INFRA-02**: Tunnel 层 - rathole 客户端实现公网暴露 (替代 ngrok)
-- [ ] **INFRA-03**: 存储层 - libsql embedded / Garage S3 兼容存储
-- [ ] **INFRA-04**: 代理层 - nginx (生产) / Pingora 评估中 (激进方案)
-- [ ] **INFRA-05**: 可观测层 - Vector 日志管道 + OpenObserve 日志存储
-- [ ] **INFRA-06**: 搜索层 (可选) - Meilisearch 全文 / Qdrant 向量
+- [ ] **INFRA-01**: 数据库 - SurrealDB embedded (`surrealdb` crate with `kv-mem` feature)
+- [ ] **INFRA-02**: HTTP 客户端 - `reqwest 0.13` (rustls 默认)
+- [ ] **INFRA-03**: Tunnel 层 - rathole / FerroTunnel (开发环境公网暴露)
+- [ ] **INFRA-04**: 代理层 - nginx (生产) / 可选 Pingora 评估
+- [ ] **INFRA-05**: 搜索层 - Tantivy (全文) - 按需启用
+- [ ] **INFRA-06**: 可观测层 - Vector + OpenObserve (按需启用)
 
 ### Desktop Features
 
