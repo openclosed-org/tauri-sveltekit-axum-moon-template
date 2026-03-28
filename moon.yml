@@ -26,6 +26,7 @@ tasks:
       - 'shared_contracts:lint'
       - 'domain:lint'
       - 'application:lint'
+      - 'runtime_server:check'
     platform: 'system'
 
   test:
@@ -34,4 +35,13 @@ tasks:
       - 'shared_contracts:test'
       - 'domain:test'
       - 'application:test'
+      - 'runtime_server:check'
+    platform: 'system'
+
+  # Binary size monitoring (per D-05)
+  bloat:
+    command: 'cargo bloat --release --crates -p runtime_server'
+    inputs:
+      - '@globs(sources)'
+      - 'Cargo.toml'
     platform: 'system'
