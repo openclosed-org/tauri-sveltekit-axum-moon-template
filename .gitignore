@@ -14,7 +14,7 @@ logs/
 !.env.example
 
 # --- AI planning artifacts ---
-.planning/
+# .planning/ (uncomment to exclude - currently tracking for sync)
 
 # --- Rust / Cargo ---
 target/
