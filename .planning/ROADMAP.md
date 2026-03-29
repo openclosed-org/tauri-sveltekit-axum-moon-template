@@ -125,7 +125,7 @@ Plans:
 **Plans**: 5 plans (3 waves)
 
 Plans:
-- [ ] 06-01-PLAN.md — Backend auth foundation (deep-link plugin, capabilities, PKCE + token exchange commands)
+- [x] 06-01-PLAN.md — Backend auth foundation (deep-link plugin, capabilities, PKCE + token exchange commands)
 - [ ] 06-02-PLAN.md — Frontend auth IPC wrapper + reactive auth store
 - [ ] 06-03-PLAN.md — Background token refresh timer + auth:expired event
 - [ ] 06-04-PLAN.md — Login page UX (Lottie loading, error states, background animation)
