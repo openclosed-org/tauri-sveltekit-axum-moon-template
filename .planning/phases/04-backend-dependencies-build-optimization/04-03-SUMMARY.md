@@ -70,6 +70,7 @@ Implemented Axum HTTP server with CORS/Trace/Timeout middleware, /healthz and /r
 
 ## Deviations
 - **Deprecation fix:** Changed `TimeoutLayer::new()` to `TimeoutLayer::with_status_code()` per tower-http 0.6 API
+- **Bug fix:** Swapped `with_status_code` argument order — expects `(StatusCode, Duration)` not `(Duration, StatusCode)` [Rule 1]
 
 ## Commits
 - `03e395d`: feat(04-03): implement Axum server with health check endpoints
