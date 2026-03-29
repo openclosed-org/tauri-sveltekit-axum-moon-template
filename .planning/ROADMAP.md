@@ -141,7 +141,12 @@ Plans:
   2. Query middleware automatically filters all SELECT queries by the current user's tenant_id
   3. New user signup creates a tenant record and binds the user to it
   4. Attempting to query data with a mismatched tenant_id returns empty results (not errors)
-**Plans**: TBD
+**Plans**: 3 plans (3 waves)
+
+Plans:
+- [ ] 07-01-PLAN.md — TenantId newtype + SurrealDB schema migrations + TenantAwareSurrealDb wrapper
+- [ ] 07-02-PLAN.md — Axum tenant extraction middleware + router wiring
+- [ ] 07-03-PLAN.md — POST /api/tenant/init endpoint + AppState migration integration
 
 ### Phase 8: Desktop Native Features
 **Goal**: App behaves as a polished desktop application with system tray, persistent window state, and user-friendly errors
@@ -187,7 +192,7 @@ Plans:
 | 4. Backend Dependencies & Build | 0/3 | Planning | - |
 | 5. Database & Infrastructure | 3/3 | Completed | 2026-03-29 |
 | 6. Google OAuth Authentication | 0/5 | Planning | - |
-| 7. Multi-Tenant Data Isolation | 0/4 | Not started | - |
+| 7. Multi-Tenant Data Isolation | 0/3 | Planning | - |
 | 8. Desktop Native Features | 0/4 | Not started | - |
 | 9. Cross-Platform Build Pipeline | 0/4 | Not started | - |
 | 10. Test Suite | 0/4 | Not started | - |
