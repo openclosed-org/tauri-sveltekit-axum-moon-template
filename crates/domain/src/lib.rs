@@ -3,7 +3,4 @@
 //! Per D-05/D-06: trait-per-DB pattern. Each database backend gets its own Port trait.
 //! Implementations live in runtime_server / runtime_tauri crates.
 
-pub mod ports {
-    pub mod lib_sql;
-    pub mod surreal_db;
-}
+pub mod ports;

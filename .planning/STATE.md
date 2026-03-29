@@ -2,36 +2,36 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-last_updated: "2026-03-29T05:47:50.126Z"
+status: planning
+last_updated: "2026-03-29T12:43:05.230Z"
 progress:
   total_phases: 10
-  completed_phases: 5
-  total_plans: 22
-  completed_plans: 21
+  completed_phases: 6
+  total_plans: 25
+  completed_plans: 24
 ---
 
 # STATE: Tauri-SvelteKit-Axum Boilerplate
 
 **Last updated:** 2026-03-29
-**Phase:** 6
+**Phase:** 8
 
 ## Project Reference
 
 - **Core value:** Production-ready boilerplate for cross-platform desktop apps (Tauri 2 + SvelteKit + Axum + moon)
-- **Current focus:** Phase 06 — google-oauth-authentication
+- **Current focus:** Phase 07 — multi-tenant-data-isolation
 - **Stack:** Tauri 2.10.x, SvelteKit 2.x + Svelte 5 runes, Axum 0.8.x, libsql, moon, bun
 - **Granularity:** fine (10 phases)
 
 ## Current Position
 
-Phase: 06 (google-oauth-authentication) — EXECUTING
-Plan: 5 of 5
+Phase: 07 (multi-tenant-data-isolation) — COMPLETED
+Plan: 3 of 3
 
-- [████████████████████] 21/22 requirements complete
-- **Phase:** 01 ✅ | 02 ✅ | 03 ✅ | 04 ✅ | 05 ✅
-- **Plan:** 06-01 ✅ | 06-02 ✅ | 06-03 ✅ | 06-04 ✅ | 06-05 ⚠️ (checkpoint pending)
-- **Status:** Phase 06 code complete, human-verify checkpoint deferred
+- [████████████████████] 23/23 requirements complete
+- **Phase:** 01 ✅ | 02 ✅ | 03 ✅ | 04 ✅ | 05 ✅ | 07 ✅
+- **Plan:** Not started
+- **Status:** Ready to plan
 - **Blockers:** cmake required for full workspace compile (pre-existing env issue)
 
 ## Phase Progress
@@ -44,7 +44,7 @@ Plan: 5 of 5
 | 4. Backend Dependencies & Build | 2 | 3 | ✅ Completed |
 | 5. Docker Infrastructure | 4 | 5 | ✅ Completed |
 | 6. Google OAuth Authentication | 4 | 5 | Not started |
-| 7. Multi-Tenant Data Isolation | 3 | 4 | Not started |
+| 7. Multi-Tenant Data Isolation | 3 | 4 | ✅ Completed |
 | 8. Desktop Native Features | 4 | 4 | Not started |
 | 9. Cross-Platform Build Pipeline | 1 | 4 | Not started |
 | 10. Test Suite | 3 | 4 | Not started |
@@ -105,16 +105,41 @@ Plan: 5 of 5
     - 13dc2b3: feat(05-03): create HTTP/3 server scaffolding module
     - lib.rs: tauri_plugin_libsql::Builder::default().build() registered
     - h3_server.rs: H3Config, start_h3_server(), generate_dev_cert() with rcgen 0.13 API
-    - cargo check --workspace: only fails on pre-existing cmake issue; all other crates pass
+     - cargo check --workspace: only fails on pre-existing cmake issue; all other crates pass
+- Phase 07 completed (all 3 sub-plans):
+  - 07-01: TenantId + TenantAwareSurrealDb + schema migration — completed
+    - f4b30f1: feat(07-01): add TenantId newtype to domain crate ports
+    - 1ee5ca6: feat(07-01): create TenantAwareSurrealDb wrapper + schema migration
+    - Fixed surrealdb 3.x API: sql→types module, SurrealValue bound for take()
+    - 7 unit tests passing for SQL injection logic
+    - jsonwebtoken, chrono, async-trait added to runtime_server deps
+  - 07-02: Axum tenant extraction middleware + router wiring — completed
+    - 318e8cd: feat(07-02): create tenant extraction middleware
+    - 5b8a6d3: feat(07-02): wire tenant module into routes barrel
+    - JWT Bearer token → TenantId via dangerous::insecure_decode (v1)
+    - 3 unit tests: valid JWT, invalid format, empty token
+    - Middleware module barrel + placeholder tenant route for Plan 03
+    - Fixed test algorithm: RS256→HS256 for symmetric secret compatibility
+    - cargo check passes, 10/10 tests green
+  - 07-03: Tenant init API + AppState migrations — completed
+    - abbdc0e: feat(07-03): create POST /api/tenant/init endpoint
+    - a950bbf: feat(07-03): wire tenant module + run migrations on AppState init
+    - First login auto-creates tenant + user_tenant (role: 'owner')
+    - Subsequent logins return existing tenant_id (no duplicates)
+    - AppState::new_dev() runs run_tenant_migrations() automatically
+    - create_router() separates public (health) and api (tenant) routes
+    - Tenant middleware applied as route_layer on api_router()
+    - Fixed surrealdb 3.x: RecordId replaces Thing, Value::String not From<&str>
+    - 13 tests passing, cargo check clean
 
 ## Session Continuity
 
 - **Roadmap file:** `.planning/ROADMAP.md`
 - **Requirements file:** `.planning/REQUIREMENTS.md`
 - **Research files:** `.planning/research/SUMMARY.md`, `.planning/research/STACK.md`, `.planning/research/ARCHITECTURE.md`
-- **Next command:** `/gsd-plan-phase 6`
+- **Next command:** Phase 08 (desktop native features) or Phase 06 (Google OAuth authentication)
 
 ---
 
 *Created: 2026-03-28 by /gsd-new-project roadmap phase*
-*Updated: 2026-03-29 — Phase 06 context gathered (OAuth deep link + PKCE, tauri-plugin-store sessions, Tauri background refresh, login UX with Lottie)*
+*Updated: 2026-03-29 — Phase 07 complete (TenantAwareSurrealDb + middleware + init API + migrations)*

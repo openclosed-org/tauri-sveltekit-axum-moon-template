@@ -22,6 +22,6 @@ pub trait SurrealDbPort: Send + Sync {
     async fn query<T: DeserializeOwned + Send + Sync>(
         &self,
         sql: &str,
-        vars: BTreeMap<String, surrealdb::sql::Value>,
+        vars: BTreeMap<String, surrealdb::types::Value>,
     ) -> Result<Vec<T>, SurrealError>;
 }

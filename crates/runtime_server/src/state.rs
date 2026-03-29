@@ -7,6 +7,8 @@ use moka::future::Cache;
 use std::time::Duration;
 use surrealdb::{engine::any::Any, Surreal};
 
+use crate::ports::surreal_db::run_tenant_migrations;
+
 /// Shared application state for Axum routes.
 ///
 /// All fields are cheaply cloneable (Arc-wrapped internally).
@@ -35,6 +37,11 @@ impl AppState {
         let db = Surreal::<Any>::init();
         db.connect("memory").await?;
         db.use_ns("app").use_db("main").await?;
+
+        // Run tenant schema migrations (tenant + user_tenant tables)
+        run_tenant_migrations(&db)
+            .await
+            .map_err(|e| format!("Tenant migration failed: {e}"))?;
 
         // Moka cache — 10k entries, 5min TTL (per D-10/D-11)
         let cache: Cache<String, String> = Cache::builder()

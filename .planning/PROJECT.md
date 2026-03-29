@@ -22,11 +22,11 @@ Provide a runnable, tested, production-ready boilerplate with authentication (Go
 - ✓ All 7 Tauri plugins registered — Validated in Phase 01: package-foundation
 - ✓ moon parallel lint/test configured — Validated in Phase 01: package-foundation
 - ✓ Database infrastructure (SurrealDB + libsql dual-DB) — Validated in Phase 05: database-infrastructure
+- ✓ Multi-tenant data isolation (tenant_id scoping) — Validated in Phase 07: multi-tenant-data-isolation
 
 ### Active
 
 - [ ] User can sign in with Google OAuth
-- [ ] Multi-tenant data isolation (tenant_id scoping)
 - [ ] Backend containerized with docker-compose (Redis/cache, DB, nginx)
 - [ ] Tests pass for core flows
 - [ ] Local dev environment fully configured
@@ -38,7 +38,7 @@ Provide a runnable, tested, production-ready boilerplate with authentication (Go
 
 ## Context
 
-**Current state:** Phase 05 (database-infrastructure) complete — SurrealDB + Moka cache + reqwest in AppState, domain Port traits defined, tauri-plugin-libsql registered, HTTP/3 scaffolding ready. Ready for Phase 06 (google-oauth-authentication).
+**Current state:** Phase 07 (multi-tenant-data-isolation) complete — TenantId domain type, tenant-aware query scoping middleware, and tenant initialization API are implemented and verified. Next up is Phase 08 (desktop-native-features), while earlier pending phases remain tracked in ROADMAP.
 
 **Tech stack:**
 - Frontend: SvelteKit + bitsUI + TailwindCSS v4 + VitePress + @pqoqubbw/icons + Lottie
@@ -91,4 +91,4 @@ For Cargo (tauri + axum): Deep dive into docs for plugins and dependencies, prel
 
 ---
 
-*Last updated: 2026-03-29 after Phase 05 completion (database-infrastructure)*
+*Last updated: 2026-03-29 after Phase 07 completion (multi-tenant-data-isolation)*
