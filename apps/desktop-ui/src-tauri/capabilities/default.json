@@ -1,0 +1,16 @@
+{
+  "identifier": "default",
+  "description": "Default capabilities for the desktop app",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "shell:allow-open",
+    "dialog:default",
+    "store:default",
+    "store:allow-get",
+    "store:allow-set",
+    "store:allow-delete",
+    "store:allow-has",
+    "deep-link:default"
+  ]
+}
