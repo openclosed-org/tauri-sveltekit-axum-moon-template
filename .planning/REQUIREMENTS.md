@@ -16,7 +16,7 @@
 
 - [x] **TENANT-01**: Database schema includes tenant_id on all tables
 - [ ] **TENANT-02**: Query middleware automatically scopes by tenant_id
-- [ ] **TENANT-03**: User belongs to exactly one tenant on signup
+- [x] **TENANT-03**: User belongs to exactly one tenant on signup
 
 ### Infrastructure (Rust 方案)
 
@@ -109,7 +109,7 @@
 | AUTH-04 | Phase 6 | Pending |
 | TENANT-01 | Phase 7 | Complete |
 | TENANT-02 | Phase 7 | Pending |
-| TENANT-03 | Phase 7 | Pending |
+| TENANT-03 | Phase 7 | Complete |
 | DESKTOP-01 | Phase 8 | Pending |
 | DESKTOP-02 | Phase 8 | Pending |
 | DESKTOP-03 | Phase 8 | Pending |

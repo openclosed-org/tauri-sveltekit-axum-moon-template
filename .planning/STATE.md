@@ -23,13 +23,13 @@ progress:
 
 ## Current Position
 
-Phase: 07 (multi-tenant-data-isolation) — EXECUTING
+Phase: 07 (multi-tenant-data-isolation) — COMPLETED
 Plan: 3 of 3
 
-- [████████████████████] 22/22 requirements complete
-- **Phase:** 01 ✅ | 02 ✅ | 03 ✅ | 04 ✅ | 05 ✅
-- **Plan:** 06-01 ✅ | 06-02 ✅ | 06-03 ✅ | 06-04 ✅ | 06-05 ⚠️ (checkpoint pending) | 07-01 ✅ | 07-02 ✅
-- **Status:** Executing Phase 07 (plan 2/3 complete)
+- [████████████████████] 23/23 requirements complete
+- **Phase:** 01 ✅ | 02 ✅ | 03 ✅ | 04 ✅ | 05 ✅ | 07 ✅
+- **Plan:** 06-01 ✅ | 06-02 ✅ | 06-03 ✅ | 06-04 ✅ | 06-05 ⚠️ (checkpoint pending) | 07-01 ✅ | 07-02 ✅ | 07-03 ✅
+- **Status:** Phase 07 complete (3/3 plans). Ready for Phase 08
 - **Blockers:** cmake required for full workspace compile (pre-existing env issue)
 
 ## Phase Progress
@@ -42,7 +42,7 @@ Plan: 3 of 3
 | 4. Backend Dependencies & Build | 2 | 3 | ✅ Completed |
 | 5. Docker Infrastructure | 4 | 5 | ✅ Completed |
 | 6. Google OAuth Authentication | 4 | 5 | Not started |
-| 7. Multi-Tenant Data Isolation | 3 | 4 | In progress (plan 2/3) |
+| 7. Multi-Tenant Data Isolation | 3 | 4 | ✅ Completed |
 | 8. Desktop Native Features | 4 | 4 | Not started |
 | 9. Cross-Platform Build Pipeline | 1 | 4 | Not started |
 | 10. Test Suite | 3 | 4 | Not started |
@@ -104,7 +104,7 @@ Plan: 3 of 3
     - lib.rs: tauri_plugin_libsql::Builder::default().build() registered
     - h3_server.rs: H3Config, start_h3_server(), generate_dev_cert() with rcgen 0.13 API
      - cargo check --workspace: only fails on pre-existing cmake issue; all other crates pass
-- Phase 07 progress:
+- Phase 07 completed (all 3 sub-plans):
   - 07-01: TenantId + TenantAwareSurrealDb + schema migration — completed
     - f4b30f1: feat(07-01): add TenantId newtype to domain crate ports
     - 1ee5ca6: feat(07-01): create TenantAwareSurrealDb wrapper + schema migration
@@ -119,15 +119,25 @@ Plan: 3 of 3
     - Middleware module barrel + placeholder tenant route for Plan 03
     - Fixed test algorithm: RS256→HS256 for symmetric secret compatibility
     - cargo check passes, 10/10 tests green
+  - 07-03: Tenant init API + AppState migrations — completed
+    - abbdc0e: feat(07-03): create POST /api/tenant/init endpoint
+    - a950bbf: feat(07-03): wire tenant module + run migrations on AppState init
+    - First login auto-creates tenant + user_tenant (role: 'owner')
+    - Subsequent logins return existing tenant_id (no duplicates)
+    - AppState::new_dev() runs run_tenant_migrations() automatically
+    - create_router() separates public (health) and api (tenant) routes
+    - Tenant middleware applied as route_layer on api_router()
+    - Fixed surrealdb 3.x: RecordId replaces Thing, Value::String not From<&str>
+    - 13 tests passing, cargo check clean
 
 ## Session Continuity
 
 - **Roadmap file:** `.planning/ROADMAP.md`
 - **Requirements file:** `.planning/REQUIREMENTS.md`
 - **Research files:** `.planning/research/SUMMARY.md`, `.planning/research/STACK.md`, `.planning/research/ARCHITECTURE.md`
-- **Next command:** continue Phase 07 plan 03 (POST /api/tenant/init endpoint + AppState migration)
+- **Next command:** Phase 08 (desktop native features) or Phase 06 (Google OAuth authentication)
 
 ---
 
 *Created: 2026-03-28 by /gsd-new-project roadmap phase*
-*Updated: 2026-03-29 — Phase 06 context gathered (OAuth deep link + PKCE, tauri-plugin-store sessions, Tauri background refresh, login UX with Lottie)*
+*Updated: 2026-03-29 — Phase 07 complete (TenantAwareSurrealDb + middleware + init API + migrations)*

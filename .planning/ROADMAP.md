@@ -13,7 +13,7 @@
 - [x] **Phase 5: Database & Infrastructure** - SurrealDB + libsql dual DB, HTTP/3 scaffolding ✅
 - [ ] **Phase 6: Google OAuth Authentication** - OAuth login, deep link callback, session management
   - Plans: 5 plans (3 waves)
-- [ ] **Phase 7: Multi-Tenant Data Isolation** - tenant_id schema, query middleware, user-tenant binding
+- [x] **Phase 7: Multi-Tenant Data Isolation** - tenant_id schema, query middleware, user-tenant binding (completed 2026-03-29)
 - [ ] **Phase 8: Desktop Native Features** - System tray, window state, single instance, error handling
 - [ ] **Phase 9: Cross-Platform Build Pipeline** - Windows, macOS, Linux build verification
 - [ ] **Phase 10: Test Suite** - Unit, component, and E2E tests for all core flows
@@ -146,7 +146,7 @@ Plans:
 Plans:
 - [x] 07-01-PLAN.md — TenantId newtype + SurrealDB schema migrations + TenantAwareSurrealDb wrapper
 - [x] 07-02-PLAN.md — Axum tenant extraction middleware + router wiring ✅ `318e8cd` `5b8a6d3`
-- [ ] 07-03-PLAN.md — POST /api/tenant/init endpoint + AppState migration integration
+- [x] 07-03-PLAN.md — POST /api/tenant/init endpoint + AppState migration integration
 
 ### Phase 8: Desktop Native Features
 **Goal**: App behaves as a polished desktop application with system tray, persistent window state, and user-friendly errors
@@ -192,7 +192,7 @@ Plans:
 | 4. Backend Dependencies & Build | 0/3 | Planning | - |
 | 5. Database & Infrastructure | 3/3 | Completed | 2026-03-29 |
 | 6. Google OAuth Authentication | 0/5 | Planning | - |
-| 7. Multi-Tenant Data Isolation | 1/3 | In Progress|  |
+| 7. Multi-Tenant Data Isolation | 3/3 | Complete   | 2026-03-29 |
 | 8. Desktop Native Features | 0/4 | Not started | - |
 | 9. Cross-Platform Build Pipeline | 0/4 | Not started | - |
 | 10. Test Suite | 0/4 | Not started | - |
