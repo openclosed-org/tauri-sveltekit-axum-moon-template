@@ -24,12 +24,12 @@ progress:
 ## Current Position
 
 Phase: 07 (multi-tenant-data-isolation) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 
 - [████████████████████] 22/22 requirements complete
 - **Phase:** 01 ✅ | 02 ✅ | 03 ✅ | 04 ✅ | 05 ✅
-- **Plan:** 06-01 ✅ | 06-02 ✅ | 06-03 ✅ | 06-04 ✅ | 06-05 ⚠️ (checkpoint pending) | 07-01 ✅
-- **Status:** Executing Phase 07
+- **Plan:** 06-01 ✅ | 06-02 ✅ | 06-03 ✅ | 06-04 ✅ | 06-05 ⚠️ (checkpoint pending) | 07-01 ✅ | 07-02 ✅
+- **Status:** Executing Phase 07 (plan 2/3 complete)
 - **Blockers:** cmake required for full workspace compile (pre-existing env issue)
 
 ## Phase Progress
@@ -42,7 +42,7 @@ Plan: 2 of 3
 | 4. Backend Dependencies & Build | 2 | 3 | ✅ Completed |
 | 5. Docker Infrastructure | 4 | 5 | ✅ Completed |
 | 6. Google OAuth Authentication | 4 | 5 | Not started |
-| 7. Multi-Tenant Data Isolation | 3 | 4 | In progress (plan 1/3) |
+| 7. Multi-Tenant Data Isolation | 3 | 4 | In progress (plan 2/3) |
 | 8. Desktop Native Features | 4 | 4 | Not started |
 | 9. Cross-Platform Build Pipeline | 1 | 4 | Not started |
 | 10. Test Suite | 3 | 4 | Not started |
@@ -111,13 +111,21 @@ Plan: 2 of 3
     - Fixed surrealdb 3.x API: sql→types module, SurrealValue bound for take()
     - 7 unit tests passing for SQL injection logic
     - jsonwebtoken, chrono, async-trait added to runtime_server deps
+  - 07-02: Axum tenant extraction middleware + router wiring — completed
+    - 318e8cd: feat(07-02): create tenant extraction middleware
+    - 5b8a6d3: feat(07-02): wire tenant module into routes barrel
+    - JWT Bearer token → TenantId via dangerous::insecure_decode (v1)
+    - 3 unit tests: valid JWT, invalid format, empty token
+    - Middleware module barrel + placeholder tenant route for Plan 03
+    - Fixed test algorithm: RS256→HS256 for symmetric secret compatibility
+    - cargo check passes, 10/10 tests green
 
 ## Session Continuity
 
 - **Roadmap file:** `.planning/ROADMAP.md`
 - **Requirements file:** `.planning/REQUIREMENTS.md`
 - **Research files:** `.planning/research/SUMMARY.md`, `.planning/research/STACK.md`, `.planning/research/ARCHITECTURE.md`
-- **Next command:** continue Phase 07 plan 02 (tenant middleware)
+- **Next command:** continue Phase 07 plan 03 (POST /api/tenant/init endpoint + AppState migration)
 
 ---
 

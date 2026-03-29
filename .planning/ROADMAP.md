@@ -145,7 +145,7 @@ Plans:
 
 Plans:
 - [x] 07-01-PLAN.md — TenantId newtype + SurrealDB schema migrations + TenantAwareSurrealDb wrapper
-- [ ] 07-02-PLAN.md — Axum tenant extraction middleware + router wiring
+- [x] 07-02-PLAN.md — Axum tenant extraction middleware + router wiring ✅ `318e8cd` `5b8a6d3`
 - [ ] 07-03-PLAN.md — POST /api/tenant/init endpoint + AppState migration integration
 
 ### Phase 8: Desktop Native Features
