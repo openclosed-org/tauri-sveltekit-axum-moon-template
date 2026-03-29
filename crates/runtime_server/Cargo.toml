@@ -24,6 +24,23 @@ hyper = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 
+# Database
+surrealdb = { workspace = true }
+
+# Cache
+moka = { workspace = true }
+
+# HTTP client
+reqwest = { workspace = true }
+
+# HTTP/3 transport (per D-07, D-08)
+quinn = { workspace = true }
+h3 = { workspace = true }
+rcgen = { workspace = true }
+
 # Tracing
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
+
+# Internal crates
+application = { path = "../application" }

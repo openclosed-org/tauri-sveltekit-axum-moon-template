@@ -1,7 +1,9 @@
 //! Health check endpoints for load balancer and orchestrator probes.
 
-use axum::{http::StatusCode, routing::get, Json, Router};
+use axum::{extract::State, http::StatusCode, routing::get, Json, Router};
 use serde_json::{json, Value};
+
+use crate::state::AppState;
 
 /// Liveness probe — is the process alive?
 /// GET /healthz → {"status": "ok"}
@@ -11,14 +13,27 @@ pub async fn healthz() -> (StatusCode, Json<Value>) {
 
 /// Readiness probe — can the server accept traffic?
 /// GET /readyz → {"status": "ready"} or {"status": "degraded"}
-pub async fn readyz() -> (StatusCode, Json<Value>) {
-    // TODO Phase 5: check database connection pool health
-    (StatusCode::OK, Json(json!({"status": "ready"})))
+///
+/// Checks: SurrealDB connection health.
+pub async fn readyz(State(state): State<AppState>) -> (StatusCode, Json<Value>) {
+    // Check SurrealDB connection
+    let db_ok = state.db.health().await.is_ok();
+
+    if db_ok {
+        (StatusCode::OK, Json(json!({"status": "ready"})))
+    } else {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(json!({"status": "degraded", "reason": "database_unavailable"})),
+        )
+    }
 }
 
 /// Health route module router.
-pub fn router() -> Router {
-    Router::new()
+///
+/// NOTE: With AppState, routes must use `Router::<AppState>::new()`.
+pub fn router() -> Router<AppState> {
+    Router::<AppState>::new()
         .route("/healthz", get(healthz))
         .route("/readyz", get(readyz))
 }

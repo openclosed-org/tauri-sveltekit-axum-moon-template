@@ -5,11 +5,11 @@
 //! Listens on 0.0.0.0:3001 by default.
 //! Override with SERVER_PORT env var.
 
-use runtime_server::create_router;
+use runtime_server::{create_router, state::AppState};
 use std::net::SocketAddr;
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize tracing
     tracing_subscriber::fmt::init();
 
@@ -19,7 +19,10 @@ async fn main() {
         .expect("SERVER_PORT must be a valid port number");
 
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
-    let app = create_router();
+
+    // Initialize shared application state
+    let state = AppState::new_dev().await?;
+    let app = create_router(state);
 
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
     println!("🚀 Runtime server listening on {addr}");
@@ -27,4 +30,6 @@ async fn main() {
     println!("   Ready:  http://localhost:{port}/readyz");
 
     axum::serve(listener, app).await.unwrap();
+
+    Ok(())
 }
