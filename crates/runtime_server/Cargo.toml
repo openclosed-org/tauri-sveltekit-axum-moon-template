@@ -33,6 +33,13 @@ moka = { workspace = true }
 # HTTP client
 reqwest = { workspace = true }
 
+# Auth
+jsonwebtoken = { workspace = true }
+
+# Utilities
+chrono = { workspace = true }
+async-trait = "0.1"
+
 # HTTP/3 transport (per D-07, D-08)
 quinn = { workspace = true }
 h3 = { workspace = true }

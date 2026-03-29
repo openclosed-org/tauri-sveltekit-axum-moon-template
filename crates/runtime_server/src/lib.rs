@@ -5,6 +5,7 @@
 //! Business logic lives in `domain` and `application` crates.
 
 pub mod h3_server;
+pub mod ports;
 pub mod routes;
 pub mod state;
 
