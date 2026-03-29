@@ -15,7 +15,7 @@
 ### Multi-Tenancy
 
 - [x] **TENANT-01**: Database schema includes tenant_id on all tables
-- [ ] **TENANT-02**: Query middleware automatically scopes by tenant_id
+- [x] **TENANT-02**: Query middleware automatically scopes by tenant_id
 - [x] **TENANT-03**: User belongs to exactly one tenant on signup
 
 ### Infrastructure (Rust 方案)
@@ -108,7 +108,7 @@
 | AUTH-03 | Phase 6 | Pending |
 | AUTH-04 | Phase 6 | Pending |
 | TENANT-01 | Phase 7 | Complete |
-| TENANT-02 | Phase 7 | Pending |
+| TENANT-02 | Phase 7 | Complete |
 | TENANT-03 | Phase 7 | Complete |
 | DESKTOP-01 | Phase 8 | Pending |
 | DESKTOP-02 | Phase 8 | Pending |
@@ -125,4 +125,4 @@
 
 ---
 *Requirements defined: 2026-03-28*
-*Last updated: 2026-03-28 after roadmap creation (10 phases, fine granularity)*
+*Last updated: 2026-03-29 after Phase 07 verification and completion sync*
