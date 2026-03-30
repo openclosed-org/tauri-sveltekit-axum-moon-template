@@ -168,7 +168,11 @@ Plans:
   2. `cargo build` completes without errors on macOS (with entitlements)
   3. `cargo build` completes without errors on Linux
   4. CI configuration (or moon task) exists to verify all three platform builds
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 09-01-PLAN.md — Tauri 跨平台打包基线（Windows NSIS + macOS entitlements）
+- [ ] 09-02-PLAN.md — GitHub Actions 三平台 matrix 自动构建验证
 
 ### Phase 10: Test Suite
 **Goal**: Core application flows are covered by passing unit, component, and E2E tests
