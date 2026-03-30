@@ -77,3 +77,6 @@ jobs:
       - name: Frontend build
         working-directory: apps/desktop-ui
         run: bun run build
+
+      - name: Tauri crate build verification
+        run: cargo build --manifest-path apps/desktop-ui/src-tauri/Cargo.toml
