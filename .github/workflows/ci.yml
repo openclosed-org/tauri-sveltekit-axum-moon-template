@@ -74,6 +74,10 @@ jobs:
         working-directory: apps/desktop-ui
         run: bun run lint
 
+      - name: Frontend unit tests
+        working-directory: apps/desktop-ui
+        run: bun run test:unit
+
       - name: Frontend build
         working-directory: apps/desktop-ui
         run: bun run build
