@@ -3,36 +3,36 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Phase 9 context gathered
-last_updated: "2026-03-30T01:19:13.228Z"
+stopped_at: Completed 09-02-PLAN.md
+last_updated: "2026-03-30T01:41:09.139Z"
 progress:
   total_phases: 10
-  completed_phases: 6
-  total_plans: 26
-  completed_plans: 24
+  completed_phases: 7
+  total_plans: 28
+  completed_plans: 26
 ---
 
 # STATE: Tauri-SvelteKit-Axum Boilerplate
 
-**Last updated:** 2026-03-29
-**Phase:** 8
+**Last updated:** 2026-03-30
+**Phase:** 9
 
 ## Project Reference
 
 - **Core value:** Production-ready boilerplate for cross-platform desktop apps (Tauri 2 + SvelteKit + Axum + moon)
-- **Current focus:** Phase 07 — multi-tenant-data-isolation
+- **Current focus:** Phase 09 — cross-platform-build-pipeline
 - **Stack:** Tauri 2.10.x, SvelteKit 2.x + Svelte 5 runes, Axum 0.8.x, libsql, moon, bun
 - **Granularity:** fine (10 phases)
 
 ## Current Position
 
-Phase: 07 (multi-tenant-data-isolation) — COMPLETED
-Plan: 3 of 3
+Phase: 09 (cross-platform-build-pipeline) — COMPLETED
+Plan: 2 of 2
 
-- [████████████████████] 23/23 requirements complete
-- **Phase:** 01 ✅ | 02 ✅ | 03 ✅ | 04 ✅ | 05 ✅ | 07 ✅
-- **Plan:** Not started
-- **Status:** Ready to plan
+- [████████████████████] 24/24 requirements complete
+- **Phase:** 01 ✅ | 02 ✅ | 03 ✅ | 04 ✅ | 05 ✅ | 07 ✅ | 09 ✅
+- **Plan:** 09-01 ✅ | 09-02 ✅
+- **Status:** Phase 09 complete
 - **Blockers:** cmake required for full workspace compile (pre-existing env issue)
 
 ## Phase Progress
@@ -47,7 +47,7 @@ Plan: 3 of 3
 | 6. Google OAuth Authentication | 4 | 5 | Not started |
 | 7. Multi-Tenant Data Isolation | 3 | 4 | ✅ Completed |
 | 8. Desktop Native Features | 4 | 4 | Not started |
-| 9. Cross-Platform Build Pipeline | 1 | 4 | Not started |
+| 9. Cross-Platform Build Pipeline | 1 | 4 | ✅ Completed |
 | 10. Test Suite | 3 | 4 | Not started |
 
 ## Key Decisions
@@ -65,6 +65,8 @@ Plan: 3 of 3
 | Moka replaces Redis as cache | Simpler, no external service dependency | Accepted |
 | HTTP/3 (Quinn) primary, HTTP/2 (Axum TCP) fallback | Future-proof production transport | Accepted |
 | tauri-plugin-libsql for local DB | Already declared, official plugin, dev-friendly | Accepted |
+| bundle.targets 保持 all + Windows NSIS currentUser + downloadBootstrapper | 对齐 Phase 9 跨平台打包基线且避免过度配置 | Accepted |
+| CI 改为 push/main + pull_request 三平台 matrix（native runner） | 把跨平台构建验证前移到每次提交，降低回归风险 | Accepted |
 
 ## Accumulated Context
 
@@ -132,21 +134,30 @@ Plan: 3 of 3
     - Tenant middleware applied as route_layer on api_router()
     - Fixed surrealdb 3.x: RecordId replaces Thing, Value::String not From<&str>
     - 13 tests passing, cargo check clean
+- Phase 09 completed (all 2 sub-plans):
+  - 09-01: Tauri bundle baseline (Windows NSIS + macOS entitlements) — completed
+    - 95da9f9: feat(09-01): define cross-platform Tauri bundle baseline
+    - tauri.conf.json: windows.nsis(currentUser), webviewInstallMode(downloadBootstrapper), macOS entitlements path
+    - Entitlements.plist: network.client + allow-jit + allow-unsigned-executable-memory
+  - 09-02: GitHub Actions cross-platform matrix CI — completed
+    - 759cce4: feat(09-02): enable cross-platform CI matrix triggers
+    - de085f2: feat(09-02): add Tauri build verification to CI gates
+    - ci.yml: push(main)+pull_request triggers, ubuntu/windows/macos matrix, tauri cargo build verification
 
 ## Session Continuity
 
 - **Roadmap file:** `.planning/ROADMAP.md`
 - **Requirements file:** `.planning/REQUIREMENTS.md`
 - **Research files:** `.planning/research/SUMMARY.md`, `.planning/research/STACK.md`, `.planning/research/ARCHITECTURE.md`
-- **Next command:** Phase 08 (desktop native features) or Phase 06 (Google OAuth authentication)
+- **Next command:** Phase 08 (desktop native features) or Phase 10 (test suite)
 
 ## Session
 
-**Last Date:** 2026-03-30T01:19:13.223Z
-**Stopped At:** Phase 9 context gathered
-**Resume File:** .planning/phases/09-cross-platform-build-pipeline/09-CONTEXT.md
+**Last Date:** 2026-03-30T01:41:09.134Z
+**Stopped At:** Completed 09-02-PLAN.md
+**Resume File:** None
 
 ---
 
 *Created: 2026-03-28 by /gsd-new-project roadmap phase*
-*Updated: 2026-03-29 — Phase 07 complete (TenantAwareSurrealDb + middleware + init API + migrations)*
+*Updated: 2026-03-30 — Phase 09 complete (cross-platform bundle baseline + three-platform CI matrix)*

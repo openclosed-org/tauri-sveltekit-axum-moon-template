@@ -37,7 +37,7 @@
 ### Build & Performance
 
 - [ ] **BUILD-01**: Production bundle under 15MB (LTO enabled)
-- [ ] **BUILD-02**: Build passes on Windows, macOS, Linux
+- [x] **BUILD-02**: Build passes on Windows, macOS, Linux
 - [ ] **BUILD-03**: moon workspace configured with lint/test parallelism
 
 ### UI/UX
@@ -93,7 +93,7 @@
 | PKG-03 | Phase 1 | Pending |
 | PKG-04 | Phase 4 | Pending |
 | BUILD-01 | Phase 4 | Pending |
-| BUILD-02 | Phase 9 | Pending |
+| BUILD-02 | Phase 9 | Complete |
 | BUILD-03 | Phase 1 | Pending |
 | UI-01 | Phase 3 | Pending |
 | UI-02 | Phase 3 | Pending |

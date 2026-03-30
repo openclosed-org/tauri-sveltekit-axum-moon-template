@@ -15,7 +15,7 @@
   - Plans: 5 plans (3 waves)
 - [x] **Phase 7: Multi-Tenant Data Isolation** - tenant_id schema, query middleware, user-tenant binding (completed 2026-03-29)
 - [ ] **Phase 8: Desktop Native Features** - System tray, window state, single instance, error handling
-- [ ] **Phase 9: Cross-Platform Build Pipeline** - Windows, macOS, Linux build verification
+- [x] **Phase 9: Cross-Platform Build Pipeline** - Windows, macOS, Linux build verification ✅
 - [ ] **Phase 10: Test Suite** - Unit, component, and E2E tests for all core flows
 
 ## Phase Details
@@ -171,8 +171,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 09-01-PLAN.md — Tauri 跨平台打包基线（Windows NSIS + macOS entitlements）
-- [ ] 09-02-PLAN.md — GitHub Actions 三平台 matrix 自动构建验证
+- [x] 09-01-PLAN.md — Tauri 跨平台打包基线（Windows NSIS + macOS entitlements）
+- [x] 09-02-PLAN.md — GitHub Actions 三平台 matrix 自动构建验证
 
 ### Phase 10: Test Suite
 **Goal**: Core application flows are covered by passing unit, component, and E2E tests
@@ -198,7 +198,7 @@ Plans:
 | 6. Google OAuth Authentication | 0/5 | Planning | - |
 | 7. Multi-Tenant Data Isolation | 3/3 | Complete   | 2026-03-29 |
 | 8. Desktop Native Features | 0/4 | Not started | - |
-| 9. Cross-Platform Build Pipeline | 0/4 | Not started | - |
+| 9. Cross-Platform Build Pipeline | 2/2 | Complete | 2026-03-30 |
 | 10. Test Suite | 0/4 | Not started | - |
 
 ## Coverage Map
@@ -230,7 +230,7 @@ Plans:
 | DESKTOP-02 | Phase 8 | Pending |
 | DESKTOP-03 | Phase 8 | Pending |
 | DESKTOP-04 | Phase 8 | Pending |
-| BUILD-02 | Phase 9 | Pending |
+| BUILD-02 | Phase 9 | ✅ Complete |
 | TEST-01 | Phase 10 | Pending |
 | TEST-02 | Phase 10 | Pending |
 | TEST-03 | Phase 10 | Pending |
