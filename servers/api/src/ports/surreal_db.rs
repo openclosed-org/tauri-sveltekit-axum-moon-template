@@ -4,11 +4,11 @@
 //! multi-tenant data isolation at the implementation layer (D-11: trait unchanged).
 
 use async_trait::async_trait;
-use domain::ports::surreal_db::{SurrealDbPort, SurrealError};
 use domain::ports::TenantId;
+use domain::ports::surreal_db::{SurrealDbPort, SurrealError};
 use serde::de::DeserializeOwned;
 use std::collections::BTreeMap;
-use surrealdb::{engine::any::Any, Surreal};
+use surrealdb::{Surreal, engine::any::Any};
 
 /// SurrealDbPort implementation with automatic tenant_id injection.
 ///

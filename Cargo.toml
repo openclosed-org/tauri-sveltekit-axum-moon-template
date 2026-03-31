@@ -25,6 +25,7 @@ tauri-plugin-fs = "2"
 tauri-plugin-deep-link = "2"
 tauri-plugin-window-state = "2"
 tauri-plugin-libsql = "0.1.0"
+tauri-plugin-log = { version = "2", features = ["colored"] }
 
 # Backend - Axum stack
 axum = { version = "0.8.8", features = ["json"] }
@@ -40,6 +41,8 @@ hyper = { version = "1", features = ["full"] }
 # Tracing
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-log = "0.2"
+log = "0.4"
 
 # Serialization
 serde = { version = "1.0.228", features = ["derive"] }
@@ -64,6 +67,9 @@ mockito = "1"
 # HTTP client utilities
 http-body-util = "0.1"
 
+# Environment variables (2026 best practice - dotenvy)
+dotenvy = "0.15.7"
+
 # Database
 surrealdb = { version = "3.0.5", features = ["kv-mem", "kv-rocksdb"] }
 
@@ -78,7 +84,7 @@ rand = "0.8"
 
 # Utilities
 url = "2"
-uuid = { version = "1.23.0", features = ["v4", "serde"] }
+uuid = { version = "1.23.0", features = ["v4", "v7", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 
 # ── Phase 5 (DB/Infra) ────────────────────────────────────────

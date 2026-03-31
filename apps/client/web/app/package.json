@@ -16,14 +16,15 @@
     "test:mobile": "maestro test tests/flow/"
   },
   "dependencies": {
-    "@tauri-apps/plugin-store": "2",
-    "@tauri-apps/plugin-window-state": "2",
     "@jis3r/icons": "^2.7.0",
     "@lottiefiles/dotlottie-svelte": "^0.9.8",
+    "@tauri-apps/plugin-store": "2",
+    "@tauri-apps/plugin-window-state": "2",
     "bits-ui": "2.16.4",
     "clsx": "^2.1.1",
     "tailwind-merge": "^3.3.0",
-    "tailwindcss": "4.2.2"
+    "tailwindcss": "4.2.2",
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
@@ -35,6 +36,7 @@
     "@tauri-apps/cli": "^2",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/svelte": "^5.3.1",
+    "@types/uuid": "^11.0.0",
     "concurrently": "latest",
     "happy-dom": "^20.8.9",
     "maestro": "latest",

@@ -42,8 +42,15 @@ export async function signInWithGoogle(): Promise<void> {
 	auth.authError = null;
 	try {
 		await startOAuth();
-		// Note: actual login completes when deep link callback fires
-		// and handleOAuthCallback is called from the Tauri event handler
+		// Note: actual login completes when oauth-callback event fires
+		// and handleOAuthCallback is called from the Tauri event handler.
+		// Safety timeout: reset loading after 2 minutes if no callback received.
+		setTimeout(() => {
+			if (auth.authLoading && !auth.isAuthenticated) {
+				auth.authLoading = false;
+				auth.authError = 'Login timed out. Please try again.';
+			}
+		}, 120_000);
 	} catch (e) {
 		auth.authError = String(e);
 		auth.authLoading = false;
@@ -59,6 +66,13 @@ export function setSession(session: AuthSession): void {
 	auth.tokenExpiresAt = session.expires_at;
 	auth.authLoading = false;
 	auth.authError = null;
+}
+
+/**
+ * Reset auth loading state (e.g., when callback fails or is cancelled).
+ */
+export function resetAuthLoading(): void {
+	auth.authLoading = false;
 }
 
 /**

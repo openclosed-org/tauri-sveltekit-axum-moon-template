@@ -1,4 +1,12 @@
 tasks:
+  dev:
+    command: 'cargo tauri dev'
+    args:
+      - '--manifest-path'
+      - 'src-tauri/Cargo.toml'
+    env:
+      RUST_BACKTRACE: '1'
+
   build:
     command: 'cargo build'
     args:

@@ -5,5 +5,5 @@ edition = "2021"
 
 [dependencies]
 async-trait = "0.1"
-serde = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }

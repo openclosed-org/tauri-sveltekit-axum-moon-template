@@ -6,3 +6,11 @@ edition = "2021"
 [dependencies]
 domain = { workspace = true }
 contracts_api = { workspace = true }
+async-trait = "0.1"
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt"] }

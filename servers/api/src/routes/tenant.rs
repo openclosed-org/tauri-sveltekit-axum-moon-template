@@ -2,9 +2,9 @@
 //!
 //! POST /api/tenant/init — ensure tenant exists for user (auto-create on first login).
 
-use axum::{extract::State, routing::post, Json, Router};
+use axum::{Json, Router, extract::State, routing::post};
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::collections::BTreeMap;
 use utoipa::ToSchema;
 use validator::Validate;

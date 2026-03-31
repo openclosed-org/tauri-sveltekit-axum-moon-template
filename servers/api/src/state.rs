@@ -3,13 +3,14 @@
 //! Injected via Router::with_state() so all route handlers can access
 //! DB, cache, and HTTP client through the State extractor.
 
+use crate::config::{CloudDbProvider, Config};
+use crate::error::AppError;
+use crate::ports::surreal_db::run_tenant_migrations as run_surreal_migrations;
+use crate::ports::turso_db::TursoDb;
+use crate::ports::turso_db::run_tenant_migrations as run_turso_migrations;
 use moka::future::Cache;
 use std::time::Duration;
-use surrealdb::{engine::any::Any, Surreal};
-
-use crate::config::Config;
-use crate::error::AppError;
-use crate::ports::surreal_db::run_tenant_migrations;
+use surrealdb::{Surreal, engine::any::Any};
 
 /// Shared application state for Axum routes.
 ///
@@ -18,6 +19,12 @@ use crate::ports::surreal_db::run_tenant_migrations;
 pub struct AppState {
     /// SurrealDB connection pool (server-side database).
     pub db: Surreal<Any>,
+
+    /// Turso cloud database connection (alternative to SurrealDB).
+    pub turso_db: Option<TursoDb>,
+
+    /// Which database provider is active.
+    pub db_provider: CloudDbProvider,
 
     /// Moka in-memory cache (replaces Redis per D-10/D-12).
     /// - 10,000 entries max
@@ -46,7 +53,7 @@ impl AppState {
         db.use_ns("app").use_db("main").await?;
 
         // Run tenant schema migrations (tenant + user_tenant tables)
-        run_tenant_migrations(&db)
+        run_surreal_migrations(&db)
             .await
             .map_err(AppError::Database)?;
 
@@ -65,6 +72,8 @@ impl AppState {
 
         Ok(Self {
             db,
+            turso_db: None,
+            db_provider: CloudDbProvider::SurrealDB,
             cache,
             http_client,
             config,
@@ -73,7 +82,22 @@ impl AppState {
 
     /// Initialize AppState with configuration (production-ready)
     pub async fn new_with_config(config: Config) -> Result<Self, AppError> {
-        // SurrealDB connection
+        let turso_db = match &config.database.provider {
+            CloudDbProvider::Turso => {
+                let turso = TursoDb::new(&config.database.url, &config.database.auth_token)
+                    .await
+                    .map_err(|e| AppError::Database(e.into()))?;
+
+                run_turso_migrations(&turso)
+                    .await
+                    .map_err(|e| AppError::Database(e.into()))?;
+
+                Some(turso)
+            }
+            CloudDbProvider::SurrealDB => None,
+        };
+
+        // SurrealDB connection (always initialized for compatibility)
         let db = Surreal::<Any>::init();
         db.connect(&config.database.url)
             .await
@@ -83,10 +107,12 @@ impl AppState {
             .await
             .map_err(|e| AppError::Database(e.into()))?;
 
-        // Run tenant schema migrations
-        run_tenant_migrations(&db)
-            .await
-            .map_err(AppError::Database)?;
+        // Run tenant schema migrations for SurrealDB
+        if config.database.provider == CloudDbProvider::SurrealDB {
+            run_surreal_migrations(&db)
+                .await
+                .map_err(AppError::Database)?;
+        }
 
         // Moka cache
         let cache: Cache<String, String> = Cache::builder()
@@ -103,6 +129,8 @@ impl AppState {
 
         Ok(Self {
             db,
+            turso_db,
+            db_provider: config.database.provider.clone(),
             cache,
             http_client,
             config,

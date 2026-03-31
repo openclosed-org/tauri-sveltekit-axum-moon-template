@@ -6,8 +6,8 @@
 //! - Profile-based configuration (dev, prod)
 
 use figment::{
-    providers::{Env, Format, Toml},
     Figment, Profile,
+    providers::{Env, Format, Toml},
 };
 use serde::{Deserialize, Serialize};
 
@@ -26,11 +26,31 @@ pub struct ServerConfig {
     pub request_timeout_secs: u64,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub enum CloudDbProvider {
+    #[serde(rename = "surrealdb")]
+    SurrealDB,
+    #[serde(rename = "turso")]
+    Turso,
+}
+
+impl Default for CloudDbProvider {
+    fn default() -> Self {
+        Self::SurrealDB
+    }
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct DatabaseConfig {
+    #[serde(default)]
+    pub provider: CloudDbProvider,
     pub url: String,
+    #[serde(default)]
     pub ns: String,
+    #[serde(default)]
     pub db: String,
+    #[serde(default)]
+    pub auth_token: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -54,9 +74,11 @@ impl Default for Config {
                 request_timeout_secs: 30,
             },
             database: DatabaseConfig {
+                provider: CloudDbProvider::SurrealDB,
                 url: "memory".to_string(),
                 ns: "app".to_string(),
                 db: "main".to_string(),
+                auth_token: String::new(),
             },
             cache: CacheConfig {
                 max_capacity: 10_000,

@@ -16,6 +16,7 @@ tauri-plugin-deep-link = { workspace = true }
 tauri-plugin-window-state = { workspace = true }
 tauri-plugin-single-instance = { workspace = true }
 tauri-plugin-libsql = { workspace = true }
+tauri-plugin-log = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 reqwest = { workspace = true }
@@ -24,3 +25,27 @@ base64 = { workspace = true }
 rand = { workspace = true }
 url = { workspace = true }
 tokio = { workspace = true }
+
+# Logging (unified tracing backbone)
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+tracing-log = { workspace = true }
+log = { workspace = true }
+
+# Environment variables (2026 best practice - dotenvy)
+dotenvy = { workspace = true }
+
+# Database
+libsql = { workspace = true }
+async-trait = "0.1"
+
+# Time and error handling
+chrono = { workspace = true }
+thiserror = { workspace = true }
+
+# Internal crates
+domain = { workspace = true }
+usecases = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3"

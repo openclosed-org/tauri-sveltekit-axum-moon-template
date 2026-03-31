@@ -9,7 +9,7 @@ use axum::{
 };
 use http_body_util::BodyExt;
 use moka::future::Cache;
-use runtime_server::config::Config;
+use runtime_server::config::{CloudDbProvider, Config};
 use runtime_server::create_router;
 use runtime_server::state::AppState;
 use surrealdb::{Surreal, engine::any::connect};
@@ -35,6 +35,8 @@ async fn make_test_state() -> AppState {
         cache,
         http_client,
         config,
+        turso_db: None,
+        db_provider: CloudDbProvider::SurrealDB,
     }
 }
 
@@ -77,6 +79,8 @@ async fn make_test_state_file() -> AppState {
         cache,
         http_client,
         config,
+        turso_db: None,
+        db_provider: CloudDbProvider::SurrealDB,
     }
 }
 

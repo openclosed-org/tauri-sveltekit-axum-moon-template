@@ -6,7 +6,7 @@ use sha2::{Digest, Sha256};
 use std::io::{Read, Write};
 use std::net::TcpListener;
 use tauri::{AppHandle, Emitter};
-use tauri_plugin_shell::ShellExt;
+use tauri_plugin_opener::OpenerExt;
 use tauri_plugin_store::StoreExt;
 
 const GOOGLE_AUTH_URL: &str = "https://accounts.google.com/o/oauth2/v2/auth";
@@ -14,18 +14,13 @@ const GOOGLE_TOKEN_URL: &str = "https://oauth2.googleapis.com/token";
 const REDIRECT_URI: &str = "http://127.0.0.1:1420/oauth/callback";
 const SCOPES: &str = "openid email profile";
 
-fn client_id() -> &'static str {
-    match option_env!("GOOGLE_CLIENT_ID") {
-        Some(v) => v,
-        None => "YOUR_GOOGLE_CLIENT_ID",
-    }
+fn client_id() -> String {
+    std::env::var("GOOGLE_CLIENT_ID").unwrap_or_else(|_| "YOUR_GOOGLE_CLIENT_ID".to_string())
 }
 
-fn client_secret() -> &'static str {
-    match option_env!("GOOGLE_CLIENT_SECRET") {
-        Some(v) => v,
-        None => "YOUR_GOOGLE_CLIENT_SECRET",
-    }
+fn client_secret() -> String {
+    std::env::var("GOOGLE_CLIENT_SECRET")
+        .unwrap_or_else(|_| "YOUR_GOOGLE_CLIENT_SECRET".to_string())
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -83,23 +78,44 @@ pub async fn start_oauth(app: AppHandle) -> Result<(), String> {
         .map_err(|e| format!("Cannot bind 127.0.0.1:1420 — is another instance running? {e}"))?;
     let app_for_callback = app.clone();
     tokio::task::spawn_blocking(move || {
+        tracing::info!("TCP listener waiting for callback on 127.0.0.1:1420");
         if let Ok((mut stream, _)) = listener.accept() {
-            let mut buf = [0u8; 4096];
-            if let Ok(n) = stream.read(&mut buf) {
-                let request = String::from_utf8_lossy(&buf[..n]);
-                // Extract first line: "GET /oauth/callback?code=...&state=... HTTP/1.1"
-                if let Some(first_line) = request.lines().next() {
-                    let path = first_line.split_whitespace().nth(1).unwrap_or("/");
-                    let callback_url = format!("http://127.0.0.1:1420{path}");
-                    // Emit the same event the frontend deep-link handler listens for
-                    let _ = app_for_callback.emit("deep-link://new-url", callback_url);
+            tracing::debug!("received connection on callback listener");
+            let mut buf = Vec::with_capacity(4096);
+            let mut tmp = [0u8; 1024];
+            // Read all data until connection closes or we have the full headers
+            loop {
+                match stream.read(&mut tmp) {
+                    Ok(0) => break,
+                    Ok(n) => buf.extend_from_slice(&tmp[..n]),
+                    Err(_) => break,
+                }
+                // Stop reading once we have the full HTTP headers (double CRLF)
+                if buf.windows(4).any(|w| w == b"\r\n\r\n") {
+                    break;
                 }
             }
-            // Return HTML so the browser tab looks closed
+            let request = String::from_utf8_lossy(&buf);
+            tracing::debug!(first_line = %request.lines().next().unwrap_or(""), "received HTTP request");
+
+            // Extract first line: "GET /oauth/callback?code=...&state=... HTTP/1.1"
+            if let Some(first_line) = request.lines().next() {
+                if let Some(path) = first_line.split_whitespace().nth(1) {
+                    let callback_url = format!("http://127.0.0.1:1420{path}");
+                    tracing::info!(%callback_url, "emitting oauth-callback event");
+                    // Use custom event name to avoid conflicts with tauri-plugin-deep-link
+                    if let Err(e) = app_for_callback.emit("oauth-callback", &callback_url) {
+                        tracing::error!(%e, "failed to emit oauth-callback event");
+                    }
+                }
+            }
+            // Return HTML so the browser tab shows confirmation
             let _ = stream.write_all(
-                b"HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nConnection: close\r\n\r\n<html><body><p>Login successful. You can close this tab.</p><script>window.close();</script></body></html>"
+                b"HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nConnection: close\r\n\r\n<html><body style='font-family:system-ui;text-align:center;padding:40px'><h2>Login successful!</h2><p>You can close this tab.</p></body></html>"
             );
+            tracing::debug!("sent response to browser");
         }
+        tracing::debug!("TCP listener exiting");
     });
 
     // 6. Build authorization URL
@@ -110,7 +126,7 @@ pub async fn start_oauth(app: AppHandle) -> Result<(), String> {
 
     // 7. Open system browser
     app.opener()
-        .open_url(&url, None)
+        .open_url(&url, None::<&str>)
         .map_err(|e| e.to_string())?;
 
     Ok(())
@@ -118,6 +134,8 @@ pub async fn start_oauth(app: AppHandle) -> Result<(), String> {
 
 #[tauri::command]
 pub async fn handle_oauth_callback(app: AppHandle, url: String) -> Result<AuthSession, String> {
+    tracing::info!("processing OAuth callback");
+
     // 1. Parse callback URL: com.example.app://oauth/callback?code=...&state=...
     let parsed = url::Url::parse(&url).map_err(|e| format!("Invalid callback URL: {e}"))?;
     let params: std::collections::HashMap<_, _> = parsed.query_pairs().collect();
@@ -139,6 +157,7 @@ pub async fn handle_oauth_callback(app: AppHandle, url: String) -> Result<AuthSe
         .ok_or("No stored OAuth state")?;
 
     if returned_state != stored_state {
+        tracing::error!("OAuth state mismatch — possible CSRF attack");
         return Err("OAuth state mismatch — possible CSRF attack".into());
     }
 
@@ -149,11 +168,14 @@ pub async fn handle_oauth_callback(app: AppHandle, url: String) -> Result<AuthSe
         .ok_or("No stored PKCE verifier")?;
 
     // 4. Exchange authorization code for tokens
+    tracing::debug!("exchanging authorization code for tokens");
     let client = reqwest::Client::new();
+    let cid = client_id();
+    let csec = client_secret();
     let params = [
         ("code", code.as_str()),
-        ("client_id", client_id()),
-        ("client_secret", client_secret()),
+        ("client_id", cid.as_str()),
+        ("client_secret", csec.as_str()),
         ("redirect_uri", REDIRECT_URI),
         ("grant_type", "authorization_code"),
         ("code_verifier", code_verifier.as_str()),
@@ -168,10 +190,12 @@ pub async fn handle_oauth_callback(app: AppHandle, url: String) -> Result<AuthSe
 
     if !resp.status().is_success() {
         let body = resp.text().await.unwrap_or_default();
+        tracing::error!(%body, "token exchange failed");
         return Err(format!("Token exchange failed: {body}"));
     }
 
     let token_resp: TokenResponse = resp.json().await.map_err(|e| e.to_string())?;
+    tracing::debug!("token exchange successful, decoding id_token");
 
     // 5. Decode id_token to extract user profile (JWT payload only, signature verification deferred to v2)
     let id_token_parts: Vec<&str> = token_resp.id_token.split('.').collect();
@@ -210,6 +234,7 @@ pub async fn handle_oauth_callback(app: AppHandle, url: String) -> Result<AuthSe
     store.delete("pkce_verifier");
     store.delete("oauth_state");
 
+    tracing::info!(email = %session.user.email, "OAuth login successful");
     Ok(session)
 }
 
@@ -258,9 +283,11 @@ pub async fn refresh_access_token(
     refresh_token: &str,
 ) -> Result<(String, u64), String> {
     let client = reqwest::Client::new();
+    let client_id = client_id();
+    let client_secret = client_secret();
     let params = [
-        ("client_id", client_id()),
-        ("client_secret", client_secret()),
+        ("client_id", client_id.as_str()),
+        ("client_secret", client_secret.as_str()),
         ("refresh_token", refresh_token),
         ("grant_type", "refresh_token"),
     ];

@@ -43,7 +43,7 @@ pub async fn tenant_middleware(mut req: Request, next: Next) -> Result<Response,
 #[cfg(test)]
 mod tests {
     use super::*;
-    use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
+    use jsonwebtoken::{Algorithm, EncodingKey, Header, encode};
 
     fn make_test_token(sub: &str) -> String {
         #[derive(serde::Serialize)]

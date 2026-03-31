@@ -1,7 +1,7 @@
 //! Health check endpoints for load balancer and orchestrator probes.
 
-use axum::{extract::State, http::StatusCode, routing::get, Json, Router};
-use serde_json::{json, Value};
+use axum::{Json, Router, extract::State, http::StatusCode, routing::get};
+use serde_json::{Value, json};
 use utoipa::ToSchema;
 
 use crate::state::AppState;

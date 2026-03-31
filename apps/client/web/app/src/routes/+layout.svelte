@@ -3,7 +3,7 @@
 	import { listen } from '@tauri-apps/api/event';
 	import { invoke } from '@tauri-apps/api/core';
 	import '../app.css';
-	import { setSession, initAuthListeners } from '$lib/stores/auth.svelte';
+	import { setSession, initAuthListeners, auth } from '$lib/stores/auth.svelte';
 	import { handleOAuthCallback } from '$lib/ipc/auth';
 	import Toast from '$lib/components/ui/Toast.svelte';
 
@@ -30,15 +30,19 @@
 		// Listen for auth:expired events from refresh timer
 		const cleanupAuth = initAuthListeners();
 
-		// Listen for deep link URLs from tauri-plugin-deep-link
-		const unlistenDeepLink = listen<string>('deep-link://new-url', async (event) => {
+		// Listen for OAuth callback from Rust TCP listener (custom event name to avoid deep-link plugin conflicts)
+		const unlistenOAuth = listen<string>('oauth-callback', async (event) => {
+			console.log('[auth] Received oauth-callback event:', event.payload);
 			const url = event.payload;
 			if (url.includes('oauth/callback')) {
 				try {
 					const session = await handleOAuthCallback(url);
+					console.log('[auth] OAuth callback succeeded:', session.user.email);
 					setSession(session);
 				} catch (e) {
-					console.error('OAuth callback failed:', e);
+					console.error('[auth] OAuth callback failed:', e);
+					auth.authLoading = false;
+					auth.authError = String(e);
 				}
 			}
 		});
@@ -59,7 +63,7 @@
 
 		return () => {
 			cleanupAuth?.();
-			unlistenDeepLink.then((fn) => fn());
+			unlistenOAuth.then((fn) => fn());
 			unlistenPanic.then((fn) => fn());
 			window.removeEventListener('keydown', handleKeydown);
 		};

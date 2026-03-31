@@ -7,10 +7,13 @@
 
 use runtime_server::{config::Config, create_router, error::AppError, state::AppState};
 use std::net::SocketAddr;
-use tracing_subscriber::{fmt, prelude::*, EnvFilter};
+use tracing_subscriber::{EnvFilter, fmt, prelude::*};
 
 #[tokio::main]
 async fn main() -> Result<(), AppError> {
+    // Bridge all `log` crate usage (from dependencies) into tracing
+    let _ = tracing_log::LogTracer::init();
+
     // Initialize tracing with structured logging
     let filter = EnvFilter::try_from_default_env()
         .unwrap_or_else(|_| EnvFilter::new("info,runtime_server=debug"));
