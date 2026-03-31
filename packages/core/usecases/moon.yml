@@ -1,0 +1,29 @@
+tasks:
+  build:
+    command: 'cargo build -p usecases'
+    inputs:
+      - 'src/**/*'
+      - 'Cargo.toml'
+
+  test:
+    command: 'cargo test -p usecases'
+    inputs:
+      - 'src/**/*'
+      - 'Cargo.toml'
+
+  check:
+    command: 'cargo check -p usecases'
+    inputs:
+      - 'src/**/*'
+      - 'Cargo.toml'
+
+  lint:
+    command: 'cargo clippy -p usecases -- -D warnings'
+    inputs:
+      - 'src/**/*'
+      - 'Cargo.toml'
+
+  format:
+    command: 'cargo fmt -p usecases'
+    inputs:
+      - 'src/**/*'

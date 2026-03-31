@@ -1,0 +1,35 @@
+id: 'server-api'
+
+tasks:
+  dev:
+    command: 'cargo run -p runtime_server'
+
+  build:
+    command: 'cargo build -p runtime_server'
+    inputs:
+      - 'src/**/*'
+      - 'Cargo.toml'
+
+  check:
+    command: 'cargo check -p runtime_server'
+    inputs:
+      - 'src/**/*'
+      - 'Cargo.toml'
+
+  test:
+    command: 'cargo test -p runtime_server'
+    inputs:
+      - 'src/**/*'
+      - 'Cargo.toml'
+      - 'tests/**/*'
+
+  lint:
+    command: 'cargo clippy -p runtime_server -- -D warnings'
+    inputs:
+      - 'src/**/*'
+      - 'Cargo.toml'
+
+  format:
+    command: 'cargo fmt -p runtime_server'
+    inputs:
+      - 'src/**/*'

@@ -1,11 +1,20 @@
 [workspace]
 members = [
-    "apps/desktop-ui/src-tauri",
-    "crates/*",
+    "apps/client/native/src-tauri",
+    "servers/api",
+    "packages/core/domain",
+    "packages/core/usecases",
+    "packages/contracts/api",
+    "packages/adapters/hosts/tauri",
 ]
 resolver = "2"
 
 [workspace.dependencies]
+# Internal crates
+domain = { path = "packages/core/domain" }
+usecases = { path = "packages/core/usecases" }
+contracts_api = { path = "packages/contracts/api" }
+
 # Tauri
 tauri = { version = "2.10.3", features = ["tray-icon"] }
 tauri-build = "2.5.6"

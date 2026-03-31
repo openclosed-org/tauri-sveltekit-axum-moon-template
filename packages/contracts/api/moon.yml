@@ -1,0 +1,31 @@
+id: 'contracts-api'
+
+tasks:
+  build:
+    command: 'cargo build -p contracts_api'
+    inputs:
+      - 'src/**/*'
+      - 'Cargo.toml'
+
+  test:
+    command: 'cargo test -p contracts_api'
+    inputs:
+      - 'src/**/*'
+      - 'Cargo.toml'
+
+  check:
+    command: 'cargo check -p contracts_api'
+    inputs:
+      - 'src/**/*'
+      - 'Cargo.toml'
+
+  lint:
+    command: 'cargo clippy -p contracts_api -- -D warnings'
+    inputs:
+      - 'src/**/*'
+      - 'Cargo.toml'
+
+  format:
+    command: 'cargo fmt -p contracts_api'
+    inputs:
+      - 'src/**/*'

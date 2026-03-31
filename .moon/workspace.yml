@@ -1,6 +1,21 @@
 projects:
-  - 'apps/*'
-  - 'crates/*'
+  # Applications
+  - 'apps/client/native'
+  - 'apps/client/web/app'
+
+  # Core Rust packages
+  - 'packages/core/domain'
+  - 'packages/core/usecases'
+
+  # Contracts
+  - 'packages/contracts/api'
+
+  # Adapters (only those with actual code)
+  - 'packages/adapters/hosts/tauri'
+
+  # Servers
+  - 'servers/api'
+
 vcs:
   client: 'git'
   defaultBranch: 'main'

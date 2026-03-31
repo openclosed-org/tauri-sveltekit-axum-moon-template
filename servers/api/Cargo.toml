@@ -1,0 +1,59 @@
+[package]
+name = "runtime_server"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# Internal crates
+domain = { workspace = true }
+usecases = { workspace = true }
+contracts_api = { workspace = true }
+
+# Axum HTTP framework (per D-01, D-02, D-09)
+axum = { workspace = true }
+axum-extra = { workspace = true }
+
+# Async runtime
+tokio = { workspace = true }
+
+# Middleware stack (per D-01)
+tower = { workspace = true }
+tower-http = { workspace = true }
+hyper = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Database
+surrealdb = { workspace = true }
+
+# Cache
+moka = { workspace = true }
+
+# HTTP client
+reqwest = { workspace = true }
+
+# Auth
+jsonwebtoken = { workspace = true }
+
+# Utilities
+chrono = { workspace = true }
+async-trait = "0.1"
+
+# HTTP/3 transport (per D-07, D-08)
+quinn = { workspace = true }
+h3 = { workspace = true }
+rcgen = { workspace = true }
+
+# Tracing
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+# API documentation
+utoipa = { version = "5", features = ["axum_extras"] }
+utoipa-swagger-ui = { version = "9", features = ["axum"] }
+
+[dev-dependencies]
+http-body-util = "0.1"
+tower = { workspace = true, features = ["util"] }

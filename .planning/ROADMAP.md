@@ -183,8 +183,14 @@ Plans:
   2. Vitest passes for Svelte component tests (Login page, Counter page interactions)
   3. Playwright E2E tests cover: login flow, counter increment/decrement, admin page navigation
   4. Test output shows green with no skipped or ignored tests for core flows
-**Plans**: TBD
+**Plans**: 4 plans (2 waves)
 **UI hint**: yes
+
+Plans:
+- [x] 10-01-PLAN.md — Rust test infrastructure + integration tests ✅ `5d8a894`
+- [x] 10-02-PLAN.md — Vitest component tests (Login, Counter, Admin) ✅
+- [ ] 10-03-PLAN.md — Playwright E2E (login, counter, admin)
+- [ ] 10-04-PLAN.md — Tenant isolation + token refresh E2E
 
 ## Progress Table
 

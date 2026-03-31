@@ -1,47 +1,60 @@
 tasks:
   build:
-    command: 'cargo build'
+    command: 'cargo build --workspace'
     inputs:
       - '@globs(sources)'
       - 'Cargo.toml'
-    platform: 'system'
+      - 'Cargo.lock'
 
   check:
-    command: 'cargo check'
+    command: 'cargo check --workspace'
     inputs:
       - '@globs(sources)'
       - 'Cargo.toml'
-    platform: 'system'
+      - 'Cargo.lock'
+
+  lint:
+    command: 'cargo clippy --workspace -- -D warnings'
+    inputs:
+      - '@globs(sources)'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+
+  test:
+    command: 'cargo test --workspace'
+    inputs:
+      - '@globs(sources)'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
 
   format:
+    command: 'cargo fmt --all -- --check'
+    inputs:
+      - '@globs(sources)'
+
+  format-fix:
     command: 'cargo fmt --all'
     inputs:
       - '@globs(sources)'
-    platform: 'system'
 
-  # Aggregate tasks — run lint/test across all packages in parallel
-  lint:
+  lint-all:
     deps:
-      - 'desktop-ui:lint'
-      - 'shared_contracts:lint'
-      - 'domain:lint'
-      - 'application:lint'
-      - 'runtime_server:check'
-    platform: 'system'
+      - 'lint'
+      - 'apps~client~web~app:lint'
 
-  test:
+  check-all:
     deps:
-      - 'desktop-ui:check'
-      - 'shared_contracts:test'
-      - 'domain:test'
-      - 'application:test'
-      - 'runtime_server:check'
-    platform: 'system'
+      - 'check'
+      - 'apps~client~web~app:check'
+      - 'apps~client~web~app:lint'
 
-  # Binary size monitoring (per D-05)
+  test-all:
+    deps:
+      - 'test'
+      - 'apps~client~web~app:check'
+
   bloat:
     command: 'cargo bloat --release --crates -p runtime_server'
     inputs:
       - '@globs(sources)'
       - 'Cargo.toml'
-    platform: 'system'

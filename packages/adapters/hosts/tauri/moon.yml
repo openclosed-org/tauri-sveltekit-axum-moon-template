@@ -1,0 +1,23 @@
+tasks:
+  build:
+    command: 'cargo build -p runtime_tauri'
+    inputs:
+      - 'src/**/*'
+      - 'Cargo.toml'
+
+  check:
+    command: 'cargo check -p runtime_tauri'
+    inputs:
+      - 'src/**/*'
+      - 'Cargo.toml'
+
+  lint:
+    command: 'cargo clippy -p runtime_tauri -- -D warnings'
+    inputs:
+      - 'src/**/*'
+      - 'Cargo.toml'
+
+  format:
+    command: 'cargo fmt -p runtime_tauri'
+    inputs:
+      - 'src/**/*'

@@ -1,0 +1,29 @@
+tasks:
+  build:
+    command: 'cargo build -p domain'
+    inputs:
+      - 'src/**/*'
+      - 'Cargo.toml'
+
+  test:
+    command: 'cargo test -p domain'
+    inputs:
+      - 'src/**/*'
+      - 'Cargo.toml'
+
+  check:
+    command: 'cargo check -p domain'
+    inputs:
+      - 'src/**/*'
+      - 'Cargo.toml'
+
+  lint:
+    command: 'cargo clippy -p domain -- -D warnings'
+    inputs:
+      - 'src/**/*'
+      - 'Cargo.toml'
+
+  format:
+    command: 'cargo fmt -p domain'
+    inputs:
+      - 'src/**/*'

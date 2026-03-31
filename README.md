@@ -184,6 +184,27 @@ GitHub Actions workflow (`.github/workflows/ci.yml`) runs:
 正式发布前请配置并验证严格的 CSP。
 Before production release, define and validate a strict CSP.
 
+## 已知问题 | Known Issues
+
+### Windows release 构建失败 — libsql-ffi `cp` 命令不兼容
+
+`libsql-ffi v0.9.30` 的 `build.rs` 使用 Unix `cp` 命令复制文件，在 Windows release 构建时返回 `PermissionDenied` 错误。这是上游已知 bug（[tursodatabase/libsql#1657](https://github.com/tursodatabase/libsql/issues/1657)）。
+
+**当前状态**: `--debug` 构建不受影响，可正常工作。
+
+**临时方案**: 使用 debug 构建代替 release 构建：
+
+```bash
+# Windows — 带环境变量的 debug 构建
+set GOOGLE_CLIENT_ID=你的ID && set GOOGLE_CLIENT_SECRET=你的密钥 && cd apps/desktop-ui && bun run tauri build --debug
+```
+
+**注意事项**: debug 构建会在 Windows 上显示一个黑色控制台窗口，这是 Rust 的默认行为（console subsystem），不影响应用功能。release 构建不存在此问题，但因上述 libsql-ffi bug 目前无法在 Windows 上完成。
+
+**上游修复**: 等待 `libsql` 发布新版本后升级即可解决。届时 `bun run tauri build`（不带 `--debug`）将正常工作，且无黑色控制台窗口。
+
+---
+
 ## 许可证 | License
 
 本仓库使用 WTF-0 Public License，详见 `LICENSE`。

@@ -1,5 +1,6 @@
 rust:
-  version: 'stable'
+  # 使用 rust-toolchain.toml 管理的版本，不重复指定
 node:
-  version: '24.0.0'
+  # 复用本地已安装的 Node.js 版本（当前 v25.x）
+  # 不锁定具体版本，避免 moon 重复安装
   packageManager: 'bun'
