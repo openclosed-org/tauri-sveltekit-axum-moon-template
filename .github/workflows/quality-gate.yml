@@ -8,6 +8,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   # ============================================
@@ -18,30 +19,44 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
-      
+
+      - name: Install Tauri dependencies (Linux)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libxdo-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev
+
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
         with:
           shared-key: "tauri-sveltekit"
-      
+
       # Rustfmt check
       - name: Check Rust formatting
         run: cargo fmt --all -- --check
-      
+
       # Clippy linting
       - name: Run Clippy
         run: cargo clippy --workspace --all-targets --all-features -- -D warnings
-      
+
       # Check for secrets (basic)
       - name: Check for hardcoded secrets
         run: |
           ! grep -rn "sk-\|api_key\|password\s*=" --include="*.rs" . 2>/dev/null | grep -v ".git" || true
-      
+
       # Check for debug statements
       - name: Check for console.log/debug
         run: |
@@ -56,19 +71,33 @@ jobs:
     needs: lint
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
-      
+
+      - name: Install Tauri dependencies (Linux)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libxdo-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev
+
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
         with:
           shared-key: "tauri-sveltekit"
-      
+
       # Build all workspace crates
       - name: Build workspace
         run: cargo build --workspace --release
-      
+
       # Verify no unused dependencies
       - name: Check for unused dependencies
         run: cargo build --workspace 2>&1 | grep -i "unused" || true
@@ -82,22 +111,36 @@ jobs:
     needs: build
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
-      
+
+      - name: Install Tauri dependencies (Linux)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libxdo-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev
+
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
         with:
           shared-key: "tauri-sveltekit"
-      
+
       # Run unit tests with coverage
       - name: Run tests
         run: |
           cargo test --workspace --all-features -- --nocapture --test-threads=4
-      
+
       # Run doc tests
       - name: Run doc tests
         run: cargo test --workspace --doc
@@ -111,20 +154,20 @@ jobs:
     needs: test
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
-      
+
       # Check for vulnerabilities
       - name: Audit dependencies
         run: |
           cargo audit || true
-      
+
       # Check for unsafe code
       - name: Check for unsafe code
         run: |
           ! grep -rn "#\[unsafe\]" --include="*.rs" . 2>/dev/null | grep -v "tests/" || true
-      
+
       # Verify no hardcoded secrets
       - name: Verify no secrets
         run: |
@@ -139,24 +182,24 @@ jobs:
     needs: security
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'bun'
-      
+
       - name: Install dependencies
         run: cd apps/client/web/app && bun install
-      
+
       # Type check
       - name: Type check
         run: cd apps/client/web/app && bun run check
-      
+
       # Lint
       - name: Lint
         run: cd apps/client/web/app && bun run lint
-      
+
       # Unit tests
       - name: Unit tests
         run: cd apps/client/web/app && bun run test:unit
@@ -171,21 +214,21 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'bun'
-      
+
       - name: Install Playwright
         run: cd apps/client/web/app && bun add -D @playwright/test && npx playwright install --with-deps
-      
+
       # Run E2E tests
       - name: Run E2E tests
         run: cd apps/client/web/app && bun run test:e2e
         continue-on-error: true
-      
+
       # Upload test results
       - name: Upload test results
         uses: actions/upload-artifact@v4
@@ -204,10 +247,24 @@ jobs:
     if: github.event_name == 'push'
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
-      
+
+      - name: Install Tauri dependencies (Linux)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libxdo-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev
+
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
         env:
@@ -234,7 +291,7 @@ jobs:
           echo "| Security | ${{ needs.security.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Frontend | ${{ needs.frontend.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           if [ "${{ needs.lint.result }}" == "success" ] && \
              [ "${{ needs.build.result }}" == "success" ] && \
              [ "${{ needs.test.result }}" == "success" ] && \
