@@ -28,7 +28,7 @@
   5. 新 agent 能在一小时内通过 AGENTS.md 和任务图安全开始工作。
 **Plans**: 4 plans in 3 waves
 Plans:
-- [ ] 01-01-PLAN.md — Directory scaffold & migration & .prototools
+- [x] 01-01-PLAN.md — Directory scaffold & migration & .prototools
 - [ ] 01-02-PLAN.md — Moon task graph & workspace config
 - [ ] 01-03-PLAN.md — Justfile rewrite
 - [ ] 01-04-PLAN.md — Integration verification (checkpoint)
@@ -83,7 +83,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. 仓库目录结构与工具链对齐 | 0/4 | Planned | - |
+| 1. 仓库目录结构与工具链对齐 | 1/4 | In progress | - |
 | 2. Contracts/typegen 单一真理源 | 0/TBD | Not started | - |
 | 3. Runtime 边界收敛 | 0/TBD | Not started | - |
 | 4. 最小功能实现 | 0/TBD | Not started | - |
