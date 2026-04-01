@@ -3,10 +3,11 @@
 //! POST /api/tenant/init — ensure tenant exists for user (auto-create on first login).
 
 use axum::{Json, Router, extract::State, routing::post};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
-use utoipa::ToSchema;
+
+use contracts_api::{InitTenantRequest, InitTenantResponse};
 use validator::Validate;
 
 use crate::error::{AppError, AppResult};
@@ -17,32 +18,6 @@ use domain::ports::surreal_db::SurrealDbPort;
 /// Helper: create a serde_json::Value::String from &str.
 fn json_str(s: &str) -> Value {
     Value::String(s.to_string())
-}
-
-/// Request body for tenant init.
-#[derive(Debug, Deserialize, Serialize, Validate, ToSchema)]
-pub struct InitTenantRequest {
-    /// OAuth provider's subject identifier for the user.
-    #[validate(length(min = 1, message = "user_sub is required"))]
-    pub user_sub: String,
-    /// Display name for the user.
-    #[validate(length(
-        min = 1,
-        max = 100,
-        message = "user_name must be between 1 and 100 characters"
-    ))]
-    pub user_name: String,
-}
-
-/// Response from tenant init.
-#[derive(Debug, Serialize, ToSchema)]
-pub struct InitTenantResponse {
-    /// The tenant ID in "table:key" format.
-    pub tenant_id: String,
-    /// User's role within the tenant (e.g., "owner", "member").
-    pub role: String,
-    /// Whether a new tenant was created (true) or existing one returned (false).
-    pub created: bool,
 }
 
 /// Result type from user_tenant SELECT query.
@@ -151,7 +126,7 @@ pub fn router() -> Router<AppState> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use contracts_api::{InitTenantRequest, InitTenantResponse};
 
     #[test]
     fn deserialize_init_request() {

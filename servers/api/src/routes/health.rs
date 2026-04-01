@@ -2,16 +2,10 @@
 
 use axum::{Json, Router, extract::State, http::StatusCode, routing::get};
 use serde_json::{Value, json};
-use utoipa::ToSchema;
+
+use contracts_api::HealthResponse;
 
 use crate::state::AppState;
-
-/// Health check response.
-#[derive(Debug, ToSchema)]
-pub struct HealthResponse {
-    /// Server status: "ok"
-    pub status: String,
-}
 
 /// Liveness probe — is the process alive?
 ///

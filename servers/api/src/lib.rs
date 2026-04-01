@@ -24,6 +24,7 @@ use tower_http::{
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
+use contracts_api::{HealthResponse, InitTenantRequest, InitTenantResponse};
 use state::AppState;
 
 /// Generate time-ordered UUID v7 request IDs.
@@ -49,9 +50,9 @@ impl MakeRequestId for MakeRequestUuidV7 {
         routes::tenant::init_tenant,
     ),
     components(schemas(
-        routes::health::HealthResponse,
-        routes::tenant::InitTenantRequest,
-        routes::tenant::InitTenantResponse,
+        HealthResponse,
+        InitTenantRequest,
+        InitTenantResponse,
     )),
     tags(
         (name = "health", description = "Health check and readiness probes"),
