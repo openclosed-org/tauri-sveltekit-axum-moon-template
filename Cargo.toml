@@ -1,4 +1,5 @@
 [workspace]
+# NOTE: workers/*, tools/* members will be added when crates are created
 members = [
     "apps/client/native/src-tauri",
     "servers/api",
