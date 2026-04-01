@@ -2,105 +2,99 @@
 
 ## What This Is
 
-A production-ready boilerplate/template for building cross-platform desktop applications using Tauri 2 + SvelteKit + Axum + moon workflow. Target: developers who want a fully configured starting point with best practices for medium-scale projects.
+An Agent-Native Cross-Platform Application Engineering Base — a production-ready boilerplate for building cross-platform desktop applications using Tauri v2 + SvelteKit 2 + Axum + moon. Designed for long-term evolution with Rust-first, frontier-oriented technology choices and Agent-Friendly development infrastructure.
 
 ## Core Value
 
-Provide a runnable, tested, production-ready boilerplate with authentication (Google OAuth), multi-tenancy, backend infrastructure (containerized Redis/cache, database, reverse proxy), and full stack best practices — so developers can start building business logic immediately.
+Provide a runnable, tested, production-ready engineering base with Google Auth, Counter, Admin Web, Agent conversation, contracts/typegen single-truth-source, and clear architectural boundaries — so developers (and AI agents) can start building business logic immediately with minimal cognitive overhead.
 
-## Current Milestone: v0.1.1 架构收敛、决策沉淀与生产闭环
+## Current Milestone: v0.2.0 架构蓝图对齐与核心功能实现
 
-**Goal:** 在最小改动原则下，把关键架构建议全部落盘为可追踪决策，并完成高优先级生产闭环能力，确保后续 agent 迭代稳定且低认知负担。
+**Goal:** 对齐 agent-native-starter-v1 蓝图，重构仓库目录结构与边界，建立 contracts/typegen 闭环，实现最小功能集（Google Auth, Counter, Admin Web, Agent 对话）。
 
 **Target features:**
-- 安全基线硬化（JWT 校验链路、敏感配置治理、路径可移植性）
-- 契约与类型闭环（`contracts_api` + Rust/TS typegen 自动同步）
-- 运行时边界收敛（`runtime_tauri` 落地，native host 瘦身）
-- Moon/Just 任务体系补全（`fullstack:dev`、`typegen`、`verify`）
-- 全量建议决策账本（逐条记录是否实现、何时实现、如何实现、原因）
-- 后续 phase 简要概括（即使不在本里程碑实施也不丢失）
+- 仓库目录结构对齐蓝图（apps/servers/packages/crates/tools 分层）
+- Contracts/typegen 单一真理源闭环（Rust→TS 自动生成，CI drift 检查）
+- Runtime 边界收敛（core vs adapters vs hosts，业务规则不依赖宿主）
+- 工具链任务图补全（moon + Just + proto 统一入口）
+- 最小功能实现（Google Auth, Counter, Admin, Agent 对话）
+- Agent-Friendly 开发基建（AGENTS/skills/playbooks/rubrics）
 
 ## Requirements
 
-### Validated
+### Validated (from v0.1.0)
 
 - ✓ Tauri 2 desktop app scaffolding — existing
-- ✓ SvelteKit frontend foundation — existing
-- ✓ Axum backend server — existing
+- ✓ SvelteKit 2 + Svelte 5 frontend foundation — existing
+- ✓ Axum 0.8 backend server — existing
 - ✓ moon build toolchain — existing
 - ✓ Mobile-first responsive layout base — existing
-- ✓ Frontend dependencies aligned with TECH_SELECTION.md — Validated in Phase 01: package-foundation
-- ✓ Rust workspace dependencies pinned with release profile — Validated in Phase 01: package-foundation
-- ✓ All 7 Tauri plugins registered — Validated in Phase 01: package-foundation
-- ✓ moon parallel lint/test configured — Validated in Phase 01: package-foundation
-- ✓ Database infrastructure (SurrealDB + libsql dual-DB) — Validated in Phase 05: database-infrastructure
-- ✓ Multi-tenant data isolation (tenant_id scoping) — Validated in Phase 07: multi-tenant-data-isolation
+- ✓ Frontend dependencies aligned — Validated in v0.1.0 Phase 01
+- ✓ Rust workspace dependencies pinned — Validated in v0.1.0 Phase 01
+- ✓ All 7 Tauri plugins registered — Validated in v0.1.0 Phase 01
+- ✓ Database infrastructure (SurrealDB + libsql) — Validated in v0.1.0 Phase 05
+- ✓ Multi-tenant data isolation — Validated in v0.1.0 Phase 07
+- ✓ Rust integration tests + Vitest + Playwright — Validated in v0.1.0 Phase 10
 
-### Active
+### Active (v0.2.0)
 
-- [ ] 安全基线达到可发布标准（JWT 校验、敏感配置、路径移植）
-- [ ] Rust/TS 契约实现自动同步，避免手写类型漂移
-- [ ] `runtime_tauri` 与 native host 的职责边界清晰且落地
-- [ ] Moon/Just 提供统一的全栈开发与验证入口
-- [ ] 历史建议形成决策清单并映射到当前/后续 phase
+- [ ] 仓库目录结构对齐蓝图，建立 apps/servers/packages/crates/tools 分层边界
+- [ ] packages/contracts/api 作为 Rust 单一真理源，自动生成 TS 类型
+- [ ] Runtime 边界收敛：core 不依赖 host，adapters 不承载业务策略
+- [ ] moon + Just + proto 提供统一的 setup/dev/verify/typegen 入口
+- [ ] Google Auth 通过 adapter 接入，不污染 core
+- [ ] Counter 功能通过 feature 组合 core + contracts 实现
+- [ ] Admin Web 通过 feature + UI 组件实现
+- [ ] Agent 对话功能通过 OpenAI 兼容 API key 接入
 
 ### Out of Scope
 
-- [Email/password auth] — Google OAuth sufficient for boilerplate
-- [Complex RBAC] — Basic multi-tenancy only for v1
+- [HTTP/3 默认启用] — 实验边车，V3 候选
+- [多协议 federation runtime] — V2 能力
+- [复杂多 agent 自主协作] — V3 候选
+- [Email/password auth] — Google OAuth sufficient for V1
+- [Full RBAC] — 基本 multi-tenancy only for V1
 
 ## Context
 
-**Current state:** Existing milestone implementation has reached strong scaffold maturity (Axum router/middleware, tenant isolation, E2E layers), but there are strategic gaps blocking long-term low-friction agent iteration: contracts crate is still placeholder, Rust↔TS type pipeline is missing, runtime boundary is drifting toward host code, and several security/portability defaults need hardening.
+**Current state:** v0.1.0 已完成 10 个 phases 的基础设施搭建（package foundation, UI styling, app pages, backend deps, database, auth, multi-tenancy, build pipeline, test suite）。v0.1.1 的架构收敛计划（Phase 11-15）已废弃，因为 docs/blueprints/agent-native-starter-v1 蓝图已大幅更新，定义了更全面的架构方向。v0.2.0 从蓝图出发，对齐目录结构、contracts 闭环、runtime 边界和最小功能实现。
 
-**Tech stack:**
-- Frontend: SvelteKit + bitsUI + TailwindCSS v4 + VitePress + @pqoqubbw/icons + Lottie
-- Desktop: Tauri 2.10.3
-- Backend: Axum 0.8.8
-- Database: SurrealDB (服务端) + libsql/turso (本地 App) - 双数据库架构
-- Build: moon
-- Testing: Maestro (移动端) + Playwright (Web E2E)
+**Tech stack (confirmed):**
+- Desktop: Tauri v2 (确定)
+- Frontend: SvelteKit 2 + Svelte 5 (确定)
+- Backend: Axum (确定)
+- Package Manager: Bun
+- Task Orchestration: moon
+- Toolchain: proto
+- Task Entry: Just
+- Database: SurrealDB + libsql
+- Cache: moka
+- Agent LLM: OpenAI 兼容 API
 
-**MCP/Skills needed locally:**
-- Code index MCP (for codebase search)
-- Websearch MCP
-- Research MCP
-- Frontend skills (Svelte, Tailwind, bitsUI)
-- Backend skills (Axum, Rust)
-- Tauri skills
-- Testing skills
+**Architecture reference:** `docs/blueprints/agent-native-starter-v1/` (19 documents)
 
-**UI Requirements:**
-- Mobile-first, responsive design
-- Three pages: Login, Counter, Admin dashboard
-- Platform-agnostic (desktop + mobile web)
-
-**Task lists (template features to configure):**
-
-For package.json: vitepress, lottieplayer, and other utilities to preload but comment out unused
-
-For Cargo (tauri + axum): Deep dive into docs for plugins and dependencies, preload but comment out unused
-
-**Date reference:** March 28, 2026 — verify all versions/dependencies are current
+**Date reference:** April 1, 2026 — verify all versions/dependencies are current
 
 ## Constraints
 
-- **[Stack]**: Tauri2 + SvelteKit + Axum + moon — Full-stack Rust/WebView
+- **[Stack]**: Tauri v2 + SvelteKit 2 + Svelte 5 + Axum + moon — Full-stack Rust/WebView
+- **[Architecture]**: 必须对齐 agent-native-starter-v1 蓝图的分层边界
 - **[Timeline]**: Best effort for production-ready quality
 - **[Scope]**: Desktop-first but web-accessible, mobile-responsive
 - **[Testing]**: Must have passing tests for core flows before release
-- **[Infra]**: Docker-compose for local backend (Redis-like cache, database, nginx reverse proxy)
+- **[Agent-Friendly]**: 所有基建要让 agent 开发更友好
 
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Dual DB: SurrealDB + libsql/turso | SurrealDB(服务端) + libsql(本地App) 双架构 | ✓ Implemented (Phase 05) |
-| Google OAuth only | Reduce boilerplate complexity | — Pending |
-| Maestro + Playwright | 移动端用 Maestro, Web用 Playwright | — Pending |
-| VitePress (静态) | 构建后纯 HTML, 不占服务器资源 | — Pending |
-| release-plz + git-cliff | CI/CD 自动化,综合评估不纯追 Rust | — Pending |
-| Fine granularity phases | Maximum flexibility for feature iteration | — Pending |
+| 蓝图驱动重构 | docs/blueprints 定义了更全面的架构方向 | ✓ v0.2.0 启动 |
+| Rust-first, 前沿导向 | Rust 提供无与伦比的性能、安全性和可靠性 | ✓ 确定 |
+| SvelteKit 2 + Svelte 5 确定 | 编译时优化，Runes 响应式，性能领先 | ✓ 不再考虑替代 |
+| Tauri v2 确定 | Rust 原生，安全性高，插件生态成熟 | ✓ 不再考虑替代 |
+| Axum 确定 | Tokio 生态，类型安全，性能优秀 | ✓ 不再考虑替代 |
+| contracts 作为单一真理源 | 避免 agent 开发时四套真相漂移 | — 待实现 |
+| --reset-phase-numbers | 蓝图驱动的里程碑与 v0.1.x 完全不同 | ✓ 确定 |
 
 ## Evolution
 
@@ -121,4 +115,4 @@ This document evolves at phase transitions and milestone boundaries.
 
 ---
 
-*Last updated: 2026-04-01 after starting milestone v0.1.1 (architecture convergence and production closure)*
+*Last updated: 2026-04-01 after starting milestone v0.2.0 (architecture blueprint alignment & core feature implementation)*
