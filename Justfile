@@ -1,72 +1,72 @@
-# Justfile - 跨平台开发任务
-# 支持: macOS, Linux, Windows
-
-# 设置shell为bash (跨平台)
+# Justfile — 跨平台开发入口
+# 复杂编排由 moon 负责，Just 只暴露稳定入口
 set shell := ["bash", "-cu"]
 
 default:
 	@just --list
 
-# ============================================
-# 开发环境
-# ============================================
+# ── 核心入口 ────────────────────────────────────────────────
 
+# 安装依赖 + 工具链检查
+setup:
+	moon run repo:setup
+
+# 启动全栈开发（web + api + desktop）
 dev:
-	moon run app:dev &
-	moon run server-api:dev
+	moon run repo:dev-fullstack
 
+# 质量验证（fmt + lint + typecheck + test）
+verify:
+	moon run repo:verify
+
+# 运行单元测试
+test:
+	moon run repo:test-unit
+
+# 运行类型生成
+typegen:
+	moon run repo:typegen
+
+# ── 扩展入口 ────────────────────────────────────────────────
+
+# 启动 Web 开发
 dev-web:
-	moon run app:dev
+	moon run repo:dev-web
 
+# 启动 API 开发
 dev-api:
-	moon run server-api:dev
+	moon run repo:dev-api
 
-dev-tauri:
-	cd apps/client/native/src-tauri && cargo tauri dev
+# 启动桌面应用开发
+dev-desktop:
+	moon run repo:dev-desktop
 
-dev-all:
-	moon run server-api:dev &
-	moon run app:dev &
-	cd apps/client/native/src-tauri && cargo tauri dev
-
-# ============================================
-# 构建
-# ============================================
-
-build-tauri:
-	cd apps/client/native/src-tauri && cargo tauri build
-
-build-web:
-	moon run app:build
-
-build-api:
-	moon run server-api:build
-
-# ============================================
-# 测试
-# ============================================
-
-test-rust:
-	cargo test --workspace
-
-test-web:
-	cd apps/client/web/app && bun run test:unit
-
+# 运行 E2E 测试
 test-e2e:
-	cd apps/client/web/app && bun run test:e2e
+	moon run repo:test-e2e
 
-# ============================================
-# 检查
-# ============================================
+# 运行 Lint
+lint:
+	moon run repo:lint-repo
 
-check:
-	moon lint
-	moon run :check
-	moon test
+# 格式化代码
+fmt:
+	moon run repo:fmt
 
-# ============================================
-# 清理
-# ============================================
+# 工具链状态检查
+doctor:
+	moon run repo:doctor
 
+# 清理构建产物
 clean:
 	cargo clean
+
+# ── 发布（Phase 9 实现）─────────────────────────────────────
+
+# 发布 Desktop
+release:
+	moon run repo:release-dry-run
+
+# 运行评估
+evals:
+	moon run repo:evals-run
