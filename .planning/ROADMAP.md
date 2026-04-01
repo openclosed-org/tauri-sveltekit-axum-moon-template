@@ -8,7 +8,7 @@
 
 ## Phases
 
-- [ ] **Phase 1: 仓库目录结构与工具链对齐** — 对齐蓝图目录结构，配置 moon/Just/proto 统一入口
+- [ ] **Phase 1: 仓库目录结构与工具链对齐** — 对齐蓝图目录结构，配置 moon/Just/proto 统一入口 ✓
 - [ ] **Phase 2: Contracts/typegen 单一真理源** — 建立 packages/contracts 作为 Rust→TS 自动生成源，CI drift 检查
 - [ ] **Phase 3: Runtime 边界收敛** — core vs adapters vs hosts 职责清晰化，新能力走新路径
 - [ ] **Phase 4: 最小功能实现** — Google Auth, Counter, Admin Web, Agent 对话通过 feature + adapter 模式实现
@@ -31,7 +31,7 @@ Plans:
 - [x] 01-01-PLAN.md — Directory scaffold & migration & .prototools
 - [x] 01-02-PLAN.md — Moon task graph & workspace config
 - [x] 01-03-PLAN.md — Justfile rewrite
-- [ ] 01-04-PLAN.md — Integration verification (checkpoint)
+- [x] 01-04-PLAN.md — Integration verification (checkpoint)
 
 ### Phase 2: Contracts/typegen 单一真理源
 **Goal**: Rust 和 TypeScript 共享一个契约真相源，不能无声漂移。
@@ -83,7 +83,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. 仓库目录结构与工具链对齐 | 3/4 | In progress | - |
+| 1. 仓库目录结构与工具链对齐 | 4/4 | Complete | 2026-04-01 |
 | 2. Contracts/typegen 单一真理源 | 0/TBD | Not started | - |
 | 3. Runtime 边界收敛 | 0/TBD | Not started | - |
 | 4. 最小功能实现 | 0/TBD | Not started | - |
