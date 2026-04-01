@@ -1,128 +1,76 @@
 # Requirements: Tauri-SvelteKit-Axum Boilerplate
 
-**Defined:** 2026-03-28
-**Core Value:** Provide a runnable, tested, production-ready boilerplate with authentication (Google OAuth), multi-tenancy, backend infrastructure, and full stack best practices — so developers can start building business logic immediately.
+**Defined:** 2026-04-01
+**Milestone:** v0.1.1
+**Core Value:** Provide a runnable, tested, production-ready boilerplate with authentication, multi-tenancy, and full-stack best practices so developers can start business implementation immediately.
 
-## v1 Requirements
+## v0.1.1 Requirements
 
-### Authentication
+### Security Baseline
 
-- [ ] **AUTH-01**: User can sign in with Google OAuth
-- [ ] **AUTH-02**: OAuth callback handled via Tauri deep link
-- [ ] **AUTH-03**: Session persisted across app restarts (tauri-plugin-store)
-- [ ] **AUTH-04**: Session auto-refresh before expiry
+- [ ] **SEC-01**: Server rejects invalid or forged JWT for tenant/auth-critical entry points
+- [ ] **SEC-02**: App/server fail fast when required secrets are missing in non-dev environments
+- [ ] **SEC-03**: Runtime config and path resolution are platform-portable with no hardcoded machine-specific absolute paths
 
-### Multi-Tenancy
+### Contracts & Type Sync
 
-- [x] **TENANT-01**: Database schema includes tenant_id on all tables
-- [x] **TENANT-02**: Query middleware automatically scopes by tenant_id
-- [x] **TENANT-03**: User belongs to exactly one tenant on signup
+- [ ] **CONTRACT-01**: `contracts_api` defines shared DTO/contracts as the single Rust source of truth
+- [ ] **CONTRACT-02**: `typegen` generates TS types from Rust contracts and is enforced by verify/CI drift checks
 
-### Infrastructure (Rust 方案)
+### Runtime Boundary Convergence
 
-- [x] **INFRA-01**: 数据库 - SurrealDB embedded (`surrealdb` crate with `kv-mem` feature)
-- [x] **INFRA-02**: HTTP 客户端 - `reqwest 0.13` (rustls 默认)
-- [ ] **INFRA-03**: Tunnel 层 - rathole / FerroTunnel (开发环境公网暴露)
-- [ ] **INFRA-04**: 代理层 - nginx (生产) / 可选 Pingora 评估
-- [ ] **INFRA-05**: 搜索层 - Tantivy (全文) - 按需启用
-- [ ] **INFRA-06**: 可观测层 - Vector + OpenObserve (按需启用)
+- [ ] **RUNTIME-01**: New orchestration logic is owned by `runtime_tauri` and `apps/client/native/src-tauri` remains host/bootstrap focused
 
-### Desktop Features
+### Workflow Guardrails
 
-- [ ] **DESKTOP-01**: System tray icon with show/hide toggle
-- [ ] **DESKTOP-02**: Native window state persistence (position, size)
-- [ ] **DESKTOP-03**: Single instance lock prevents duplicate app
-- [ ] **DESKTOP-04**: Graceful error handling with user-friendly messages
+- [ ] **WF-01**: Unified developer task entrypoints exist for `fullstack:dev`, `typegen`, and `verify` across Moon/Just
 
-### Build & Performance
+### Decision Ledger & Forward Map
 
-- [ ] **BUILD-01**: Production bundle under 15MB (LTO enabled)
-- [x] **BUILD-02**: Build passes on Windows, macOS, Linux
-- [ ] **BUILD-03**: moon workspace configured with lint/test parallelism
+- [ ] **DECISION-01**: All strategy items from milestone discussion are recorded with status (`implement-now` / `defer` / `reject`) and rationale
+- [ ] **DECISION-02**: Deferred and rejected items include concise future-phase mapping and promotion triggers
 
-### UI/UX
+## Future Requirements (Deferred)
 
-- [ ] **UI-01**: Three pages functional: Login, Counter, Admin dashboard
-- [ ] **UI-02**: Mobile-first responsive layout
-- [ ] **UI-03**: bitsUI components integrated
-- [ ] **UI-04**: TailwindCSS v4 configured with custom theme
+### Security / Governance
 
-### Testing
+- **DF-01**: Implement full JWKS cache and key-rotation strategy
+- **DF-02**: Introduce fine-grained RBAC model
 
-- [ ] **TEST-01**: Unit tests pass for core Rust services
-- [ ] **TEST-02**: Svelte component tests via vitest-browser-svelte
-- [ ] **TEST-03**: E2E tests via Playwright cover main flows
+### Tooling / Contracts
 
-### Package Configuration
+- **DF-03**: Automate decision-ledger generation from planning artifacts
+- **DF-04**: Introduce cross-language contract version negotiation matrix
 
-- [ ] **PKG-01**: package.json includes SvelteKit, bitsUI, Tailwind v4
-- [ ] **PKG-02**: package.json includes vitepress, lucide-animated, lottieplayer (commented unused)
-- [ ] **PKG-03**: cargo.toml tauri dependencies include all core plugins
-- [ ] **PKG-04**: cargo.toml axum dependencies properly versioned
-
-## v2 Requirements
-
-### Advanced Auth
-
-- **AUTH-05**: Email/password signup as fallback
-- **AUTH-06**: Two-factor authentication
-- **AUTH-07**: Session revocation from admin panel
-
-### Cloud Sync
-
-- **SYNC-01**: Turso embedded replica synchronization
-- **SYNC-02**: Offline-first data conflict resolution
-
-## Out of Scope
+## Out of Scope (This Milestone)
 
 | Feature | Reason |
 |---------|--------|
-| SurrealDB | libsql/turso simpler for bootstrap, lower complexity |
-| Complex RBAC | Basic multi-tenancy sufficient for v1, role-based deferred |
-| SSR | Tauri apps no SSR needed |
-| Real-time sync everywhere | Local-first, sync on-demand |
-| Email/password OAuth | Google OAuth sufficient for demo/boilerplate |
-| Push notifications | Defer to v2 |
+| New auth mode (email/password) | Not needed for v0.1.1 convergence goals and expands scope/risk |
+| New business modules/pages | v0.1.1 is architecture closure, not feature expansion |
+| Full stack or framework replacement | Violates minimum-change principle and increases regression risk |
+| New heavyweight infrastructure services | Low ROI for this milestone's closure goals |
+| `tauri-plugin-axum` as primary path now | Deferred to later evaluation after contracts and boundary closure |
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PKG-01 | Phase 1 | Pending |
-| PKG-02 | Phase 1 | Pending |
-| PKG-03 | Phase 1 | Pending |
-| PKG-04 | Phase 4 | Pending |
-| BUILD-01 | Phase 4 | Pending |
-| BUILD-02 | Phase 9 | Complete |
-| BUILD-03 | Phase 1 | Pending |
-| UI-01 | Phase 3 | Pending |
-| UI-02 | Phase 3 | Pending |
-| UI-03 | Phase 2 | Pending |
-| UI-04 | Phase 2 | Pending |
-| INFRA-01 | Phase 5 | Complete |
-| INFRA-02 | Phase 5 | Complete |
-| INFRA-03 | Phase 5 | Pending |
-| INFRA-04 | Phase 5 | Pending |
-| AUTH-01 | Phase 6 | Pending |
-| AUTH-02 | Phase 6 | Pending |
-| AUTH-03 | Phase 6 | Pending |
-| AUTH-04 | Phase 6 | Pending |
-| TENANT-01 | Phase 7 | Complete |
-| TENANT-02 | Phase 7 | Complete |
-| TENANT-03 | Phase 7 | Complete |
-| DESKTOP-01 | Phase 8 | Pending |
-| DESKTOP-02 | Phase 8 | Pending |
-| DESKTOP-03 | Phase 8 | Pending |
-| DESKTOP-04 | Phase 8 | Pending |
-| TEST-01 | Phase 10 | Pending |
-| TEST-02 | Phase 10 | Pending |
-| TEST-03 | Phase 10 | Pending |
+| SEC-01 | TBD | Pending |
+| SEC-02 | TBD | Pending |
+| SEC-03 | TBD | Pending |
+| CONTRACT-01 | TBD | Pending |
+| CONTRACT-02 | TBD | Pending |
+| RUNTIME-01 | TBD | Pending |
+| WF-01 | TBD | Pending |
+| DECISION-01 | TBD | Pending |
+| DECISION-02 | TBD | Pending |
 
 **Coverage:**
-- v1 requirements: 29 total
-- Mapped to phases: 29
-- Unmapped: 0 ✓
+- v0.1.1 requirements: 9 total
+- Mapped to phases: 0
+- Unmapped: 9 ⚠️
 
 ---
-*Requirements defined: 2026-03-28*
-*Last updated: 2026-03-29 after Phase 07 verification and completion sync*
+*Requirements defined: 2026-04-01*
+*Last updated: 2026-04-01 after milestone v0.1.1 requirement confirmation*
