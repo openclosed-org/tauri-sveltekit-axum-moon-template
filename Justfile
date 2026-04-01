@@ -47,7 +47,7 @@ test-e2e:
 
 # 运行 Lint
 lint:
-	moon run repo:lint-repo
+	moon run repo:lint
 
 # 格式化代码
 fmt:
