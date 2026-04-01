@@ -29,7 +29,7 @@
 **Plans**: 4 plans in 3 waves
 Plans:
 - [x] 01-01-PLAN.md — Directory scaffold & migration & .prototools
-- [ ] 01-02-PLAN.md — Moon task graph & workspace config
+- [x] 01-02-PLAN.md — Moon task graph & workspace config
 - [x] 01-03-PLAN.md — Justfile rewrite
 - [ ] 01-04-PLAN.md — Integration verification (checkpoint)
 
@@ -83,7 +83,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. 仓库目录结构与工具链对齐 | 2/4 | In progress | - |
+| 1. 仓库目录结构与工具链对齐 | 3/4 | In progress | - |
 | 2. Contracts/typegen 单一真理源 | 0/TBD | Not started | - |
 | 3. Runtime 边界收敛 | 0/TBD | Not started | - |
 | 4. 最小功能实现 | 0/TBD | Not started | - |
@@ -93,8 +93,8 @@ Plans:
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| STRUCT-01 | Phase 1 | Pending |
-| TOOL-01 | Phase 1 | Pending |
+| STRUCT-01 | Phase 1 | Completed (Plans 01-02) |
+| TOOL-01 | Phase 1 | Completed (Plans 02-03) |
 | CONTRACT-01 | Phase 2 | Pending |
 | CONTRACT-02 | Phase 2 | Pending |
 | RUNTIME-01 | Phase 3 | Pending |
