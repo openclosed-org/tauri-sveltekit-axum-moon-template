@@ -78,7 +78,7 @@ Plans:
 - [x] 04-01-PLAN.md — Auth refactor: adapter-google + feature-auth crates (Wave 1)
 - [x] 04-02-PLAN.md — Counter + Admin features: traits + LibSQL implementations (Wave 2)
 - [x] 04-03-PLAN.md — Counter + Admin wiring: Tauri commands + Axum routes + frontend (Wave 3)
-- [ ] 04-04-PLAN.md — Agent chat: contracts + service + streaming + UI (Wave 4)
+- [x] 04-04-PLAN.md — Agent chat: contracts + service + streaming + UI (Wave 4)
 
 ### Phase 5: Agent-Friendly 开发基建
 **Goal**: Agent 能读取规则、发现工具、执行任务、验证结果。
