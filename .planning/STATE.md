@@ -3,19 +3,19 @@ gsd_state_version: 1.0
 milestone: v0.2.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-02-PLAN.md
-last_updated: "2026-04-02T12:11:31.889Z"
+stopped_at: Completed 04-03-PLAN.md
+last_updated: "2026-04-02T13:17:03.931Z"
 last_activity: 2026-04-02
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 14
-  completed_plans: 12
+  completed_plans: 13
 ---
 
 # STATE: Tauri-SvelteKit-Axum Boilerplate
 
-**Last updated:** 2026-04-01
+**Last updated:** 2026-04-02
 **Phase:** 4
 
 ## Project Reference
@@ -29,7 +29,7 @@ progress:
 ## Current Position
 
 Phase: 04 (minimal-feature-implementation) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-04-02
 
@@ -40,7 +40,7 @@ Last activity: 2026-04-02
 | 1. 仓库目录结构与工具链对齐 | STRUCT-01, TOOL-01 | 5 | ✓ Complete (4/4 plans) |
 | 2. Contracts/typegen 单一真理源 | CONTRACT-01, CONTRACT-02 | 4 | ✓ Complete (2/2 plans) |
 | 3. Runtime 边界收敛 | RUNTIME-01, RUNTIME-02, RUNTIME-03 | 4 | Not started |
-| 4. 最小功能实现 | AUTH-01, COUNTER-01, ADMIN-01, AGENT-01 | 5 | Executing (2/4 plans) |
+| 4. 最小功能实现 | AUTH-01, COUNTER-01, ADMIN-01, AGENT-01 | 5 | Executing (3/4 plans) |
 | 5. Agent-Friendly 开发基建 | AGENT-DEV-01 | 5 | Not started |
 
 ## Key Decisions
@@ -59,6 +59,8 @@ Last activity: 2026-04-02
 | ts-rs + utoipa 共存于同一 struct | OpenAPI 和 TS 类型来自单一事实源，避免维护两份定义 | Accepted |
 | Server 路由从 contracts_api 导入 DTO | 单一事实源，消除内联重复定义 | Accepted |
 | repo:contracts-check 同时验证 frontend generated/ | 确保前端类型同步不漂移 | Accepted |
+| Tauri 命令使用 AppHandle + Manager::state 避免 runtime_tauri↔native-tauri 循环依赖 | AppState 定义在 native-tauri，runtime_tauri 无法导入 | Accepted |
+| Axum AppState 增加 embedded_db 字段用于 counter/admin | 服务器 SurrealDB 不实现 LibSqlPort，需要独立嵌入式数据库 | Accepted |
 
 ## Accumulated Context (from v0.1.0)
 
@@ -83,10 +85,10 @@ Last activity: 2026-04-02
 
 ## Session
 
-**Last Date:** 2026-04-02T12:11:31.886Z
-**Stopped At:** Completed 04-02-PLAN.md
+**Last Date:** 2026-04-02T13:17:03.928Z
+**Stopped At:** Completed 04-03-PLAN.md
 **Resume File:** None
-**Next:** Execute 04-03-PLAN.md (counter/admin IPC integration)
+**Next:** Execute 04-04-PLAN.md (Agent conversation feature)
 
 ---
 
