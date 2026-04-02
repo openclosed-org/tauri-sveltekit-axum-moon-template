@@ -3,8 +3,9 @@
 mod commands;
 mod sync;
 
-use runtime_tauri::commands::{auth, config};
+use runtime_tauri::commands::{admin, auth, config, counter};
 
+use domain::ports::lib_sql::LibSqlPort;
 use storage_libsql::{EmbeddedLibSql, embedded::run_tenant_migrations};
 use sync::SyncEngine;
 use sync::engine::init_sync_tables;
@@ -47,6 +48,15 @@ pub fn run() {
         db
     });
 
+    // Run counter table migration
+    let _ = rt.block_on(async {
+        db.execute(usecases::counter_service::COUNTER_MIGRATION, vec![])
+            .await
+            .expect("Failed to run counter migration")
+    });
+
+    // Register EmbeddedLibSql for runtime_tauri commands (counter, admin)
+    let db_for_commands = db.clone();
     let app_state = AppState { db };
 
     let log_plugin = tauri_plugin_log::Builder::default()
@@ -73,12 +83,18 @@ pub fn run() {
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .plugin(log_plugin)
         .manage(app_state)
+        .manage(db_for_commands)
         .invoke_handler(tauri::generate_handler![
             auth::start_oauth,
             auth::handle_oauth_callback,
             auth::get_session,
             auth::quit_app,
             config::get_config,
+            counter::counter_increment,
+            counter::counter_decrement,
+            counter::counter_reset,
+            counter::counter_get_value,
+            admin::admin_get_dashboard_stats,
             commands::sync::sync_start,
             commands::sync::sync_stop,
             commands::sync::sync_once,
