@@ -52,7 +52,7 @@ tauri-plugin-log = { version = "2", features = ["colored"] }
 axum = { version = "0.8.8", features = ["json"] }
 axum-extra = { version = "0.10", features = ["cookie"] }
 tokio = { version = "1.50.0", features = ["full"] }
-reqwest = { version = "0.13.2", features = ["rustls", "form", "json"] }
+reqwest = { version = "0.13.2", features = ["rustls", "form", "json", "stream"] }
 
 # Axum middleware stack (per D-07, D-09)
 tower = "0.5"

@@ -7,11 +7,18 @@ edition = "2021"
 domain = { workspace = true }
 feature-counter = { workspace = true }
 feature-admin = { workspace = true }
+feature-agent = { workspace = true }
+contracts_api = { workspace = true }
 async-trait = "0.1"
 serde = { workspace = true }
 serde_json = { workspace = true }
 chrono = { workspace = true }
 thiserror = { workspace = true }
+reqwest = { workspace = true }
+futures-util = "0.3"
+uuid = { workspace = true }
+tracing = { workspace = true }
+bytes = "1"
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["macros", "rt"] }
