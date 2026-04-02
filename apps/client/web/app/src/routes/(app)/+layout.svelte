@@ -35,6 +35,7 @@ onMount(async () => {
 const navItems = [
 	{ href: '/counter', label: 'Counter', icon: Plus },
 	{ href: '/admin', label: 'Admin', icon: LayoutDashboard },
+	{ href: '/settings', label: 'Settings', icon: Settings },
 ];
 
 function handleThemeToggle(checked: boolean) {
@@ -118,12 +119,5 @@ function handleThemeToggle(checked: boolean) {
 				<span class="text-[10px]">{item.label}</span>
 			</a>
 		{/each}
-		<a
-			href="/admin"
-			class="flex flex-col items-center gap-0.5 px-3 py-1 transition-colors text-[var(--color-text-muted)]"
-		>
-			<Settings class="h-5 w-5" />
-			<span class="text-[10px]">Settings</span>
-		</a>
 	</nav>
 </div>
