@@ -57,7 +57,7 @@ Provide a runnable, tested, production-ready engineering base with Google Auth, 
 
 ## Context
 
-**Current state:** v0.2.0 Phase 02 (contracts-typegen) complete. Three contracts crates (api/auth/events) with ts-rs DTOs, server routes migrated to contracts_api imports, typegen pipeline generates TS types to frontend, drift check wired into repo:verify. moonrepo/moon installed via bun. Ready for Phase 03 (application-pages).
+**Current state:** v0.2.0 Phase 03 (application-pages) complete. Routing infrastructure (auth/app route groups, responsive nav with sidebar + bottom tabs), Counter page with Svelte 5 $state rune, Admin dashboard placeholder with stats cards and chart placeholders, Settings page with dark mode toggle. All 4 pages functional with SPA navigation. Ready for Phase 04 (backend-dependencies-build-optimization).
 
 **Tech stack (confirmed):**
 - Desktop: Tauri v2 (确定)
@@ -115,4 +115,4 @@ This document evolves at phase transitions and milestone boundaries.
 
 ---
 
-*Last updated: 2026-04-02 after Phase 02 (contracts-typegen) — three contracts crates, typegen pipeline, server migration, drift check wired*
+*Last updated: 2026-04-02 after Phase 03 (application-pages) — routing, counter, admin dashboard, settings page*
