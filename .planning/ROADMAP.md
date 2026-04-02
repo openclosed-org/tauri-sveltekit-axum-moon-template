@@ -90,7 +90,10 @@ Plans:
   3. .agents/playbooks/ 包含 create-feature, update-contracts 等多步任务规范。
   4. .agents/rubrics/ 包含 code-review, boundary-compliance, task-completion 评估标准。
   5. 新 agent 一小时内能通过规则矩阵和 playbook 安全开始工作。
-**Plans**: TBD
+**Plans**: 2 plans in 1 wave
+Plans:
+- [ ] 05-01-PLAN.md — Playbooks (create-feature + update-contracts)
+- [ ] 05-02-PLAN.md — Rubrics (code-review + task-completion)
 
 ## Progress Table
 
