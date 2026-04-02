@@ -115,7 +115,13 @@ async fn chat_handler(
         Ok(s) => {
             let event_stream = s.map(|result| -> Result<Event, Infallible> {
                 match result {
-                    Ok(content) => Ok(Event::default().data(content)),
+                    Ok(content) => {
+                        if content.contains("[tool:") {
+                            Ok(Event::default().event("tool").data(content))
+                        } else {
+                            Ok(Event::default().event("assistant").data(content))
+                        }
+                    }
                     Err(e) => Ok(Event::default().data(format!("Error: {}", e))),
                 }
             });

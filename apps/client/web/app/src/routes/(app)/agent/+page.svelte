@@ -107,6 +107,10 @@
 		messages = messages.map((m, i) => (i === assistantIndex ? next : m));
 	}
 
+	function isToolChunk(content: string) {
+		return content.includes('[tool:');
+	}
+
 	async function sendMessage() {
 		if (!inputText.trim() || !activeConversation || streaming) return;
 
@@ -160,6 +164,9 @@
 		} finally {
 			streaming = false;
 			await loadConversations();
+			if (activeConversation) {
+				await selectConversation(activeConversation);
+			}
 		}
 	}
 
@@ -199,7 +206,14 @@
 			<div class="flex-1 overflow-y-auto p-4 space-y-4">
 				{#each messages as msg, i (`${msg.id}-${i}`)}
 					<div class="flex {msg.role === 'user' ? 'justify-end' : 'justify-start'}">
-						<Card class="max-w-[70%] p-3 {msg.role === 'user' ? 'bg-primary-50' : ''}">
+						<Card
+							class="max-w-[70%] p-3 {msg.role === 'user'
+								? 'bg-primary-50'
+								: ''} {isToolChunk(msg.content) ? 'border border-amber-300 bg-amber-50' : ''}"
+						>
+							{#if isToolChunk(msg.content)}
+								<p class="mb-1 text-xs font-medium text-amber-700">Tool Result</p>
+							{/if}
 							<p class="text-sm whitespace-pre-wrap">{msg.content || (streaming ? '...' : '')}</p>
 						</Card>
 					</div>
