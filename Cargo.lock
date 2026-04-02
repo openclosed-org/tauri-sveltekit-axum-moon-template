@@ -1219,6 +1219,7 @@ name = "contracts_api"
 version = "0.1.0"
 dependencies = [
  "serde",
+ "serde_json",
  "ts-rs",
  "utoipa",
  "validator",
@@ -2082,6 +2083,17 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.18",
  "tracing",
+]
+
+[[package]]
+name = "feature-agent"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "contracts_api",
+ "futures-util",
+ "serde",
+ "thiserror 2.0.18",
 ]
 
 [[package]]
@@ -6171,8 +6183,10 @@ dependencies = [
  "contracts_api",
  "domain",
  "feature-admin",
+ "feature-agent",
  "feature-counter",
  "figment",
+ "futures-util",
  "h3",
  "http-body-util",
  "hyper 1.8.1",
@@ -6206,11 +6220,15 @@ dependencies = [
 name = "runtime_tauri"
 version = "0.1.0"
 dependencies = [
+ "adapter-google",
+ "async-trait",
  "base64 0.22.1",
  "chrono",
+ "contracts_auth",
  "domain",
  "dotenvy",
  "feature-admin",
+ "feature-auth",
  "feature-counter",
  "rand 0.8.5",
  "reqwest",
@@ -8921,14 +8939,21 @@ name = "usecases"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "bytes",
  "chrono",
+ "contracts_api",
  "domain",
  "feature-admin",
+ "feature-agent",
  "feature-counter",
+ "futures-util",
+ "reqwest",
  "serde",
  "serde_json",
  "thiserror 2.0.18",
  "tokio",
+ "tracing",
+ "uuid",
 ]
 
 [[package]]
