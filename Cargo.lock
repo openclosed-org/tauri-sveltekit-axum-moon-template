@@ -4256,6 +4256,7 @@ dependencies = [
  "log",
  "rand 0.8.5",
  "reqwest",
+ "runtime_tauri",
  "serde",
  "serde_json",
  "sha2",

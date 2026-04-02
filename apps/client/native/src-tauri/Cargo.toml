@@ -46,6 +46,7 @@ thiserror = { workspace = true }
 # Internal crates
 domain = { workspace = true }
 usecases = { workspace = true }
+runtime_tauri = { workspace = true }
 
 [dev-dependencies]
 tempfile = "3"

@@ -23,6 +23,7 @@ contracts_auth = { path = "packages/contracts/auth" }
 contracts_events = { path = "packages/contracts/events" }
 storage_surrealdb = { path = "packages/adapters/storage/surrealdb" }
 storage_libsql = { path = "packages/adapters/storage/libsql" }
+runtime_tauri = { path = "packages/adapters/hosts/tauri" }
 
 # Tauri
 tauri = { version = "2.10.3", features = ["tray-icon"] }

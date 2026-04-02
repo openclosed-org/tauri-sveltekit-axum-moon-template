@@ -3,6 +3,8 @@
 mod commands;
 mod sync;
 
+use runtime_tauri::commands::{auth, config};
+
 use storage_libsql::{EmbeddedLibSql, embedded::run_tenant_migrations};
 use sync::SyncEngine;
 use sync::engine::init_sync_tables;
@@ -72,11 +74,11 @@ pub fn run() {
         .plugin(log_plugin)
         .manage(app_state)
         .invoke_handler(tauri::generate_handler![
-            commands::auth::start_oauth,
-            commands::auth::handle_oauth_callback,
-            commands::auth::get_session,
-            commands::auth::quit_app,
-            commands::config::get_config,
+            auth::start_oauth,
+            auth::handle_oauth_callback,
+            auth::get_session,
+            auth::quit_app,
+            config::get_config,
             commands::sync::sync_start,
             commands::sync::sync_stop,
             commands::sync::sync_once,
@@ -120,7 +122,7 @@ pub fn run() {
             );
 
             let handle = app.handle().clone();
-            commands::auth::start_refresh_timer(handle);
+            auth::start_refresh_timer(handle);
 
             // Initialize sync tables and start background sync if configured
             let remote_url = std::env::var("TURSO_SYNC_URL").ok();
