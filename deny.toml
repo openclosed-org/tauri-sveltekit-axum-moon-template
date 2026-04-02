@@ -1,0 +1,48 @@
+# cargo-deny configuration
+# Docs: https://embarkstudios.github.io/cargo-deny/
+
+[graph]
+# Check all workspace members
+all-features = true
+
+[advisories]
+# Disable advisory check for now (can enable later)
+version = 2
+
+[licenses]
+# Disable license check for now (can enable later)
+unlicensed = "deny"
+
+[bans]
+# Deny specific dependency directions to enforce hexagonal architecture
+# These rules prevent core crates from depending on host/adapter crates
+
+# Rule: domain must not depend on adapters, hosts, contracts, or servers
+[[bans.deny]]
+name = "storage_surrealdb"
+wrappers = ["domain", "usecases"]
+
+[[bans.deny]]
+name = "storage_libsql"
+wrappers = ["domain", "usecases"]
+
+[[bans.deny]]
+name = "runtime_tauri"
+wrappers = ["domain", "usecases", "contracts_api"]
+
+[[bans.deny]]
+name = "contracts_api"
+wrappers = ["domain", "usecases"]
+
+[[bans.deny]]
+name = "runtime_server"
+wrappers = ["domain", "usecases", "contracts_api", "storage_surrealdb", "storage_libsql", "runtime_tauri"]
+
+# Rule: contracts must not depend on domain, usecases, adapters, or hosts
+[[bans.deny]]
+name = "domain"
+wrappers = ["contracts_api", "contracts_auth", "contracts_events"]
+
+[[bans.deny]]
+name = "usecases"
+wrappers = ["contracts_api", "contracts_auth", "contracts_events"]
