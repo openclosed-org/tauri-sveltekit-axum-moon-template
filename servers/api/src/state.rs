@@ -72,6 +72,14 @@ impl AppState {
             .await
             .map_err(|e| AppError::Database(e))?;
 
+        // Run agent migrations (conversations + messages tables)
+        for migration in usecases::agent_service::AGENT_MIGRATIONS {
+            embedded_db
+                .execute(migration, vec![])
+                .await
+                .map_err(|e| AppError::Database(e))?;
+        }
+
         // Moka cache — 10k entries, 5min TTL (per D-10/D-11)
         let cache: Cache<String, String> = Cache::builder()
             .max_capacity(config.cache.max_capacity)

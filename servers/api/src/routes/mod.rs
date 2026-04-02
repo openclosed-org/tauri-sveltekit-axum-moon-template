@@ -1,6 +1,7 @@
 //! Route module barrel — all feature route modules exported here.
 
 pub mod admin;
+pub mod agent;
 pub mod counter;
 pub mod health;
 pub mod tenant;
@@ -20,4 +21,5 @@ pub fn api_router() -> Router<AppState> {
         .merge(tenant::router())
         .merge(counter::router())
         .merge(admin::router())
+        .merge(agent::router())
 }

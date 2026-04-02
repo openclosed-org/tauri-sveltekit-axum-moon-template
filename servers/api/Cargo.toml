@@ -12,6 +12,7 @@ storage_surrealdb = { workspace = true }
 storage_libsql = { workspace = true }
 feature-counter = { workspace = true }
 feature-admin = { workspace = true }
+feature-agent = { workspace = true }
 
 # Axum HTTP framework (per D-01, D-02, D-09)
 axum = { workspace = true }
@@ -62,6 +63,7 @@ base64 = { workspace = true }
 chrono = { workspace = true }
 uuid = { workspace = true, features = ["v7"] }
 async-trait = "0.1"
+futures-util = "0.3"
 
 # HTTP/3 transport (per D-07, D-08) — gated behind h3 feature
 quinn = { workspace = true, optional = true }
