@@ -5,8 +5,10 @@
 
 use crate::config::{CloudDbProvider, Config};
 use crate::error::AppError;
+use domain::ports::lib_sql::LibSqlPort;
 use moka::future::Cache;
 use std::time::Duration;
+use storage_libsql::EmbeddedLibSql;
 use storage_libsql::TursoDb;
 use storage_libsql::remote::run_tenant_migrations as run_turso_migrations;
 use storage_surrealdb::run_tenant_migrations as run_surreal_migrations;
@@ -38,6 +40,10 @@ pub struct AppState {
 
     /// Application configuration
     pub config: Config,
+
+    /// Embedded libsql for local features (counter, admin).
+    /// Initialized in dev mode; None in production if only SurrealDB is used.
+    pub embedded_db: Option<EmbeddedLibSql>,
 }
 
 impl AppState {
@@ -56,6 +62,15 @@ impl AppState {
         run_surreal_migrations(&db)
             .await
             .map_err(AppError::Database)?;
+
+        // Embedded libsql for local features (counter, admin)
+        let embedded_db = EmbeddedLibSql::new(":memory:")
+            .await
+            .map_err(|e| AppError::Database(e))?;
+        embedded_db
+            .execute(usecases::counter_service::COUNTER_MIGRATION, vec![])
+            .await
+            .map_err(|e| AppError::Database(e))?;
 
         // Moka cache — 10k entries, 5min TTL (per D-10/D-11)
         let cache: Cache<String, String> = Cache::builder()
@@ -77,6 +92,7 @@ impl AppState {
             cache,
             http_client,
             config,
+            embedded_db: Some(embedded_db),
         })
     }
 
@@ -134,6 +150,7 @@ impl AppState {
             cache,
             http_client,
             config,
+            embedded_db: None,
         })
     }
 }

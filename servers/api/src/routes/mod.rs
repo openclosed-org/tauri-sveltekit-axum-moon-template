@@ -1,5 +1,7 @@
 //! Route module barrel — all feature route modules exported here.
 
+pub mod admin;
+pub mod counter;
 pub mod health;
 pub mod tenant;
 
@@ -14,5 +16,8 @@ pub fn router() -> Router<AppState> {
 /// API routes — tenant-scoped, require JWT authentication.
 /// Tenant middleware is applied as a route_layer in create_router().
 pub fn api_router() -> Router<AppState> {
-    Router::<AppState>::new().merge(tenant::router())
+    Router::<AppState>::new()
+        .merge(tenant::router())
+        .merge(counter::router())
+        .merge(admin::router())
 }
