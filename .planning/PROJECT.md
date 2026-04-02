@@ -57,7 +57,7 @@ Provide a runnable, tested, production-ready engineering base with Google Auth, 
 
 ## Context
 
-**Current state:** v0.2.0 Phase 03 (application-pages) complete. Routing infrastructure (auth/app route groups, responsive nav with sidebar + bottom tabs), Counter page with Svelte 5 $state rune, Admin dashboard placeholder with stats cards and chart placeholders, Settings page with dark mode toggle. All 4 pages functional with SPA navigation. Ready for Phase 04 (backend-dependencies-build-optimization).
+**Current state:** v0.2.0 Phase 04 (backend-dependencies-build-optimization) complete. Axum middleware stack (tower/tower-http/hyper) configured as workspace dependencies, release profile optimized with panic="abort", runtime_server crate wired to workspace deps, Axum HTTP server implemented with CORS/Trace/Timeout middleware, /healthz and /readyz endpoints, cargo-bloat monitoring task. Ready for Phase 05.
 
 **Tech stack (confirmed):**
 - Desktop: Tauri v2 (确定)
@@ -115,4 +115,4 @@ This document evolves at phase transitions and milestone boundaries.
 
 ---
 
-*Last updated: 2026-04-02 after Phase 03 (application-pages) — routing, counter, admin dashboard, settings page*
+*Last updated: 2026-04-02 after Phase 04 (backend-dependencies-build-optimization) — Axum middleware stack, workspace deps, server implementation, health checks*
