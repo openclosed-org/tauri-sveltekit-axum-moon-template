@@ -3,61 +3,61 @@ tasks:
   build:
     command: 'cargo build --workspace'
     inputs:
-      - '@globs(sources)'
+
       - 'Cargo.toml'
       - 'Cargo.lock'
 
   check:
     command: 'cargo check --workspace'
     inputs:
-      - '@globs(sources)'
+
       - 'Cargo.toml'
       - 'Cargo.lock'
 
   lint:
     command: 'cargo clippy --workspace -- -D warnings'
     inputs:
-      - '@globs(sources)'
+
       - 'Cargo.toml'
       - 'Cargo.lock'
 
   test:
     command: 'cargo test --workspace'
     inputs:
-      - '@globs(sources)'
+
       - 'Cargo.toml'
       - 'Cargo.lock'
 
   format:
     command: 'cargo fmt --all -- --check'
     inputs:
-      - '@globs(sources)'
+
 
   format-fix:
     command: 'cargo fmt --all'
     inputs:
-      - '@globs(sources)'
+
 
   bloat:
     command: 'cargo bloat --release --crates -p runtime_server'
     inputs:
-      - '@globs(sources)'
+
       - 'Cargo.toml'
 
-  # ── repo:setup ─────────────────────────────────────────────────────
-  repo:setup:
-    command: 'bun install && proto install'
+  # ── Setup ──────────────────────────────────────────────────────────
+  setup:
+    script: 'bun install && proto install'
     inputs:
       - 'package.json'
       - '.prototools'
 
-  repo:bootstrap:
+  bootstrap:
     deps:
-      - 'repo:setup'
-      - 'repo:doctor'
+      - 'setup'
+      - 'doctor'
 
-  repo:doctor:
-    command: |
+  doctor:
+    script: |
       echo "=== Toolchain Check ==="
       bun --version || echo "MISSING: bun"
       node --version || echo "MISSING: node"
@@ -74,62 +74,61 @@ tasks:
       - 'rust-toolchain.toml'
       - '.env.example'
 
-  repo:toolchain-check:
-    command: |
-      rustc --version && bun --version && moon --version && echo "ALL OK"
+  toolchain-check:
+    script: 'rustc --version && bun --version && moon --version && echo "ALL OK"'
     inputs:
       - 'rust-toolchain.toml'
       - '.prototools'
 
-  # ── repo:dev ───────────────────────────────────────────────────────
-  repo:dev-web:
-    command: 'cd apps/client/web/app && bun run dev'
+  # ── Dev ────────────────────────────────────────────────────────────
+  dev-web:
+    script: 'cd apps/client/web/app && bun run dev'
     inputs:
       - 'apps/client/web/app/**/*'
 
-  repo:dev-desktop:
-    command: 'cd apps/client/native/src-tauri && cargo tauri dev'
+  dev-desktop:
+    script: 'cd apps/client/native/src-tauri && cargo tauri dev'
     deps:
-      - 'repo:dev-api'
+      - 'dev-api'
     inputs:
       - 'apps/client/native/**/*'
 
-  repo:dev-api:
+  dev-api:
     command: 'cargo run -p runtime_server'
     deps:
       - 'check'
     inputs:
       - 'servers/api/**/*'
 
-  repo:dev-extension:
+  dev-extension:
     command: 'echo "Extension dev not yet implemented"'
 
-  repo:dev-workers:
+  dev-workers:
     command: 'echo "Workers dev not yet implemented"'
 
-  repo:dev-fullstack:
+  dev-fullstack:
     deps:
-      - 'repo:dev-api'
-      - 'repo:dev-web'
+      - 'dev-api'
+      - 'dev-web'
 
-  # ── repo:quality ───────────────────────────────────────────────────
-  repo:fmt:
+  # ── Quality ────────────────────────────────────────────────────────
+  fmt:
     deps:
       - 'format'
-      - 'apps~client~web~app:format'
+      - 'client-web:format'
 
-  repo:lint:
+  quality-lint:
     deps:
       - 'lint'
-      - 'apps~client~web~app:lint'
+      - 'client-web:lint'
 
-  repo:typecheck:
+  typecheck:
     deps:
       - 'check'
-      - 'apps~client~web~app:check'
+      - 'client-web:check'
 
-  repo:contracts-check:
-    command: |
+  contracts-check:
+    script: |
       echo "=== Running typegen ==="
       moon run repo:typegen
       echo "=== Checking for drift ==="
@@ -139,30 +138,30 @@ tasks:
       - 'packages/contracts/**/src/**'
       - 'packages/contracts/**/Cargo.toml'
 
-  repo:test-unit:
+  test-unit:
     deps:
       - 'test'
 
-  repo:test-integration:
+  test-integration:
     command: 'cargo test --workspace -- --ignored'
 
-  repo:test-e2e:
-    command: 'cd apps/client/web/app && bun run test:e2e'
+  test-e2e:
+    script: 'cd apps/client/web/app && bun run test:e2e'
 
-  repo:test-agent:
+  test-agent:
     command: 'echo "Agent tests — Phase 5 implementation"'
 
-  repo:verify:
+  verify:
     deps:
-      - 'repo:fmt'
-      - 'repo:lint'
-      - 'repo:typecheck'
-      - 'repo:contracts-check'
-      - 'repo:test-unit'
+      - 'fmt'
+      - 'quality-lint'
+      - 'typecheck'
+      - 'contracts-check'
+      - 'test-unit'
 
-  # ── repo:codegen ───────────────────────────────────────────────────
-  repo:typegen:
-    command: |
+  # ── Codegen ────────────────────────────────────────────────────────
+  typegen:
+    script: |
       cargo test -p contracts_api -p contracts_auth -p contracts_events 2>&1 || true
       rm -rf packages/contracts/generated/api packages/contracts/generated/auth packages/contracts/generated/events
       cp -r packages/contracts/api/bindings/api packages/contracts/generated/api 2>/dev/null || true
@@ -177,64 +176,49 @@ tasks:
       - 'packages/contracts/**/src/**'
       - 'packages/contracts/**/Cargo.toml'
 
-  repo:openapi-gen:
+  openapi-gen:
     command: 'echo "OpenAPI gen — Phase 2 implementation"'
 
-  repo:fixtures-gen:
+  fixtures-gen:
     command: 'echo "Fixtures gen — Phase 5 implementation"'
 
-  repo:icons-gen:
+  icons-gen:
     command: 'echo "Icons gen — as needed"'
 
-  repo:tokens-gen:
+  tokens-gen:
     command: 'echo "Tokens gen — as needed"'
 
-  # ── repo:ops ───────────────────────────────────────────────────────
-  repo:trace-open:
+  # ── Ops ────────────────────────────────────────────────────────────
+  trace-open:
     command: 'echo "Trace open — Phase 7 implementation"'
 
-  repo:evals-run:
+  evals-run:
     command: 'echo "Evals run — Phase 5 implementation"'
 
-  repo:replay-protocol:
+  replay-protocol:
     command: 'echo "Replay protocol — Phase 7 implementation"'
 
-  repo:release-dry-run:
+  release-dry-run:
     command: 'echo "Release dry run — Phase 9 implementation"'
 
-  repo:release-desktop:
+  release-desktop:
     command: 'echo "Release desktop — Phase 9 implementation"'
 
-  repo:release-web:
+  release-web:
     command: 'echo "Release web — Phase 9 implementation"'
 
-  repo:release-server:
+  release-server:
     command: 'echo "Release server — Phase 9 implementation"'
 
-  # ── repo:security ──────────────────────────────────────────────────
-  repo:audit-rust:
-    command: 'cargo audit 2>/dev/null || echo "Install cargo-audit: cargo install cargo-audit"'
+  # ── Security ───────────────────────────────────────────────────────
+  audit-rust:
+    script: 'cargo audit 2>/dev/null || echo "Install cargo-audit: cargo install cargo-audit"'
 
-  repo:audit-bun:
-    command: 'bun audit || true'
+  audit-bun:
+    script: 'bun audit || true'
 
-  repo:secrets-scan:
+  secrets-scan:
     command: 'echo "Secrets scan — use gitleaks or similar"'
 
-  repo:licenses-check:
+  licenses-check:
     command: 'echo "Licenses check — Phase 9 implementation"'
-
-  # ── Legacy aliases (backward-compatible) ───────────────────────────
-  lint-all:
-    deps:
-      - 'repo:lint'
-
-  check-all:
-    deps:
-      - 'repo:typecheck'
-      - 'repo:lint'
-
-  test-all:
-    deps:
-      - 'repo:test-unit'
-      - 'repo:typecheck'

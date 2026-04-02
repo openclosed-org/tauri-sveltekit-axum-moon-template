@@ -1,17 +1,14 @@
 projects:
+  # Root project (this repo)
+  repo: '.'
   # Active projects (have moon.yml or package.json)
-  - 'apps/client/native'
-  - 'apps/client/web/app'
-  - 'packages/core/domain'
-  - 'packages/core/usecases'
-  - 'packages/contracts/api'
-  - 'packages/adapters/hosts/tauri'
-  - 'servers/api'
-
-  # Future registrations (when moon.yml added):
-  # - 'workers/*'
-  # - 'tools/*'
-  # - 'packages/features/*'
+  client-native: 'apps/client/native'
+  client-web: 'apps/client/web/app'
+  core-domain: 'packages/core/domain'
+  core-usecases: 'packages/core/usecases'
+  contracts-api: 'packages/contracts/api'
+  adapters-tauri: 'packages/adapters/hosts/tauri'
+  api: 'servers/api'
 
 vcs:
   client: 'git'
