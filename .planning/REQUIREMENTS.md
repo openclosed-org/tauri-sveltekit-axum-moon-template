@@ -24,7 +24,7 @@
 
 ### 最小功能实现
 
-- [ ] **AUTH-01**: 用户可以通过 Google 账号登录，auth 通过 adapter 接入不污染 core
+- [x] **AUTH-01**: 用户可以通过 Google 账号登录，auth 通过 adapter 接入不污染 core
 - [ ] **COUNTER-01**: 用户可以使用计数器功能（increment/decrement/reset），验证前后端通信
 - [ ] **ADMIN-01**: 用户可以访问管理后台界面，包含基本统计卡片
 - [ ] **AGENT-01**: 用户可以通过导入 OpenAI 兼容的 API key 与产品内 agent 进行对话
@@ -72,7 +72,7 @@
 | RUNTIME-01 | Phase 3 | Complete |
 | RUNTIME-02 | Phase 3 | Complete |
 | RUNTIME-03 | Phase 3 | Complete |
-| AUTH-01 | Phase 4 | Pending |
+| AUTH-01 | Phase 4 | Complete |
 | COUNTER-01 | Phase 4 | Pending |
 | ADMIN-01 | Phase 4 | Pending |
 | AGENT-01 | Phase 4 | Pending |
