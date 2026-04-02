@@ -4253,13 +4253,13 @@ dependencies = [
  "chrono",
  "domain",
  "dotenvy",
- "libsql",
  "log",
  "rand 0.8.5",
  "reqwest",
  "serde",
  "serde_json",
  "sha2",
+ "storage_libsql",
  "tauri",
  "tauri-build",
  "tauri-plugin-deep-link",
@@ -6109,7 +6109,6 @@ dependencies = [
  "http-body-util",
  "hyper 1.8.1",
  "jsonwebtoken",
- "libsql",
  "mockito",
  "moka",
  "quinn",
@@ -6117,6 +6116,8 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
+ "storage_libsql",
+ "storage_surrealdb",
  "surrealdb",
  "thiserror 2.0.18",
  "tokio",
@@ -6137,9 +6138,21 @@ dependencies = [
 name = "runtime_tauri"
 version = "0.1.0"
 dependencies = [
- "contracts_api",
+ "base64 0.22.1",
+ "chrono",
  "domain",
+ "dotenvy",
+ "rand 0.8.5",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "sha2",
  "tauri",
+ "tauri-plugin-opener",
+ "tauri-plugin-store",
+ "tokio",
+ "tracing",
+ "url",
  "usecases",
 ]
 
@@ -7020,6 +7033,21 @@ name = "stable_deref_trait"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6ce2be8dc25455e1f91df71bfa12ad37d7af1092ae736f3a6cd0e37bc7810596"
+
+[[package]]
+name = "storage_libsql"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "base64 0.22.1",
+ "chrono",
+ "domain",
+ "libsql",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+]
 
 [[package]]
 name = "storage_surrealdb"

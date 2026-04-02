@@ -8,7 +8,7 @@ tauri-build = { workspace = true }
 
 [dependencies]
 tauri = { workspace = true }
-tauri-plugin-opener = "2"
+tauri-plugin-opener = { workspace = true }
 tauri-plugin-dialog = { workspace = true }
 tauri-plugin-store = { workspace = true }
 tauri-plugin-fs = { workspace = true }
