@@ -70,6 +70,18 @@ pub struct AgentConfig {
     pub model: String,
 }
 
+/// Admin dashboard statistics.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, TS)]
+#[ts(export, export_to = "api/")]
+pub struct AdminDashboardStats {
+    #[ts(type = "number")]
+    pub tenant_count: u64,
+    #[ts(type = "number")]
+    pub counter_value: i64,
+    pub last_login: Option<String>,
+    pub app_version: String,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -102,5 +114,10 @@ mod tests {
     #[test]
     fn export_agent_config() {
         AgentConfig::export().unwrap();
+    }
+
+    #[test]
+    fn export_admin_dashboard_stats() {
+        AdminDashboardStats::export().unwrap();
     }
 }
