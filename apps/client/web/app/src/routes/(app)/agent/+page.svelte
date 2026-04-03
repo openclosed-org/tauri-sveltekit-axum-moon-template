@@ -4,6 +4,7 @@
 	import { Plus, Send } from '@jis3r/icons';
 	import type { ChatMessage } from '$lib/generated/api/ChatMessage';
 	import type { AgentConfig } from '$lib/generated/api/AgentConfig';
+	import { agentChatStream } from '$lib/ipc/agent';
 
 	type Conversation = {
 		id: string;
@@ -128,33 +129,31 @@
 
 		try {
 			const { api_key, base_url, model } = await loadSettings();
-			const resp = await fetch(`${getRuntimeApiBase()}/api/agent/chat`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					conversation_id: activeConversation,
+
+			// Runtime environment detection for dual-path routing
+			const isTauri = typeof window !== 'undefined' && !!(window as { __TAURI__?: unknown }).__TAURI__;
+
+			if (isTauri) {
+				// Tauri path: use agentChatStream (IPC invoke + Channel streaming)
+				for await (const chunk of agentChatStream({
+					conversationId: activeConversation,
 					content,
-					api_key,
-					base_url,
+					apiKey: api_key,
+					baseUrl: base_url,
 					model
-				})
-			});
-
-			if (!resp.body) throw new Error('No response body');
-
-			const reader = resp.body.getReader();
-			const decoder = new TextDecoder();
-
-			while (true) {
-				const { done, value } = await reader.read();
-				if (done) break;
-
-				const text = decoder.decode(value, { stream: true });
-				for (const line of text.split('\n')) {
-					if (!line.startsWith('data: ')) continue;
-					const data = line.slice(6);
-					if (data === '[DONE]' || data.startsWith('Error:')) continue;
-					appendAssistantChunk(data);
+				})) {
+					appendAssistantChunk(chunk);
+				}
+			} else {
+				// Browser path: use agentChatStream (HTTP SSE fallback)
+				for await (const chunk of agentChatStream({
+					conversationId: activeConversation,
+					content,
+					apiKey: api_key,
+					baseUrl: base_url,
+					model
+				})) {
+					appendAssistantChunk(chunk);
 				}
 			}
 		} catch (error) {
