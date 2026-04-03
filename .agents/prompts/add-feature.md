@@ -1,7 +1,12 @@
 # Add Feature Prompt
 
-**Purpose:** Guide an agent through adding a new feature module, from contract definition to frontend consumption.
-**When to Use:** When you need to add a new capability that spans multiple layers (API endpoint + UI component + backend logic).
+## Purpose
+
+Guide an agent through adding a new feature module, from contract definition to frontend consumption.
+
+## When to Use
+
+When you need to add a new capability that spans multiple layers (API endpoint + UI component + backend logic).
 
 ---
 

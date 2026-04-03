@@ -1,7 +1,12 @@
 # Add Host Prompt
 
-**Purpose:** Guide an agent through adding a new Tauri host adapter, bridging frontend IPC calls to backend usecases.
-**When to Use:** When you need a new Tauri command that exposes existing or new usecase functionality to the SvelteKit frontend.
+## Purpose
+
+Guide an agent through adding a new Tauri host adapter, bridging frontend IPC calls to backend usecases.
+
+## When to Use
+
+When you need a new Tauri command that exposes existing or new usecase functionality to the SvelteKit frontend.
 
 ---
 

@@ -1,7 +1,12 @@
 # Refactor Boundary Prompt
 
-**Purpose:** Guide an agent through boundary refactoring — moving implementations to their correct architectural layer, eliminating cross-layer dependencies, and restoring hexagonal architecture compliance.
-**When to Use:** When code review or CI detects import violations, business logic leaked into wrong layers, or architectural drift after incremental changes.
+## Purpose
+
+Guide an agent through boundary refactoring — moving implementations to their correct architectural layer, eliminating cross-layer dependencies, and restoring hexagonal architecture compliance.
+
+## When to Use
+
+When code review or CI detects import violations, business logic leaked into wrong layers, or architectural drift after incremental changes.
 
 ---
 
