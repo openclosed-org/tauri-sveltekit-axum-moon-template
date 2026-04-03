@@ -27,11 +27,11 @@ pub async fn agent_chat(
     while let Some(chunk) = stream.next().await {
         match chunk {
             Ok(text) => {
-                channel.send(&text).map_err(|e| e.to_string())?;
+                channel.send(text).map_err(|e| e.to_string())?;
             }
             Err(e) => {
                 channel
-                    .send(&format!("Error: {}", e))
+                    .send(format!("Error: {}", e))
                     .map_err(|e| e.to_string())?;
             }
         }
