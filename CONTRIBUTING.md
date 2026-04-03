@@ -4,27 +4,53 @@ Thanks for contributing to this template.
 
 ## Development Setup
 
-1. Install Rust `stable`, Node.js `24.0.0`, and Bun `1.3.11`.
-2. Install frontend dependencies:
+1. Install **mise** (toolchain manager):
+   - macOS: `brew install mise`
+   - Linux: `curl https://mise.run | sh`
+
+2. Install all project tools (Rust, Node.js, Bun):
 
 ```bash
-cd apps/desktop-ui
+mise install
+```
+
+3. Install frontend dependencies:
+
+```bash
 bun install
 ```
 
-3. Run checks from repository root:
+4. Run checks from repository root:
 
 ```bash
 cargo check
 ```
 
-4. Run frontend quality gates:
+5. Run frontend quality gates:
 
 ```bash
-cd apps/desktop-ui
+cd apps/client/web/app
 bun run check
 bun run lint
 bun run build
+```
+
+> All commands can also be run via `just` — the unified entry point for humans and agents.
+> Run `just` to see all available commands.
+
+## Testing Workflow
+
+For detailed testing and coverage guidance, see [`docs/TESTING_AND_COVERAGE.md`](docs/TESTING_AND_COVERAGE.md).
+
+**Quick summary:**
+
+- **Daily development**: `just test` (fast, no coverage)
+- **Before PR / After refactoring**: `just test-coverage-html` (check completeness)
+- **CI/CD**: Automatic coverage upload to Codecov
+
+Install coverage tools (one-time):
+```bash
+just setup-coverage
 ```
 
 ## Branch and Pull Request Rules
