@@ -132,10 +132,10 @@ Plans:
   2. .agents/prompts/ 包含 add-feature, add-host, refactor-boundary 等标准 prompt 模板
   3. Phase 5 存在 VERIFICATION.md 且通过验证
   4. Agent Desktop Mode E2E flow 完整（Tauri 桌面模式无需外部 API server）
-**Plans:** 3 plans in 3 waves
+**Plans:** 2/3 plans executed
 Plans:
 - [x] 08-01-PLAN.md — IPC dual-path: lib/ipc/agent.ts + Rust agent_chat command + page refactor
-- [ ] 08-02-PLAN.md — Prompts templates + Phase 5 VERIFICATION.md
+- [x] 08-02-PLAN.md — Prompts templates + Phase 5 VERIFICATION.md
 - [ ] 08-03-PLAN.md — Desktop Mode E2E verification (has human checkpoint)
 
 ## Progress Table
@@ -149,7 +149,7 @@ Plans:
 | 5. Agent-Friendly 开发基建 | 0/TBD | Not started | - |
 | 6. 连接 Auth Adapter 到 Tauri 命令 | 0/TBD | Gap Closure | - |
 | 7. 前端消费 Generated Types | 2/3 | In Progress|  |
-| 8. Agent 双路径 + Prompts + Phase 5 验证 | 0/TBD | Gap Closure | - |
+| 8. Agent 双路径 + Prompts + Phase 5 验证 | 2/3 | In Progress|  |
 
 ## Coverage Map (v0.2.0)
 
