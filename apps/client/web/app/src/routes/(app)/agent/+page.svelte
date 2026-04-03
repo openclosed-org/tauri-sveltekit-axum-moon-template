@@ -2,6 +2,8 @@
 	import { onMount } from 'svelte';
 	import { Button, Card, Input } from '$lib/components';
 	import { Plus, Send } from '@jis3r/icons';
+	import type { ChatMessage } from '$lib/generated/api/ChatMessage';
+	import type { AgentConfig } from '$lib/generated/api/AgentConfig';
 
 	type Conversation = {
 		id: string;
@@ -9,23 +11,11 @@
 		created_at?: string;
 	};
 
-	type Message = {
-		id: string;
-		role: 'user' | 'assistant' | 'system' | 'tool' | string;
-		content: string;
-	};
-
-	type SettingsConfig = {
-		apiKey: string;
-		baseUrl: string;
-		model: string;
-	};
-
 	const API_BASE = 'http://localhost:3001';
 
 	let conversations = $state<Conversation[]>([]);
 	let activeConversation = $state<string | null>(null);
-	let messages = $state<Message[]>([]);
+	let messages = $state<ChatMessage[]>([]);
 	let inputText = $state('');
 	let streaming = $state(false);
 
@@ -34,10 +24,10 @@
 		return API_BASE;
 	}
 
-	async function loadSettings(): Promise<SettingsConfig> {
-		const defaults: SettingsConfig = {
-			apiKey: '',
-			baseUrl: 'https://api.openai.com/v1',
+	async function loadSettings(): Promise<AgentConfig> {
+		const defaults: AgentConfig = {
+			api_key: '',
+			base_url: 'https://api.openai.com/v1',
 			model: 'gpt-4o-mini'
 		};
 
@@ -50,8 +40,8 @@
 				const model = (await store.get('model')) as string | null;
 
 				return {
-					apiKey: apiKey ?? defaults.apiKey,
-					baseUrl: baseUrl ?? defaults.baseUrl,
+					api_key: apiKey ?? defaults.api_key,
+					base_url: baseUrl ?? defaults.base_url,
 					model: model ?? defaults.model
 				};
 			}
@@ -90,7 +80,7 @@
 	async function selectConversation(id: string) {
 		activeConversation = id;
 		const resp = await fetch(`${getRuntimeApiBase()}/api/agent/conversations/${id}/messages`);
-		const data = (await resp.json()) as Message[] | { error?: string };
+		const data = (await resp.json()) as ChatMessage[] | { error?: string };
 		messages = Array.isArray(data) ? data : [];
 	}
 
@@ -118,22 +108,34 @@
 		inputText = '';
 		streaming = true;
 
-		messages = [
-			...messages,
-			{ id: 'temp-user', role: 'user', content },
-			{ id: 'temp-assistant', role: 'assistant', content: '' }
-		];
+		const tempUser: ChatMessage = {
+			id: 'temp-user',
+			conversation_id: activeConversation,
+			role: 'user',
+			content,
+			tool_calls: null,
+			created_at: new Date().toISOString()
+		};
+		const tempAssistant: ChatMessage = {
+			id: 'temp-assistant',
+			conversation_id: activeConversation,
+			role: 'assistant',
+			content: '',
+			tool_calls: null,
+			created_at: new Date().toISOString()
+		};
+		messages = [...messages, tempUser, tempAssistant];
 
 		try {
-			const { apiKey, baseUrl, model } = await loadSettings();
+			const { api_key, base_url, model } = await loadSettings();
 			const resp = await fetch(`${getRuntimeApiBase()}/api/agent/chat`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					conversation_id: activeConversation,
 					content,
-					api_key: apiKey,
-					base_url: baseUrl,
+					api_key,
+					base_url,
 					model
 				})
 			});
