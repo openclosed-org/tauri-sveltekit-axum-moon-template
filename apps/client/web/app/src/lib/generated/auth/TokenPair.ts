@@ -3,4 +3,4 @@
 /**
  * JWT token pair returned on successful authentication.
  */
-export type TokenPair = { access_token: string, refresh_token: string, expires_in: bigint, };
+export type TokenPair = { access_token: string, refresh_token: string, expires_in: number, };

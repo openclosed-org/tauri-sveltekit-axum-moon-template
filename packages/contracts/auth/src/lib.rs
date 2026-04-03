@@ -10,6 +10,7 @@ use utoipa::ToSchema;
 pub struct TokenPair {
     pub access_token: String,
     pub refresh_token: String,
+    #[ts(type = "number")]
     pub expires_in: i64,
 }
 
