@@ -1,6 +1,6 @@
 # Managed by mise — do not edit manually
 # Install all tools: `mise install`
 # https://mise.jdx.dev/
-rust stable
-node 24.14.0
+rust 1.94.1
+node 25.9
 bun 1.3.11

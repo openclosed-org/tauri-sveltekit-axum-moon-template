@@ -1,5 +1,4 @@
 [workspace]
-# NOTE: workers/*, tools/* members will be added when crates are created
 members = [
     "apps/client/native/src-tauri",
     "servers/api",
@@ -37,6 +36,9 @@ useless_conversion = "warn"
 dead_code = "allow"
 unused_imports = "allow"
 unused_variables = "allow"
+
+[workspace.package]
+rust-version = "1.94"
 
 [workspace.dependencies]
 # Internal crates

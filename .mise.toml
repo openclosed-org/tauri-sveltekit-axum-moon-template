@@ -1,0 +1,11 @@
+# Project-level mise config — overrides global for this repo
+[tools]
+rust = "1.94.1"
+node = "25.9"
+bun = "1.3.11"
+
+# Disable broken aqua tools — installed via cargo instead
+[settings]
+disable_tools = ["aqua:cargo-binstall/cargo-binstall", "aqua:cargo-nextest/cargo-nextest"]
+experimental = true
+jobs = 4
