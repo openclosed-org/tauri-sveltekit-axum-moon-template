@@ -1,6 +1,7 @@
 import { goto } from '$app/navigation';
 import { listen } from '@tauri-apps/api/event';
-import { getSession, startOAuth, clearAuthStore, type AuthSession, type UserProfile } from '$lib/ipc/auth';
+import { getSession, startOAuth, clearAuthStore, type AuthSession } from '$lib/ipc/auth';
+import type { UserProfile } from '$lib/generated/auth/UserProfile';
 
 export const auth = $state({
 	isAuthenticated: false,
@@ -17,10 +18,10 @@ export const auth = $state({
 export async function checkSession(): Promise<boolean> {
 	try {
 		const session = await getSession();
-		if (session && session.expires_at > Date.now() / 1000) {
+		if (session && session.tokens.expires_in > Date.now() / 1000) {
 			auth.isAuthenticated = true;
 			auth.currentUser = session.user;
-			auth.tokenExpiresAt = session.expires_at;
+			auth.tokenExpiresAt = session.tokens.expires_in;
 			return true;
 		}
 		// Session expired — clear stale data
@@ -63,7 +64,7 @@ export async function signInWithGoogle(): Promise<void> {
 export function setSession(session: AuthSession): void {
 	auth.isAuthenticated = true;
 	auth.currentUser = session.user;
-	auth.tokenExpiresAt = session.expires_at;
+	auth.tokenExpiresAt = session.tokens.expires_in;
 	auth.authLoading = false;
 	auth.authError = null;
 }
