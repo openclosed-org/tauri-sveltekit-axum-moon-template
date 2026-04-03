@@ -15,7 +15,7 @@
 - [ ] **Phase 5: Agent-Friendly 开发基建** — AGENTS.md, skills, playbooks, rubrics, eval suites
 - [ ] **Phase 6: 连接 Auth Adapter 到 Tauri 命令** — 将 GoogleAuthAdapter 通过 AuthService trait 接入 Tauri auth commands
 - [ ] **Phase 7: 前端消费 Generated Types** — 替换 inline types 为 typegen 产出，闭环 contracts → frontend 类型链路
-- [ ] **Phase 8: Agent 双路径 + Prompts + Phase 5 验证** — Agent 页面 Tauri IPC 双路径、补全 prompts、生成 Phase 5 VERIFICATION.md
+- [x] **Phase 8: Agent 双路径 + Prompts + Phase 5 验证** — Agent 页面 Tauri IPC 双路径、补全 prompts、生成 Phase 5 VERIFICATION.md (completed 2026-04-03)
 
 ## Phase Details
 
@@ -132,11 +132,11 @@ Plans:
   2. .agents/prompts/ 包含 add-feature, add-host, refactor-boundary 等标准 prompt 模板
   3. Phase 5 存在 VERIFICATION.md 且通过验证
   4. Agent Desktop Mode E2E flow 完整（Tauri 桌面模式无需外部 API server）
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 Plans:
 - [x] 08-01-PLAN.md — IPC dual-path: lib/ipc/agent.ts + Rust agent_chat command + page refactor
 - [x] 08-02-PLAN.md — Prompts templates + Phase 5 VERIFICATION.md
-- [ ] 08-03-PLAN.md — Desktop Mode E2E verification (has human checkpoint)
+- [x] 08-03-PLAN.md — Desktop Mode E2E verification (has human checkpoint)
 
 ## Progress Table
 
@@ -149,7 +149,7 @@ Plans:
 | 5. Agent-Friendly 开发基建 | 0/TBD | Not started | - |
 | 6. 连接 Auth Adapter 到 Tauri 命令 | 0/TBD | Gap Closure | - |
 | 7. 前端消费 Generated Types | 2/3 | In Progress|  |
-| 8. Agent 双路径 + Prompts + Phase 5 验证 | 2/3 | In Progress|  |
+| 8. Agent 双路径 + Prompts + Phase 5 验证 | 3/3 | Complete   | 2026-04-03 |
 
 ## Coverage Map (v0.2.0)
 

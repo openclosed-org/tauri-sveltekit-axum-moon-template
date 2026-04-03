@@ -31,7 +31,7 @@
 
 ### Agent-Friendly 开发基建
 
-- [ ] **AGENT-DEV-01**: .agents/ 目录包含 skills、prompts、playbooks、rubrics，agent 可读取规则、发现工具、执行任务、验证结果
+- [x] **AGENT-DEV-01**: .agents/ 目录包含 skills、prompts、playbooks、rubrics，agent 可读取规则、发现工具、执行任务、验证结果
 
 ## Future Requirements (Deferred)
 
