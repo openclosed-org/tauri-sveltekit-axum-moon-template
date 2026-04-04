@@ -17,10 +17,10 @@ async fn main() -> Result<(), AppError> {
     // Initialize tracing with structured logging
     let filter = EnvFilter::try_from_default_env()
         .unwrap_or_else(|_| EnvFilter::new("info,runtime_server=debug"));
-    tracing_subscriber::registry()
+    let _ = tracing_subscriber::registry()
         .with(fmt::layer().with_target(true).with_thread_ids(true))
         .with(filter)
-        .init();
+        .try_init();
 
     // Try to load config from environment, fall back to defaults
     let config = Config::from_env().unwrap_or_default();

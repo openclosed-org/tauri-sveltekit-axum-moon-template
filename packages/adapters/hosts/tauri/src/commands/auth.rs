@@ -6,10 +6,8 @@ use tauri::AppHandle;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct AuthSession {
-    pub access_token: String,
-    pub refresh_token: String,
+    pub tokens: contracts_auth::TokenPair,
     pub id_token: String,
-    pub expires_at: u64,
     pub user: UserProfile,
 }
 
@@ -28,10 +26,12 @@ impl TauriAuthService {
 
     fn convert_session(session: adapter_google::AuthSession) -> AuthSession {
         AuthSession {
-            access_token: session.access_token,
-            refresh_token: session.refresh_token,
+            tokens: contracts_auth::TokenPair {
+                access_token: session.access_token,
+                refresh_token: session.refresh_token,
+                expires_in: i64::try_from(session.expires_at).unwrap_or(0),
+            },
             id_token: session.id_token,
-            expires_at: session.expires_at,
             user: UserProfile {
                 email: session.user.email,
                 name: session.user.name,

@@ -22,14 +22,15 @@ pub struct AppState {
 /// tauri-plugin-log will also capture log events and send them to WebView.
 /// Together they give you: terminal + WebView + log file from a single tracing tree.
 fn init_observability() {
+    // Bridge log crate → tracing (must happen before tracing_subscriber)
     let _ = tracing_log::LogTracer::init();
 
     let filter = EnvFilter::try_from_default_env()
         .unwrap_or_else(|_| EnvFilter::new("info,native_tauri=debug"));
-    tracing_subscriber::registry()
+    let _ = tracing_subscriber::registry()
         .with(fmt::layer().with_target(true).with_thread_ids(true))
         .with(filter)
-        .init();
+        .try_init();
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -60,17 +61,10 @@ pub fn run() {
     let app_state = AppState { db };
 
     let log_plugin = tauri_plugin_log::Builder::default()
+        .skip_logger()
         .level(log::LevelFilter::Debug)
         .target(tauri_plugin_log::Target::new(
-            tauri_plugin_log::TargetKind::Stdout,
-        ))
-        .target(tauri_plugin_log::Target::new(
             tauri_plugin_log::TargetKind::Webview,
-        ))
-        .target(tauri_plugin_log::Target::new(
-            tauri_plugin_log::TargetKind::LogDir {
-                file_name: Some("app".into()),
-            },
         ))
         .build();
 
