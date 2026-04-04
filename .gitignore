@@ -37,6 +37,11 @@ node_modules/
 # --- Playwright ---
 **/playwright-report/
 **/test-results/
+**/playwright-results.json
+**/playwright-results.xml
+
+# --- Desktop E2E (WebDriverIO) ---
+e2e-tests/node_modules/
 
 # --- Tauri generated ---
 apps/client/native/src-tauri/target/

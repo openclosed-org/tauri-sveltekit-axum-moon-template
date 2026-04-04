@@ -11,10 +11,11 @@
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "lint": "biome check .",
     "format": "biome format --write .",
-    "test:unit": "vitest run",
-    "test:e2e": "playwright test",
-    "test:mobile": "maestro test tests/flow/"
-  },
+		"test:unit": "vitest run",
+		"test:e2e": "playwright test",
+		"test:mobile": "maestro test tests/flow/",
+		"test:desktop": "bun run --cwd ../../../../e2e-tests test"
+	},
   "dependencies": {
     "@jis3r/icons": "^2.7.0",
     "@lottiefiles/dotlottie-svelte": "^0.9.8",

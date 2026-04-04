@@ -84,11 +84,31 @@ tasks:
       - 'apps/client/web/app/**/*'
 
   dev-desktop:
-    script: 'cd apps/client/native/src-tauri && cargo tauri dev'
-    deps:
-      - 'dev-api'
+    script: |
+      # Start Axum API server in background
+      cargo run -p runtime_server &
+      API_PID=$!
+
+      # Wait for API server to be ready
+      echo "Waiting for API server..."
+      for i in $(seq 1 30); do
+        if rtk nc -z localhost 3001 2>/dev/null; then
+          echo "API server ready on port 3001"
+          break
+        fi
+        sleep 1
+      done
+
+      # Start Tauri dev (blocking)
+      cd apps/client/native/src-tauri && cargo tauri dev
+      Tauri_EXIT=$?
+
+      # Cleanup API server
+      kill $API_PID 2>/dev/null
+      exit $Tauri_EXIT
     inputs:
       - 'apps/client/native/**/*'
+      - 'servers/api/**/*'
 
   dev-api:
     command: 'cargo run -p runtime_server'
@@ -169,6 +189,9 @@ tasks:
   test-e2e:
     script: 'cd apps/client/web/app && bun run test:e2e'
 
+  test-desktop:
+    script: 'cd e2e-tests && bun run test'
+
   test-agent:
     command: 'echo "Agent tests — Phase 5 implementation"'
 
@@ -183,6 +206,7 @@ tasks:
       - 'client-web:check'
       - 'client-web:lint'
       - 'test-e2e'
+      - 'test-desktop'
 
   boundary-check:
     command:
