@@ -1,4 +1,4 @@
-import { render, cleanup } from '@testing-library/svelte';
+import { render, cleanup, waitFor } from '@testing-library/svelte';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 
 // Mock bits-ui components that may not resolve in test env
@@ -9,75 +9,109 @@ vi.mock('bits-ui', () => ({
 }));
 
 describe('AdminPage', () => {
+	async function renderAdminPage(mockStats = {
+		tenant_count: 12,
+		counter_value: 34,
+		last_login: '2026-01-01T00:00:00Z',
+		app_version: '1.2.3'
+	}) {
+		const invoke = vi.fn(async () => mockStats);
+		(window as Window & { __TAURI__?: unknown }).__TAURI__ = {
+			core: { invoke }
+		};
+
+		const AdminPage = (await import('../../src/routes/(app)/admin/+page.svelte')).default;
+		return { ...render(AdminPage), invoke };
+	}
+
 	afterEach(() => {
+		(window as Window & { __TAURI__?: unknown }).__TAURI__ = undefined;
 		cleanup();
 	});
 
 	it('renders the dashboard title', async () => {
-		const AdminPage = (await import('../../src/routes/(app)/admin/+page.svelte')).default;
-		const { getByText } = render(AdminPage);
+		const { getByText } = await renderAdminPage();
 		expect(getByText('Admin Dashboard')).toBeTruthy();
 	});
 
 	it('displays the dashboard subtitle', async () => {
-		const AdminPage = (await import('../../src/routes/(app)/admin/+page.svelte')).default;
-		const { getAllByText } = render(AdminPage);
-		// Subtitle may appear twice due to Svelte hydration
-		const matches = getAllByText(/overview of your application metrics/i);
-		expect(matches.length).toBeGreaterThan(0);
+		const { getByText } = await renderAdminPage();
+		expect(getByText(/real-time application metrics/i)).toBeTruthy();
 	});
 
 	it('renders all four stat cards', async () => {
-		const AdminPage = (await import('../../src/routes/(app)/admin/+page.svelte')).default;
-		const { getByText } = render(AdminPage);
+		const { getByText } = await renderAdminPage();
 
-		expect(getByText('Total Users')).toBeTruthy();
-		expect(getByText('Active Sessions')).toBeTruthy();
-		expect(getByText('Revenue')).toBeTruthy();
-		expect(getByText('Growth')).toBeTruthy();
+		expect(getByText('Tenants')).toBeTruthy();
+		expect(getByText('Counter')).toBeTruthy();
+		expect(getByText('Last Login')).toBeTruthy();
+		expect(getByText('Version')).toBeTruthy();
 	});
 
 	it('displays stat card values', async () => {
-		const AdminPage = (await import('../../src/routes/(app)/admin/+page.svelte')).default;
-		const { getByText } = render(AdminPage);
+		const { getByText } = await renderAdminPage({
+			tenant_count: 99,
+			counter_value: 7,
+			last_login: null,
+			app_version: '9.9.9'
+		});
 
-		expect(getByText('12,345')).toBeTruthy();
-		expect(getByText('1,234')).toBeTruthy();
-		expect(getByText('$45,678')).toBeTruthy();
-		expect(getByText('8.2%')).toBeTruthy();
+		await waitFor(() => {
+			expect(getByText('99')).toBeTruthy();
+			expect(getByText('7')).toBeTruthy();
+			expect(getByText('N/A')).toBeTruthy();
+			expect(getByText('9.9.9')).toBeTruthy();
+		});
 	});
 
-	it('shows percentage change badges', async () => {
-		const AdminPage = (await import('../../src/routes/(app)/admin/+page.svelte')).default;
-		const { getAllByText } = render(AdminPage);
+	it('shows loading placeholders before stats resolve', async () => {
+		let resolveInvoke: ((value: unknown) => void) | null = null;
+		const invoke = vi.fn(
+			() =>
+				new Promise((resolve) => {
+					resolveInvoke = resolve;
+				})
+		);
+		(window as Window & { __TAURI__?: unknown }).__TAURI__ = {
+			core: { invoke }
+		};
 
-		expect(getAllByText('+12%').length).toBeGreaterThan(0);
-		expect(getAllByText('+5%').length).toBeGreaterThan(0);
-		expect(getAllByText('+23%').length).toBeGreaterThan(0);
-		expect(getAllByText('+1.2%').length).toBeGreaterThan(0);
+		const AdminPage = (await import('../../src/routes/(app)/admin/+page.svelte')).default;
+		const { getAllByText, getByText } = render(AdminPage);
+
+		expect(getAllByText('...').length).toBeGreaterThan(0);
+
+		resolveInvoke?.({
+			tenant_count: 1,
+			counter_value: 2,
+			last_login: null,
+			app_version: '1.0.0'
+		});
+
+		await waitFor(() => {
+			expect(getByText('1.0.0')).toBeTruthy();
+		});
 	});
 
-	it('renders chart placeholder sections', async () => {
-		const AdminPage = (await import('../../src/routes/(app)/admin/+page.svelte')).default;
-		const { getByText } = render(AdminPage);
+	it('invokes admin command once on mount', async () => {
+		const { invoke } = await renderAdminPage();
 
-		expect(getByText('Revenue Over Time')).toBeTruthy();
-		expect(getByText('User Activity')).toBeTruthy();
+		await waitFor(() => {
+			expect(invoke).toHaveBeenCalledWith('admin_get_dashboard_stats');
+		});
 	});
 
-	it('has a responsive grid layout for stat cards', async () => {
-		const AdminPage = (await import('../../src/routes/(app)/admin/+page.svelte')).default;
-		const { container } = render(AdminPage);
+	it('renders card shells with responsive grid layout', async () => {
+		const { container } = await renderAdminPage();
 
-		const gridContainer = container.querySelector('.grid');
+		const gridContainer = container.querySelector('.grid.grid-cols-1.sm\\:grid-cols-2.lg\\:grid-cols-4');
 		expect(gridContainer).toBeTruthy();
 	});
 
-	it('renders chart bar elements', async () => {
-		const AdminPage = (await import('../../src/routes/(app)/admin/+page.svelte')).default;
-		const { container } = render(AdminPage);
+	it('renders exactly four stat cards', async () => {
+		const { container } = await renderAdminPage();
 
-		const bars = container.querySelectorAll('[style*="height"]');
-		expect(bars.length).toBe(24); // 12 bars per chart, 2 charts
+		const cards = container.querySelectorAll('.rounded-lg.border');
+		expect(cards.length).toBe(4);
 	});
 });

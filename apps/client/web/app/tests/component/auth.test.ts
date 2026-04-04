@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { AuthSession } from '$lib/ipc/auth';
 
 // Mock Tauri APIs before importing the auth store
 vi.mock('@tauri-apps/api/event', () => ({
@@ -42,13 +43,22 @@ describe('Auth Store', () => {
 
 	it('setSession updates auth state correctly', async () => {
 		const { auth, setSession } = await import('$lib/stores/auth.svelte');
-		const mockSession = {
-			user: { sub: 'google-123', name: 'Test User', email: 'test@example.com' },
-			expires_at: Math.floor(Date.now() / 1000) + 3600,
-			access_token: 'mock-token'
+		const mockSession: AuthSession = {
+			tokens: {
+				access_token: 'mock-token',
+				refresh_token: 'mock-refresh-token',
+				expires_in: Math.floor(Date.now() / 1000) + 3600
+			},
+			id_token: 'mock-id-token',
+			user: {
+				email: 'test@example.com',
+				name: 'Test User',
+				picture: 'https://example.com/avatar.png',
+				sub: 'google-123'
+			}
 		};
 
-		setSession(mockSession as any);
+		setSession(mockSession);
 
 		expect(auth.isAuthenticated).toBe(true);
 		expect(auth.currentUser).toEqual(mockSession.user);
@@ -74,11 +84,21 @@ describe('Auth Store', () => {
 		const { auth, setSession, signOut } = await import('$lib/stores/auth.svelte');
 
 		// First set a session
-		setSession({
-			user: { sub: 'google-123', name: 'Test', email: 'test@test.com' },
-			expires_at: Math.floor(Date.now() / 1000) + 3600,
-			access_token: 'token'
-		} as any);
+		const mockSession: AuthSession = {
+			tokens: {
+				access_token: 'token',
+				refresh_token: 'refresh-token',
+				expires_in: Math.floor(Date.now() / 1000) + 3600
+			},
+			id_token: 'id-token',
+			user: {
+				email: 'test@test.com',
+				name: 'Test',
+				picture: 'https://example.com/avatar.png',
+				sub: 'google-123'
+			}
+		};
+		setSession(mockSession);
 		expect(auth.isAuthenticated).toBe(true);
 
 		// Then sign out
@@ -92,11 +112,21 @@ describe('Auth Store', () => {
 		const { auth, setSession, markExpired } = await import('$lib/stores/auth.svelte');
 
 		// Set session first
-		setSession({
-			user: { sub: 'google-123', name: 'Test', email: 'test@test.com' },
-			expires_at: Math.floor(Date.now() / 1000) + 3600,
-			access_token: 'token'
-		} as any);
+		const mockSession: AuthSession = {
+			tokens: {
+				access_token: 'token',
+				refresh_token: 'refresh-token',
+				expires_in: Math.floor(Date.now() / 1000) + 3600
+			},
+			id_token: 'id-token',
+			user: {
+				email: 'test@test.com',
+				name: 'Test',
+				picture: 'https://example.com/avatar.png',
+				sub: 'google-123'
+			}
+		};
+		setSession(mockSession);
 
 		await markExpired();
 		expect(auth.isAuthenticated).toBe(false);
