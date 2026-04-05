@@ -6971,6 +6971,7 @@ dependencies = [
  "async-trait",
  "base64 0.22.1",
  "chrono",
+ "contracts_api",
  "contracts_auth",
  "domain",
  "dotenvy",

@@ -33,6 +33,13 @@ fn init_observability() {
         .try_init();
 }
 
+fn resolve_dotenv_path(start_dir: &std::path::Path) -> Option<std::path::PathBuf> {
+    start_dir
+        .ancestors()
+        .map(|dir| dir.join(".env"))
+        .find(|path| path.is_file())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     init_observability();
@@ -55,6 +62,14 @@ pub fn run() {
             .await
             .expect("Failed to run counter migration")
     });
+
+    for migration in usecases::agent_service::AGENT_MIGRATIONS {
+        let _ = rt.block_on(async {
+            db.execute(migration, vec![])
+                .await
+                .expect("Failed to run agent migration")
+        });
+    }
 
     // Register EmbeddedLibSql for runtime_tauri commands (counter, admin)
     let db_for_commands = db.clone();
@@ -88,6 +103,9 @@ pub fn run() {
             counter::counter_reset,
             counter::counter_get_value,
             admin::admin_get_dashboard_stats,
+            agent::agent_create_conversation,
+            agent::agent_list_conversations,
+            agent::agent_get_messages,
             agent::agent_chat,
             commands::sync::sync_start,
             commands::sync::sync_stop,
@@ -111,22 +129,20 @@ pub fn run() {
             let cwd = std::env::current_dir().unwrap_or_default();
             tracing::debug!(?cwd, "startup");
 
-            let project_root = std::path::PathBuf::from(
-                "/Users/sherlocktang/projects/tauri-sveltekit-axum-moon-template",
-            );
-            let env_path = project_root.join(".env");
-            tracing::debug!(?env_path, "looking for .env");
-
-            if env_path.exists() {
-                let _ = std::env::set_current_dir(&project_root);
-                let _ = dotenvy::dotenv_override();
-                tracing::info!("loaded .env from project root");
+            if let Some(env_path) = resolve_dotenv_path(&cwd) {
+                tracing::debug!(?env_path, "looking for .env");
+                match dotenvy::from_path_override(&env_path) {
+                    Ok(_) => tracing::info!(?env_path, "loaded .env"),
+                    Err(error) => tracing::warn!(?env_path, %error, "failed to load .env"),
+                }
             }
 
             let client_id = std::env::var("GOOGLE_CLIENT_ID").unwrap_or_default();
+            let client_secret = std::env::var("GOOGLE_CLIENT_SECRET").unwrap_or_default();
             let api_url = std::env::var("API_URL").unwrap_or_default();
             tracing::info!(
                 client_id_len = client_id.len(),
+                client_secret_len = client_secret.len(),
                 %api_url,
                 "config loaded"
             );

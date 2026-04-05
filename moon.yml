@@ -110,6 +110,11 @@ tasks:
       - 'apps/client/native/**/*'
       - 'servers/api/**/*'
 
+  dev-desktop-win:
+    command: 'cd apps/client/native/src-tauri && cargo tauri dev'
+    inputs:
+      - 'apps/client/native/**/*'
+
   dev-api:
     command: 'cargo run -p runtime_server'
     deps:
@@ -191,6 +196,13 @@ tasks:
 
   test-desktop:
     script: 'cd e2e-tests && bun run test'
+    inputs:
+      - 'e2e-tests/**/*.mjs'
+      - 'e2e-tests/package.json'
+      - 'apps/client/native/**/*'
+      - 'apps/client/web/app/**/*'
+    deps:
+      - '~:setup'
 
   test-agent:
     command: 'echo "Agent tests — Phase 5 implementation"'

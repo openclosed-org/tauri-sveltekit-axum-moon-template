@@ -4,10 +4,17 @@
   "version": "0.1.0",
   "identifier": "com.example.app",
   "build": {
-    "beforeDevCommand": "cd ../web/app && bun run dev",
+    "beforeDevCommand": {
+      "script": "bun run dev",
+      "cwd": "../../web/app",
+      "wait": false
+    },
     "devUrl": "http://localhost:5173",
-    "beforeBuildCommand": "cd ../web/app && bun run build",
-    "frontendDist": "../web/app/build"
+    "beforeBuildCommand": {
+      "script": "bun run build",
+      "cwd": "../../web/app"
+    },
+    "frontendDist": "../../web/app/build"
   },
   "app": {
     "windows": [

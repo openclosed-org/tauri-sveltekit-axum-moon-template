@@ -81,12 +81,42 @@ struct RefreshResponse {
 // ── Config helpers ─────────────────────────────────────────────
 
 fn client_id() -> String {
-    std::env::var("GOOGLE_CLIENT_ID").unwrap_or_else(|_| "YOUR_GOOGLE_CLIENT_ID".to_string())
+    oauth_env("GOOGLE_CLIENT_ID", "YOUR_GOOGLE_CLIENT_ID").unwrap_or_else(|error| {
+        tracing::warn!(%error, "invalid GOOGLE_CLIENT_ID configuration");
+        "YOUR_GOOGLE_CLIENT_ID".to_string()
+    })
 }
 
 fn client_secret() -> String {
-    std::env::var("GOOGLE_CLIENT_SECRET")
-        .unwrap_or_else(|_| "YOUR_GOOGLE_CLIENT_SECRET".to_string())
+    oauth_env("GOOGLE_CLIENT_SECRET", "YOUR_GOOGLE_CLIENT_SECRET").unwrap_or_else(|error| {
+        tracing::warn!(%error, "invalid GOOGLE_CLIENT_SECRET configuration");
+        "YOUR_GOOGLE_CLIENT_SECRET".to_string()
+    })
+}
+
+fn oauth_env(key: &'static str, placeholder: &'static str) -> Result<String, String> {
+    let raw = std::env::var(key).unwrap_or_default();
+    let mut normalized = raw.trim().to_string();
+
+    if normalized.ends_with(';') {
+        normalized.pop();
+        normalized = normalized.trim_end().to_string();
+        tracing::warn!(%key, "trimmed trailing semicolon from OAuth env var");
+    }
+
+    let has_double_quotes = normalized.starts_with('"') && normalized.ends_with('"');
+    let has_single_quotes = normalized.starts_with('\'') && normalized.ends_with('\'');
+
+    if has_double_quotes || has_single_quotes {
+        normalized = normalized[1..normalized.len().saturating_sub(1)].to_string();
+        tracing::warn!(%key, "trimmed wrapping quotes from OAuth env var");
+    }
+
+    if normalized.is_empty() || normalized == placeholder {
+        return Err(format!("{key} is missing or still using placeholder value"));
+    }
+
+    Ok(normalized)
 }
 
 // ── GoogleAuthAdapter ──────────────────────────────────────────

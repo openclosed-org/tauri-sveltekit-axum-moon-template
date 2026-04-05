@@ -55,6 +55,10 @@ dev-api:
 dev-desktop:
     moon run repo:dev-desktop
 
+# 启动 Tauri 桌面应用（手动调试用）
+dev-tauri:
+    cd apps/client/native/src-tauri && cargo tauri dev
+
 # 生成类型定义并同步到前端
 typegen:
     moon run repo:typegen
