@@ -4,6 +4,9 @@
 set shell := ["bash", "-cu"]
 set export  # 导出环境变量到子进程
 
+# ── 模块导入 ────────────────────────────────────────────────
+import? 'justfiles/processes.just'
+
 # ── 默认行为 ────────────────────────────────────────────────
 
 default:
@@ -118,61 +121,6 @@ test-all-rust:
 # 运行全部前端测试
 test-all-frontend:
     moon run repo:test-all-frontend
-
-# ── 进程管理 ───────────────────────────────────────────────
-
-# 查看本项目相关进程状态
-ps:
-    @echo "=== 项目进程状态 ==="
-    @echo ""
-    @echo "--- API Server (port 3001) ---"
-    @rtk lsof -i :3001 2>/dev/null | grep LISTEN || echo "  [STOPPED]"
-    @echo ""
-    @echo "--- Vite Dev Server (port 5173) ---"
-    @rtk lsof -i :5173 2>/dev/null | grep LISTEN || echo "  [STOPPED]"
-    @echo ""
-    @echo "--- Tauri Desktop App ---"
-    @pgrep -la "native-tauri" 2>/dev/null || echo "  [STOPPED]"
-    @echo ""
-    @echo "--- 孤儿进程 (zombie/defunct) ---"
-    @rtk ps aux | grep -E "Z|defunct" | grep -v grep || echo "  [NONE]"
-
-# 停止所有本项目启动的开发进程
-stop:
-    @echo "正在停止所有开发进程..."
-    @pkill -f "cargo run -p runtime_server" 2>/dev/null && echo "  ✓ API server stopped" || echo "  - API server not running"
-    @pkill -f "runtime_server" 2>/dev/null && echo "  ✓ runtime_server stopped" || true
-    @pkill -f "cargo tauri dev" 2>/dev/null && echo "  ✓ Tauri dev stopped" || echo "  - Tauri dev not running"
-    @pkill -f "native-tauri" 2>/dev/null && echo "  ✓ native-tauri stopped" || echo "  - native-tauri not running"
-    @pkill -f "cd ../web/app && bun run dev" 2>/dev/null && echo "  ✓ Vite (Tauri child) stopped" || true
-    @pkill -f "cd apps/client/web/app && bun run dev" 2>/dev/null && echo "  ✓ Vite (standalone) stopped" || true
-    @pkill -f "vite dev" 2>/dev/null && echo "  ✓ vite dev stopped" || true
-    @pkill -f "moon run repo:dev" 2>/dev/null && echo "  ✓ moon tasks stopped" || true
-    @echo "清理完成"
-
-# 停止指定端口的进程
-stop-port PORT='':
-    @test -n "{{PORT}}" || (echo "Usage: just stop-port PORT=3001" && exit 1)
-    @rtk lsof -ti :{{PORT}} 2>/dev/null | xargs kill -9 2>/dev/null && echo "  ✓ Port {{PORT}} freed" || echo "  - Nothing on port {{PORT}}"
-
-# 清理所有孤儿/僵尸进程（当前用户的）
-clean-orphans:
-    @echo "正在清理当前用户的孤儿/僵尸进程..."
-    @rtk ps aux | awk '$8 ~ /Z/ {print $2}' | xargs -r kill -9 2>/dev/null && echo "  ✓ Zombie processes cleaned" || echo "  - No zombie processes found"
-    @echo "完成"
-
-# 显示端口占用详情
-ports:
-    @echo "=== 项目端口占用 ==="
-    @echo ""
-    @echo "Port 3001 (API):"
-    @rtk lsof -i :3001 2>/dev/null | grep -v COMMAND || echo "  [FREE]"
-    @echo ""
-    @echo "Port 5173 (Vite):"
-    @rtk lsof -i :5173 2>/dev/null | grep -v COMMAND || echo "  [FREE]"
-    @echo ""
-    @echo "Port 1420 (Tauri fallback):"
-    @rtk lsof -i :1420 2>/dev/null | grep -v COMMAND || echo "  [FREE]"
 
 # ── 清理 ───────────────────────────────────────────────────
 
