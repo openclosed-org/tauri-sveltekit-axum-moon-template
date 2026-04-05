@@ -1,11 +1,11 @@
 # Justfile — 统一人类/Agent 命令入口
-# 工具链由 mise 管理，任务编排由 moon 负责
+# 工具链由 mise 管理,任务编排由 moon 负责
 # Justfile 只暴露稳定、可读性高的接口
-set shell := ["bash", "-cu"]
 set export  # 导出环境变量到子进程
 
 # ── 模块导入 ────────────────────────────────────────────────
 import? 'justfiles/processes.just'
+import? 'justfiles/skills.just'
 
 # ── 默认行为 ────────────────────────────────────────────────
 
