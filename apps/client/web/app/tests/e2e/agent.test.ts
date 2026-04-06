@@ -71,4 +71,74 @@ test.describe('Agent Chat (E2E)', () => {
 
 		await expect(page).toHaveURL(/\/login/, { timeout: 10000 });
 	});
+
+	test('New Chat clears current thread and keeps settings state stable', async ({ page }) => {
+		const url = page.url();
+		if (url.includes('/login')) return;
+
+		const conversations = [{ id: 'conv-1', title: 'Chat 1', created_at: '2026-04-06T00:00:00Z' }];
+		const messagesByConversation: Record<string, Array<Record<string, string | null>>> = {
+			'conv-1': [
+				{
+					id: 'msg-1',
+					conversation_id: 'conv-1',
+					role: 'assistant',
+					content: 'existing seeded message',
+					tool_calls: null,
+					created_at: '2026-04-06T00:00:01Z'
+				}
+			]
+		};
+
+		await page.route('**/api/agent/conversations', async (route) => {
+			const method = route.request().method();
+			if (method === 'GET') {
+				await route.fulfill({ json: conversations });
+				return;
+			}
+
+			if (method === 'POST') {
+				const next = {
+					id: `conv-${conversations.length + 1}`,
+					title: `Chat ${conversations.length + 1}`,
+					created_at: '2026-04-06T00:00:02Z'
+				};
+				conversations.push(next);
+				messagesByConversation[next.id] = [];
+				await route.fulfill({ json: next });
+				return;
+			}
+
+			await route.fallback();
+		});
+
+		await page.route('**/api/agent/conversations/*/messages', async (route) => {
+			const conversationId = route.request().url().split('/').slice(-2)[0];
+			await route.fulfill({ json: messagesByConversation[conversationId] ?? [] });
+		});
+
+		await page.goto('/agent');
+		await page.waitForLoadState('networkidle');
+
+		await expect(page.getByText('existing seeded message')).toBeVisible();
+		await page.getByRole('button', { name: /new chat/i }).click();
+
+		await expect(page.getByText('existing seeded message')).toHaveCount(0);
+		await expect(page.locator('aside button', { hasText: 'Chat 2' })).toHaveClass(/bg-primary-50/);
+
+		await page.goto('/settings');
+		await page.waitForLoadState('networkidle');
+		const firstApiKey = await page.locator('#api_key').inputValue();
+		const firstBaseUrl = await page.locator('#base_url').inputValue();
+		const firstModel = await page.locator('#model').inputValue();
+
+		await page.goto('/agent');
+		await page.waitForLoadState('networkidle');
+		await page.goto('/settings');
+		await page.waitForLoadState('networkidle');
+
+		expect(await page.locator('#api_key').inputValue()).toBe(firstApiKey);
+		expect(await page.locator('#base_url').inputValue()).toBe(firstBaseUrl);
+		expect(await page.locator('#model').inputValue()).toBe(firstModel);
+	});
 });
