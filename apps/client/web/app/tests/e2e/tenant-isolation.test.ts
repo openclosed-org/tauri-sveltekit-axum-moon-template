@@ -10,6 +10,8 @@ import {
 
 // Per D-05: Tenant isolation must have E2E behavior verification (dual coverage)
 test.describe('Tenant Isolation (E2E)', () => {
+	test.describe.configure({ mode: 'serial' });
+
 	test.beforeEach(async ({ page }) => {
 		await page.goto('/login');
 		await resetTenantPairCounter(page);

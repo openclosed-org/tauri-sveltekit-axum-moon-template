@@ -1,11 +1,13 @@
 import { test, expect } from '@playwright/test';
 import { triggerMockOAuth } from '../fixtures/auth';
+import { TENANT_A, resetTenantPairCounter } from '../fixtures/tenant';
 
 test.describe('Counter Page (E2E)', () => {
 	test.beforeEach(async ({ page }) => {
+		await resetTenantPairCounter(page);
 		// Authenticate first — counter is in protected (app) route group
 		await page.goto('/login');
-		await triggerMockOAuth(page, 'counter_test_code');
+		await triggerMockOAuth(page, TENANT_A.mockCode);
 		await page.waitForTimeout(1500);
 		// Navigate to counter (guard may redirect if mock didn't set full state)
 		await page.goto('/counter');
