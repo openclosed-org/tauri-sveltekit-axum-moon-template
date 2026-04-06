@@ -151,8 +151,14 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: playwright-report-${{ matrix.os }}
-          path: apps/client/web/app/playwright-report/
+          name: web-e2e-evidence-${{ github.job }}-${{ matrix.os }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            apps/client/web/app/playwright-report/
+            apps/client/web/app/playwright-results.xml
+            apps/client/web/app/playwright-results.json
+            apps/client/web/app/test-results/
+            apps/client/web/app/tests/fixtures/tenant.ts
+          retention-days: 7
 
   # ============================================
   # Summary Report
