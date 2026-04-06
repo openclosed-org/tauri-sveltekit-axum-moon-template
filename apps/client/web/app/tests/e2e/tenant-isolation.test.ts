@@ -1,14 +1,29 @@
 import { test, expect } from '@playwright/test';
 import { triggerMockOAuth } from '../fixtures/auth';
+import {
+	TENANT_A,
+	TENANT_B,
+	TENANT_LABELS,
+	initTenantPair,
+	resetTenantPairCounter
+} from '../fixtures/tenant';
 
 // Per D-05: Tenant isolation must have E2E behavior verification (dual coverage)
 test.describe('Tenant Isolation (E2E)', () => {
-	test('tenant init API responds with tenant_id', async ({ page }) => {
+	test.beforeEach(async ({ page }) => {
 		await page.goto('/login');
+		await resetTenantPairCounter(page);
+	});
 
-		// The mock OAuth flow triggers tenant initialization
-		// After callback, tenant should be created/returned
-		await triggerMockOAuth(page, 'tenant_test_code');
+	test('harness exposes exactly two stable tenant identities', async () => {
+		expect(TENANT_LABELS).toEqual(['tenant-A', 'tenant-B']);
+		expect(TENANT_A.label).toBe('tenant-A');
+		expect(TENANT_B.label).toBe('tenant-B');
+	});
+
+	test('tenant init API responds with tenant_id', async ({ page }) => {
+		await initTenantPair(page);
+		await triggerMockOAuth(page, TENANT_A.mockCode);
 
 		// Page should remain functional (no crash from tenant init)
 		// Verify the page is still accessible
