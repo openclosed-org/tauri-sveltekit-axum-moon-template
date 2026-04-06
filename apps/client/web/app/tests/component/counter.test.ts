@@ -83,13 +83,13 @@ describe('CounterPage', () => {
 			expect(display?.textContent?.trim()).toBe('5');
 		});
 
-		counterValue = 42;
+		counterValue = 41;
 		await fireEvent.click(buttons[1]);
 		await waitFor(() => {
 			expect(display?.textContent?.trim()).toBe('42');
 		});
 
-		counterValue = 7;
+		counterValue = 8;
 		await fireEvent.click(buttons[0]);
 		await waitFor(() => {
 			expect(display?.textContent?.trim()).toBe('7');
@@ -115,7 +115,7 @@ describe('CounterPage', () => {
 		counterValue = 10;
 		await fireEvent.click(buttons[1]);
 		await waitFor(() => {
-			expect(display?.textContent?.trim()).toBe('10');
+			expect(display?.textContent?.trim()).toBe('11');
 		});
 
 		failCommands.add('counter_increment');
@@ -123,7 +123,7 @@ describe('CounterPage', () => {
 		await fireEvent.click(buttons[1]);
 
 		await waitFor(() => {
-			expect(display?.textContent?.trim()).toBe('10');
+			expect(display?.textContent?.trim()).toBe('11');
 			expect(getByText('Failed to increment counter')).toBeTruthy();
 		});
 	});
