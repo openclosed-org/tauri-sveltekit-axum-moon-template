@@ -23,7 +23,7 @@ Provide a runnable, tested, production-ready engineering base with Google Auth, 
 
 **Shipped:** v0.2.0 架构蓝图对齐与核心功能实现 (2026-04-04)
 
-**Planning:** v0.2.1 跨平台测试与缺陷闭环强化 (started 2026-04-06)
+**In progress:** v0.2.1 跨平台测试与缺陷闭环强化 (started 2026-04-06)
 
 **Delivered:**
 - 仓库目录结构对齐蓝图（apps/servers/packages/crates/tools 分层）
@@ -34,6 +34,7 @@ Provide a runnable, tested, production-ready engineering base with Google Auth, 
 - Agent-Friendly 开发基建（AGENTS/skills/playbooks/rubrics/prompts）
 - 前端消费 generated types，消除 inline 重复定义
 - Agent 页面 Tauri IPC 双路径（desktop vs browser）
+- Phase 9 功能正确性基线修复完成（AUTH-02, AUTH-03, COUNTER-02, AGENT-02, AGENT-03, AGENT-04）
 
 **Known Tech Debt:**
 - AUTH-01: GoogleAuthAdapter not fully wired into Tauri commands (Phase 6 empty)
@@ -53,6 +54,10 @@ Provide a runnable, tested, production-ready engineering base with Google Auth, 
 - ✓ Agent 对话通过 OpenAI 兼容 API key 接入 — v0.2.0 Phase 04/08
 - ✓ .agents/ 目录包含 skills、prompts、playbooks、rubrics — v0.2.0 Phase 05/08
 - ✓ 前端消费 generated types，消除 inline 重复定义 — v0.2.0 Phase 07
+- ✓ Settings 可见登出动作与会话清理闭环（AUTH-02, AUTH-03）— v0.2.1 Phase 09
+- ✓ Counter 显示值与持久值一致，并具备失败可见反馈（COUNTER-02）— v0.2.1 Phase 09
+- ✓ Agent New Chat 新线程语义且保留已保存配置（AGENT-02, AGENT-03）— v0.2.1 Phase 09
+- ✓ Settings 连接诊断支持 API key/Base URL/Model 可操作反馈（AGENT-04）— v0.2.1 Phase 09
 
 ### Active (Next Milestone)
 
@@ -133,4 +138,4 @@ This document evolves at phase transitions and milestone boundaries.
 
 ---
 
-*Last updated: 2026-04-06 after v0.2.1 milestone kickoff and research*
+*Last updated: 2026-04-06 after Phase 9 completion*
