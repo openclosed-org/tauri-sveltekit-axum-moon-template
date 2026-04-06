@@ -35,6 +35,7 @@ Provide a runnable, tested, production-ready engineering base with Google Auth, 
 - 前端消费 generated types，消除 inline 重复定义
 - Agent 页面 Tauri IPC 双路径（desktop vs browser）
 - Phase 9 功能正确性基线修复完成（AUTH-02, AUTH-03, COUNTER-02, AGENT-02, AGENT-03, AGENT-04）
+- Phase 10 多租户可重复验证通道完成（MTEN-01, MTEN-02, MTEN-03；CI artifact 可用性待人工 UAT 关闭）
 
 **Known Tech Debt:**
 - AUTH-01: GoogleAuthAdapter not fully wired into Tauri commands (Phase 6 empty)
@@ -58,6 +59,7 @@ Provide a runnable, tested, production-ready engineering base with Google Auth, 
 - ✓ Counter 显示值与持久值一致，并具备失败可见反馈（COUNTER-02）— v0.2.1 Phase 09
 - ✓ Agent New Chat 新线程语义且保留已保存配置（AGENT-02, AGENT-03）— v0.2.1 Phase 09
 - ✓ Settings 连接诊断支持 API key/Base URL/Model 可操作反馈（AGENT-04）— v0.2.1 Phase 09
+- ✓ 多租户固定测试通道、tenant-scoped counter 数据流与双栈证据归档（MTEN-01, MTEN-02, MTEN-03）— v0.2.1 Phase 10
 
 ### Active (Next Milestone)
 
