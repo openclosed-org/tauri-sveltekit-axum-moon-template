@@ -107,7 +107,7 @@ Plans:
 | 7. 前端消费 Generated Types | v0.2.0 | 3/3 | Complete | 2026-04-03 |
 | 8. Agent 双路径 + Prompts + Phase 5 验证 | v0.2.0 | 3/3 | Complete | 2026-04-03 |
 | 9. 功能正确性基线修复 | v0.2.1 | 3/3 | Complete | 2026-04-06 |
-| 10. 多租户可重复验证通道 | v0.2.1 | 4/4 | Complete   | 2026-04-06 |
+| 10. 多租户可重复验证通道 | v0.2.1 | 4/4 | Complete    | 2026-04-06 |
 | 11. Windows 桌面 E2E 门禁固化 | v0.2.1 | 0/0 | Not started | - |
 | 12. 缺陷生命周期与回归强制闭环 | v0.2.1 | 0/0 | Not started | - |
 | 13. 跨平台放行证据与质量摘要 | v0.2.1 | 0/0 | Not started | - |
