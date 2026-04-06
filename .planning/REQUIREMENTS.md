@@ -59,28 +59,28 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| QGATE-01 | TBD | Pending |
-| QGATE-02 | TBD | Pending |
-| QGATE-03 | TBD | Pending |
-| BUG-01 | TBD | Pending |
-| BUG-02 | TBD | Pending |
-| BUG-03 | TBD | Pending |
-| AUTH-02 | TBD | Pending |
-| AUTH-03 | TBD | Pending |
-| MTEN-01 | TBD | Pending |
-| MTEN-02 | TBD | Pending |
-| MTEN-03 | TBD | Pending |
-| COUNTER-02 | TBD | Pending |
-| AGENT-02 | TBD | Pending |
-| AGENT-03 | TBD | Pending |
-| AGENT-04 | TBD | Pending |
+| QGATE-01 | Phase 11 | Pending |
+| QGATE-02 | Phase 13 | Pending |
+| QGATE-03 | Phase 13 | Pending |
+| BUG-01 | Phase 12 | Pending |
+| BUG-02 | Phase 12 | Pending |
+| BUG-03 | Phase 12 | Pending |
+| AUTH-02 | Phase 9 | Pending |
+| AUTH-03 | Phase 9 | Pending |
+| MTEN-01 | Phase 10 | Pending |
+| MTEN-02 | Phase 10 | Pending |
+| MTEN-03 | Phase 10 | Pending |
+| COUNTER-02 | Phase 9 | Pending |
+| AGENT-02 | Phase 9 | Pending |
+| AGENT-03 | Phase 9 | Pending |
+| AGENT-04 | Phase 9 | Pending |
 
 **Coverage:**
 - v0.2.1 requirements: 15 total
-- Mapped to phases: 0
-- Unmapped: 15 ⚠️
+- Mapped to phases: 15
+- Unmapped: 0 ✓
 
 ---
 
 *Requirements defined: 2026-04-06*
-*Last updated: 2026-04-06 after milestone v0.2.1 scoping and research*
+*Last updated: 2026-04-06 after v0.2.1 roadmap mapping*
