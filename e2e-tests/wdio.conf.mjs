@@ -93,6 +93,7 @@ registerShutdown();
 export const config = {
   host: '127.0.0.1',
   port: 4444,
+  outputDir: './test-results/wdio-logs',
   specs: ['./specs/**/*.e2e.mjs'],
   exclude: ['./specs/debug-*.e2e.mjs'],
   maxInstances: 1,

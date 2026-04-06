@@ -90,6 +90,17 @@ jobs:
           name: wdio-junit-${{ matrix.os }}
           path: e2e-tests/test-results/junit/
 
+      - name: Upload Desktop E2E Evidence
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: desktop-e2e-evidence-${{ github.job }}-${{ matrix.os }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            e2e-tests/test-results/junit/
+            e2e-tests/test-results/diagnostics/
+            e2e-tests/test-results/wdio-logs/
+          retention-days: 7
+
       - name: Print Test Summary
         if: always()
         run: |
@@ -98,6 +109,7 @@ jobs:
           echo "| Artifact | Link |" >> $GITHUB_STEP_SUMMARY
           echo "|----------|------|" >> $GITHUB_STEP_SUMMARY
           echo "| JUnit XML | [Download](artifact://wdio-junit-${{ matrix.os }}) |" >> $GITHUB_STEP_SUMMARY
+          echo "| Desktop Evidence Bundle | [Download](artifact://desktop-e2e-evidence-${{ github.job }}-${{ matrix.os }}-${{ github.run_id }}-${{ github.run_attempt }}) |" >> $GITHUB_STEP_SUMMARY
 
   # ============================================
   # Web E2E Tests (Playwright)
