@@ -8,9 +8,22 @@ An Agent-Native Cross-Platform Application Engineering Base — a production-rea
 
 Provide a runnable, tested, production-ready engineering base with Google Auth, Counter, Admin Web, Agent conversation, contracts/typegen single-truth-source, and clear architectural boundaries — so developers (and AI agents) can start building business logic immediately with minimal cognitive overhead.
 
+## Current Milestone: v0.2.1 跨平台测试与缺陷闭环强化
+
+**Goal:** 建立发布门禁级别的 Windows E2E 自动化与 Windows/macOS 完整 QA/UAT/E2E 流程，并形成持续 bug 提报-分级-修复-回归闭环。
+
+**Target features:**
+- Windows desktop E2E 成为 required check（deterministic baseline + evidence）
+- Windows + macOS QA/UAT 双平台门禁（平台差异化执行模型）
+- Bug 生命周期治理（状态、严重级、SLA、关闭定义）
+- Regression-on-fix 规则（P0/P1 修复必须补回归验证）
+- 发布质量门槛与证据看板（测试结果、缺陷状态、UAT 签核可追溯）
+
 ## Current State
 
 **Shipped:** v0.2.0 架构蓝图对齐与核心功能实现 (2026-04-04)
+
+**Planning:** v0.2.1 跨平台测试与缺陷闭环强化 (started 2026-04-06)
 
 **Delivered:**
 - 仓库目录结构对齐蓝图（apps/servers/packages/crates/tools 分层）
@@ -43,12 +56,11 @@ Provide a runnable, tested, production-ready engineering base with Google Auth, 
 
 ### Active (Next Milestone)
 
-- [ ] AUTH-01: GoogleAuthAdapter 完整接入 Tauri commands（Phase 6 gap closure）
-- [ ] Host adapter 体系做实（browser extension / miniapp host）
-- [ ] Worker replay / fixture 体系做实
-- [ ] Offline sync / retry / reconnect 策略
-- [ ] Tracing / otel sink 完整化
-- [ ] Release automation 强化
+- [ ] Windows desktop E2E required check（稳定、可重复、可审计）
+- [ ] Windows + macOS QA/UAT/E2E 双平台放行标准
+- [ ] Bug 生命周期治理与 triage 自动化
+- [ ] P0/P1 修复回归强制规则与证据归档
+- [ ] 发布质量看板与可回滚验证摘要
 
 ### Out of Scope
 
@@ -121,4 +133,4 @@ This document evolves at phase transitions and milestone boundaries.
 
 ---
 
-*Last updated: 2026-04-04 after v0.2.0 milestone completion*
+*Last updated: 2026-04-06 after v0.2.1 milestone kickoff and research*
