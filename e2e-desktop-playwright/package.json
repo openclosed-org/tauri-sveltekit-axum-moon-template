@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "test:phase1": "playwright test tests/specs/smoke.spec.ts tests/specs/login.spec.ts tests/specs/counter.spec.ts --project=tauri",
     "test:smoke": "playwright test tests/specs/smoke.spec.ts --project=tauri",
     "test:ci": "playwright test --project=tauri"
   },
