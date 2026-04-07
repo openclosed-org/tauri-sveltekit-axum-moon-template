@@ -6,6 +6,7 @@ const API_HOST = '127.0.0.1';
 const API_PORT = 3001;
 const API_READY_URL = `http://${API_HOST}:${API_PORT}/readyz`;
 const DEFAULT_BOOTSTRAP_TIMEOUT_MS = 120_000;
+const WEB_TYPES_DIR = path.join('apps', 'client', 'web', 'app', '.svelte-kit', 'types');
 
 const workspaceRoot = path.resolve(process.cwd(), '..', '..', '..', '..');
 
@@ -86,6 +87,17 @@ export async function ensureApiReady(timeoutMs = DEFAULT_BOOTSTRAP_TIMEOUT_MS): 
 		stopOwnedApiProcess();
 		throw new Error(
 			`[runtime] API not ready at ${API_READY_URL} within ${timeoutMs}ms (owned_pid=${pid}, port=${API_PORT})`
+		);
+	}
+}
+
+export async function ensureWebE2EPreflight(timeoutMs = DEFAULT_BOOTSTRAP_TIMEOUT_MS): Promise<void> {
+	await ensureApiReady(timeoutMs);
+
+	const typesDir = path.join(workspaceRoot, WEB_TYPES_DIR);
+	if (!existsSync(typesDir)) {
+		throw new Error(
+			`[runtime] missing SvelteKit type artifacts at ${typesDir}; run: rtk bun run --cwd apps/client/web/app check`
 		);
 	}
 }
