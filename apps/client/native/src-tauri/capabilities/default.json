@@ -3,7 +3,6 @@
   "description": "Default capabilities for the desktop app",
   "windows": ["main"],
   "permissions": [
-    "playwright:default",
     "core:default",
     "opener:default",
     "dialog:default",

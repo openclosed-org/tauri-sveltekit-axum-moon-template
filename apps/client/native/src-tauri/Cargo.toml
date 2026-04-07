@@ -17,7 +17,7 @@ tauri-plugin-deep-link = { workspace = true }
 tauri-plugin-window-state = { workspace = true }
 tauri-plugin-single-instance = { workspace = true }
 tauri-plugin-log = { workspace = true }
-tauri-plugin-playwright = { version = "0.2.2", optional = true }
+tauri-plugin-playwright = { version = "0.2.2" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 reqwest = { workspace = true }
@@ -50,7 +50,7 @@ usecases = { workspace = true }
 runtime_tauri = { workspace = true }
 
 [features]
-e2e-testing = ["dep:tauri-plugin-playwright"]
+e2e-testing = []
 
 [dev-dependencies]
 tempfile = "3"

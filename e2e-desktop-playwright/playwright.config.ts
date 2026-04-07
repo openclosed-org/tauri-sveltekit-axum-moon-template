@@ -29,7 +29,7 @@ export default defineConfig({
   ],
   webServer: {
     command:
-      'cmd /C "set WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9222 && cargo tauri dev --features e2e-testing"',
+      'cmd /C "set WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9222 && cargo tauri dev --features e2e-testing --config tauri.e2e.conf.json"',
     url: 'http://127.0.0.1:9222/json/version',
     cwd: '../apps/client/native/src-tauri',
     reuseExistingServer: !process.env.CI,
