@@ -54,6 +54,10 @@ jobs:
         working-directory: apps/client/web/app
         run: npx playwright install --with-deps chromium
 
+      - name: Sync SvelteKit types before E2E
+        working-directory: apps/client/web/app
+        run: bun run check
+
       - name: Run Web E2E Tests
         working-directory: apps/client/web/app
         run: bun run test:e2e --project=desktop-chrome
@@ -136,12 +140,10 @@ jobs:
         run: |
           echo "## E2E Test Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Test Suite | Platform | Status |" >> $GITHUB_STEP_SUMMARY
-          echo "|------------|----------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Web E2E (Playwright) | Ubuntu | ${{ needs.web-e2e.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Web E2E (Playwright) | Windows | ${{ needs.web-e2e.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Web E2E (Playwright) | macOS | ${{ needs.web-e2e.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Desktop E2E (Tauri Playwright observer) | macOS | ${{ needs.desktop-e2e-playwright-tauri.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Lane | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| web-e2e | ${{ needs.web-e2e.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| desktop-e2e-playwright-tauri | ${{ needs.desktop-e2e-playwright-tauri.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
           if [ "${{ needs.web-e2e.result }}" == "success" ] && \
