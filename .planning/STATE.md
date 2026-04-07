@@ -61,6 +61,10 @@ Coverage: 15/15 requirements mapped
 - Tenant isolation: TenantId + JWT middleware + auto tenant init
 - CI: GitHub Actions cross-platform matrix (ubuntu/windows/macos)
 
+### Roadmap Evolution
+
+- Phase 14 added: 请问根据D:\dev\rust\templates\tauri-sveltekit-axum-moon-template\docs\TAURI_PLAYWRIGHT_MIGRATION_CONTEXT.md 改造升级我的E2E系统,同时还需要完成跑通E2E的测试
+
 ## Session Continuity
 
 - **Project file:** `.planning/PROJECT.md`
