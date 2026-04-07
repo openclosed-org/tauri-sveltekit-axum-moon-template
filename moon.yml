@@ -179,10 +179,10 @@ tasks:
     script: 'cd apps/client/web/app && bun run test:e2e'
 
   test-desktop:
-    script: 'cd e2e-tests && bun run test'
+    script: 'cd e2e-desktop-playwright && bun run test:desktop:core'
     inputs:
-      - 'e2e-tests/**/*.mjs'
-      - 'e2e-tests/package.json'
+      - 'e2e-desktop-playwright/**/*.ts'
+      - 'e2e-desktop-playwright/package.json'
       - 'apps/client/native/**/*'
       - 'apps/client/web/app/**/*'
     deps:
@@ -194,7 +194,6 @@ tasks:
         const { spawnSync } = require('child_process');
 
         const lanes = [
-          { name: 'WDIO desktop E2E (CI)', cwd: 'e2e-tests', cmd: process.platform === 'win32' ? 'bun.cmd' : 'bun', args: ['run', 'test:ci'] },
           { name: 'Web Playwright E2E matrix', cwd: 'apps/client/web/app', cmd: process.platform === 'win32' ? 'bun.cmd' : 'bun', args: ['run', 'test:e2e'] },
           { name: 'Tauri Playwright desktop E2E (CI)', cwd: 'e2e-desktop-playwright', cmd: process.platform === 'win32' ? 'bun.cmd' : 'bun', args: ['run', 'test:ci'] },
         ];
@@ -222,7 +221,6 @@ tasks:
         process.exit(hasFailure ? 1 : 0);
       "
     inputs:
-      - 'e2e-tests/**'
       - 'apps/client/web/app/**'
       - 'e2e-desktop-playwright/**'
 

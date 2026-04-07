@@ -3,17 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "deprecated": true,
+  "description": "Retired: legacy WDIO desktop E2E stack. Desktop coverage moved to e2e-desktop-playwright.",
   "scripts": {
-    "test": "node ./scripts/run-desktop-e2e.mjs",
-    "test:force": "node ./scripts/run-desktop-e2e.mjs --force",
-    "test:ci": "node ./scripts/run-desktop-e2e.mjs --ci",
-    "check-setup": "node ./scripts/check-windows-setup.mjs"
+    "retired": "node ./scripts/run-desktop-e2e.mjs"
   },
-  "devDependencies": {
-    "@wdio/cli": "^9.20.0",
-    "@wdio/local-runner": "^9.20.0",
-    "@wdio/mocha-framework": "^9.20.0",
-    "@wdio/spec-reporter": "^9.20.0",
-    "@wdio/junit-reporter": "^9.20.0"
-  }
+  "devDependencies": {}
 }
