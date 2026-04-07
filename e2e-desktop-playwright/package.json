@@ -1,0 +1,14 @@
+{
+  "name": "desktop-e2e-playwright",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:smoke": "playwright test tests/specs/smoke.spec.ts --project=tauri",
+    "test:ci": "playwright test --project=tauri"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.58.2",
+    "@srsholmes/tauri-playwright": "^0.2.2"
+  }
+}
