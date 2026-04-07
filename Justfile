@@ -118,7 +118,7 @@ test-coverage-clean:
 test-e2e:
     moon run repo:test-e2e
 
-# 运行仓库全量 E2E 门禁（Web Playwright + Tauri Playwright）
+# 运行仓库全量 E2E 门禁（runtime preflight + Web + Tauri）
 test-e2e-full:
     moon run repo:test-e2e-full
 
