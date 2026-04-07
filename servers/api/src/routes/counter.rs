@@ -20,7 +20,7 @@ pub fn router() -> Router<AppState> {
 
 fn get_db(
     state: &AppState,
-) -> Result<storage_libsql::EmbeddedLibSql, (StatusCode, Json<serde_json::Value>)> {
+) -> Result<storage_turso::EmbeddedTurso, (StatusCode, Json<serde_json::Value>)> {
     state.embedded_db.clone().ok_or_else(|| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,

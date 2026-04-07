@@ -13,8 +13,8 @@ use runtime_server::config::{CloudDbProvider, Config};
 use runtime_server::create_router;
 use runtime_server::routes;
 use runtime_server::state::AppState;
-use storage_libsql::EmbeddedLibSql;
 use storage_surrealdb::{TenantAwareSurrealDb, run_tenant_migrations};
+use storage_turso::EmbeddedTurso;
 use surrealdb::{Surreal, engine::any::connect};
 use tower::ServiceExt;
 
@@ -85,7 +85,7 @@ async fn make_test_state_file() -> AppState {
     }
 }
 
-/// Create a test AppState with file-based SurrealDB + embedded libsql.
+/// Create a test AppState with file-based SurrealDB + embedded Turso.
 /// Used for counter route end-to-end tests.
 async fn make_test_state_with_counter() -> AppState {
     let temp_dir = std::env::temp_dir().join(format!("counter_test_{}", uuid::Uuid::new_v4()));
@@ -104,10 +104,10 @@ async fn make_test_state_with_counter() -> AppState {
         .await
         .expect("Failed to run migrations");
 
-    let libsql_path = temp_dir.join("counter.db");
-    let embedded_db = EmbeddedLibSql::new(libsql_path.to_str().expect("non-utf8 path"))
+    let turso_path = temp_dir.join("counter.db");
+    let embedded_db = EmbeddedTurso::new(turso_path.to_str().expect("non-utf8 path"))
         .await
-        .expect("Failed to initialize embedded libsql");
+        .expect("Failed to initialize embedded Turso");
     domain::ports::lib_sql::LibSqlPort::execute(
         &embedded_db,
         usecases::counter_service::COUNTER_MIGRATION,

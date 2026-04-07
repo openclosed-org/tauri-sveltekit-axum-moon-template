@@ -1,5 +1,6 @@
 import os from 'node:os';
 import path from 'node:path';
+import net from 'node:net';
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -11,9 +12,20 @@ const tauriDir = path.join(workspaceRoot, 'apps', 'client', 'native', 'src-tauri
 const appBinaryName = process.platform === 'win32' ? 'native-tauri.exe' : 'native-tauri';
 const appBinaryPath = path.join(workspaceRoot, 'target', 'debug', appBinaryName);
 const appWebOrigin = 'http://tauri.localhost';
+const apiBaseUrl = process.env.TAURI_E2E_API_BASE_URL || 'http://127.0.0.1:3001';
+const apiPort = (() => {
+  const parsed = new URL(apiBaseUrl);
+  if (parsed.port) {
+    return Number(parsed.port);
+  }
+  return parsed.protocol === 'https:' ? 443 : 80;
+})();
+const API_START_TIMEOUT_MS = 180_000;
 
 let tauriDriver;
+let apiServer;
 let isShuttingDown = false;
+let ownsApiServer = false;
 
 function resolveBinaryFromPath(binaryName) {
   const lookupCommand = process.platform === 'win32' ? 'where' : 'which';
@@ -76,8 +88,86 @@ function closeTauriDriver() {
   }
 }
 
+function killProcessTree(pid) {
+  if (!pid) {
+    return;
+  }
+
+  if (process.platform === 'win32') {
+    spawnSync('taskkill', ['/PID', String(pid), '/F', '/T'], {
+      stdio: 'inherit',
+    });
+  } else {
+    process.kill(pid, 'SIGTERM');
+  }
+}
+
+function closeApiServer() {
+  if (apiServer && ownsApiServer) {
+    killProcessTree(apiServer.pid);
+  }
+  apiServer = undefined;
+  ownsApiServer = false;
+}
+
+function waitForPort(port, timeoutMs) {
+  return new Promise((resolve) => {
+    const start = Date.now();
+    const interval = setInterval(() => {
+      if (Date.now() - start >= timeoutMs) {
+        clearInterval(interval);
+        resolve(false);
+        return;
+      }
+
+      const socket = net.createConnection({ port, host: '127.0.0.1' }, () => {
+        clearInterval(interval);
+        socket.end();
+        resolve(true);
+      });
+
+      socket.on('error', () => {
+        socket.destroy();
+      });
+    }, 500);
+  });
+}
+
+async function startApiServer() {
+  const alreadyRunning = await waitForPort(apiPort, 1000);
+  if (alreadyRunning) {
+    console.log(`[wdio] Reusing existing API server on ${apiBaseUrl}`);
+    return;
+  }
+
+  console.log(`[wdio] Starting API server on ${apiBaseUrl}...`);
+  apiServer = spawn('cargo', ['run', '-p', 'runtime_server'], {
+    cwd: workspaceRoot,
+    stdio: ['ignore', 'inherit', 'inherit'],
+    shell: true,
+  });
+
+  apiServer.on('error', (error) => {
+    console.error('[wdio] Failed to start runtime_server:', error);
+  });
+
+  ownsApiServer = true;
+  const ready = await waitForPort(apiPort, API_START_TIMEOUT_MS);
+  if (!ready) {
+    closeApiServer();
+    throw new Error(
+      `runtime_server did not become ready on 127.0.0.1:${apiPort} within ${Math.floor(API_START_TIMEOUT_MS / 1000)}s`
+    );
+  }
+
+  console.log(`[wdio] API server ready on ${apiBaseUrl}`);
+}
+
 function registerShutdown() {
-  const cleanup = () => closeTauriDriver();
+  const cleanup = () => {
+    closeTauriDriver();
+    closeApiServer();
+  };
   process.on('exit', cleanup);
   process.on('SIGINT', cleanup);
   process.on('SIGTERM', cleanup);
@@ -121,7 +211,7 @@ export const config = {
     ui: 'bdd',
     timeout: 120000,
   },
-  onPrepare: () => {
+  onPrepare: async () => {
     const tauriDriverPath = resolveTauriDriverBinary();
     if (!tauriDriverPath) {
       throw new Error(
@@ -168,6 +258,8 @@ export const config = {
     } else {
       console.log('[wdio] Using existing binary');
     }
+
+    await startApiServer();
   },
   beforeSession: () => {
     const tauriDriverPath = resolveTauriDriverBinary();
@@ -207,5 +299,8 @@ export const config = {
   },
   afterSession: () => {
     closeTauriDriver();
+  },
+  onComplete: () => {
+    closeApiServer();
   },
 };

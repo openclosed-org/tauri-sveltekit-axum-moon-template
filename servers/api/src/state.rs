@@ -8,10 +8,10 @@ use crate::error::AppError;
 use domain::ports::lib_sql::LibSqlPort;
 use moka::future::Cache;
 use std::time::Duration;
-use storage_libsql::EmbeddedLibSql;
-use storage_libsql::TursoDb;
-use storage_libsql::remote::run_tenant_migrations as run_turso_migrations;
 use storage_surrealdb::run_tenant_migrations as run_surreal_migrations;
+use storage_turso::EmbeddedTurso;
+use storage_turso::TursoCloud;
+use storage_turso::remote::run_tenant_migrations as run_turso_migrations;
 use surrealdb::{Surreal, engine::any::Any};
 
 /// Shared application state for Axum routes.
@@ -23,7 +23,7 @@ pub struct AppState {
     pub db: Surreal<Any>,
 
     /// Turso cloud database connection (alternative to SurrealDB).
-    pub turso_db: Option<TursoDb>,
+    pub turso_db: Option<TursoCloud>,
 
     /// Which database provider is active.
     pub db_provider: CloudDbProvider,
@@ -43,7 +43,7 @@ pub struct AppState {
 
     /// Embedded libsql for local features (counter, admin).
     /// Initialized in dev mode; None in production if only SurrealDB is used.
-    pub embedded_db: Option<EmbeddedLibSql>,
+    pub embedded_db: Option<EmbeddedTurso>,
 }
 
 impl AppState {
@@ -64,7 +64,7 @@ impl AppState {
             .map_err(AppError::Database)?;
 
         // Embedded libsql for local features (counter, admin)
-        let embedded_db = EmbeddedLibSql::new(":memory:")
+        let embedded_db = EmbeddedTurso::new(":memory:")
             .await
             .map_err(AppError::Database)?;
         embedded_db
@@ -108,7 +108,7 @@ impl AppState {
     pub async fn new_with_config(config: Config) -> Result<Self, AppError> {
         let turso_db = match &config.database.provider {
             CloudDbProvider::Turso => {
-                let turso = TursoDb::new(&config.database.url, &config.database.auth_token)
+                let turso = TursoCloud::new(&config.database.url, &config.database.auth_token)
                     .await
                     .map_err(AppError::Database)?;
 

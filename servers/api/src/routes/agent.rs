@@ -23,7 +23,7 @@ pub fn router() -> Router<AppState> {
         .route("/agent/chat", post(chat_handler))
 }
 
-fn get_db(state: &AppState) -> Result<storage_libsql::EmbeddedLibSql, Json<serde_json::Value>> {
+fn get_db(state: &AppState) -> Result<storage_turso::EmbeddedTurso, Json<serde_json::Value>> {
     state
         .embedded_db
         .clone()

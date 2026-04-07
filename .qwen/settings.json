@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tasklist)",
+      "Bash(findstr *)",
+      "Bash(wmic *)"
+    ]
+  },
+  "$version": 3
+}

@@ -3,28 +3,29 @@ import process from 'node:process';
 import net from 'node:net';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { existsSync } from 'node:fs';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const workspaceRoot = path.resolve(__dirname, '..');
 const tauriDir = path.join(workspaceRoot, 'apps', 'client', 'native', 'src-tauri');
 
 const API_PORT = 3001;
-const MAX_WAIT_SECONDS = 30;
+const API_WAIT_SECONDS = 120; // 首次编译 surrealdb-core 可能需要很久
 
-function waitForPort(port, maxSeconds) {
+function waitForPort(port, maxSeconds, name) {
   return new Promise((resolve) => {
     const startTime = Date.now();
     const interval = setInterval(() => {
       const elapsed = (Date.now() - startTime) / 1000;
       if (elapsed >= maxSeconds) {
         clearInterval(interval);
+        console.warn(`[dev-desktop] ${name} did not become ready within ${maxSeconds}s`);
         resolve(false);
         return;
       }
       const socket = net.createConnection({ port, host: 'localhost' }, () => {
         clearInterval(interval);
         socket.end();
+        console.log(`[dev-desktop] ${name} ready on port ${port}`);
         resolve(true);
       });
       socket.on('error', () => {
@@ -34,27 +35,26 @@ function waitForPort(port, maxSeconds) {
   });
 }
 
+function killProcessTree(pid) {
+  if (!pid) return;
+  if (process.platform === 'win32') {
+    spawnSync('taskkill', ['/PID', String(pid), '/F', '/T'], {
+      stdio: 'inherit',
+    });
+  } else {
+    process.kill(pid, 'SIGTERM');
+  }
+}
+
 function cleanup(apiProcess, tauriProcess) {
-  console.log('\n[dev-desktop] Cleaning up processes...');
+  console.log('\n[dev-desktop] Cleaning up...');
+  if (tauriProcess) {
+    console.log('[dev-desktop] Stopping Tauri (this will also stop its child processes)...');
+    killProcessTree(tauriProcess.pid);
+  }
   if (apiProcess) {
     console.log('[dev-desktop] Stopping API server...');
-    if (process.platform === 'win32') {
-      spawnSync('taskkill', ['/PID', String(apiProcess.pid), '/F', '/T'], {
-        stdio: 'inherit',
-      });
-    } else {
-      apiProcess.kill('SIGTERM');
-    }
-  }
-  if (tauriProcess) {
-    console.log('[dev-desktop] Stopping Tauri dev...');
-    if (process.platform === 'win32') {
-      spawnSync('taskkill', ['/PID', String(tauriProcess.pid), '/F', '/T'], {
-        stdio: 'inherit',
-      });
-    } else {
-      tauriProcess.kill('SIGTERM');
-    }
+    killProcessTree(apiProcess.pid);
   }
 }
 
@@ -68,13 +68,18 @@ async function main() {
   if (process.platform === 'win32') {
     process.on('SIGBREAK', cleanupHandler);
   }
-  process.on('exit', cleanupHandler);
 
-  // Start Axum API server
-  console.log('[dev-desktop] Starting Axum API server...');
+  console.log('[dev-desktop] === Starting Desktop Dev ===');
+  console.log(`[dev-desktop] Workspace: ${workspaceRoot}`);
+  console.log(`[dev-desktop] Tauri dir: ${tauriDir}`);
+  console.log('');
+
+  // Step 1: Start Axum API server (for HTTP fallback and API calls)
+  console.log('[dev-desktop] Step 1/2: Starting Axum API server...');
+  console.log('[dev-desktop] (First run may take a while to compile surrealdb-core)');
   apiProcess = spawn('cargo', ['run', '-p', 'runtime_server'], {
     cwd: workspaceRoot,
-    stdio: 'inherit',
+    stdio: ['ignore', 'inherit', 'inherit'],
     shell: process.platform === 'win32',
   });
 
@@ -83,38 +88,50 @@ async function main() {
     process.exit(1);
   });
 
-  // Wait for API server to be ready
-  console.log(`[dev-desktop] Waiting for API server on port ${API_PORT}...`);
-  const isReady = await waitForPort(API_PORT, MAX_WAIT_SECONDS);
-  if (isReady) {
-    console.log(`[dev-desktop] API server ready on port ${API_PORT}`);
-  } else {
-    console.warn(`[dev-desktop] API server did not become ready within ${MAX_WAIT_SECONDS}s. Continuing anyway...`);
+  // Wait for API server (generous timeout for first compile)
+  const apiReady = await waitForPort(API_PORT, API_WAIT_SECONDS, 'API server');
+  if (!apiReady) {
+    console.warn('[dev-desktop] WARNING: API server not ready yet, but starting Tauri anyway...');
+    console.warn('[dev-desktop] API server will continue compiling in background...');
   }
+  console.log('');
 
-  // Start Tauri dev (blocking)
-  console.log('[dev-desktop] Starting Tauri dev...');
-  tauriProcess = spawn(
-    process.platform === 'win32' ? 'cargo.cmd' : 'cargo',
-    ['tauri', 'dev'],
-    {
-      cwd: tauriDir,
-      stdio: 'inherit',
-      shell: process.platform === 'win32',
-    },
-  );
+  // Step 2: Start Tauri
+  // Tauri's beforeDevCommand will automatically start the SvelteKit frontend on port 5173
+  console.log('[dev-desktop] Step 2/2: Starting Tauri desktop app...');
+  console.log('[dev-desktop] Tauri will start the SvelteKit frontend automatically...');
+  console.log('');
+  tauriProcess = spawn('cargo', ['tauri', 'dev'], {
+    cwd: tauriDir,
+    stdio: ['ignore', 'inherit', 'inherit'],
+    shell: process.platform === 'win32',
+    env: { ...process.env },
+  });
 
   tauriProcess.on('error', (err) => {
-    console.error('[dev-desktop] Failed to start Tauri dev:', err.message);
+    console.error('[dev-desktop] Failed to start Tauri:', err.message);
     process.exit(1);
   });
 
-  const [code, signal] = await new Promise((resolve) => {
-    tauriProcess.on('exit', (code, signal) => resolve([code, signal]));
+  tauriProcess.on('exit', (code, signal) => {
+    console.log(`\n[dev-desktop] Tauri exited with code ${code} (signal: ${signal})`);
   });
 
-  console.log(`[dev-desktop] Tauri dev exited with code ${code} (signal: ${signal})`);
-  process.exit(code ?? 0);
+  console.log('[dev-desktop] === Services Started ===');
+  console.log('[dev-desktop] API server:  http://localhost:3001');
+  console.log('[dev-desktop] Frontend:    http://localhost:5173 (managed by Tauri)');
+  console.log('[dev-desktop] Tauri window: should appear after Rust compilation');
+  console.log('');
+  console.log('[dev-desktop] Press Ctrl+C to stop all services');
+  console.log('');
+
+  // Wait for Tauri to exit (blocking)
+  await new Promise((resolve) => {
+    tauriProcess.on('exit', resolve);
+  });
+
+  console.log('[dev-desktop] Tauri exited, shutting down API server...');
+  process.exit(0);
 }
 
 main().catch((err) => {

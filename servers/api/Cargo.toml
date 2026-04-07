@@ -10,7 +10,7 @@ domain = { workspace = true }
 usecases = { workspace = true }
 contracts_api = { workspace = true }
 storage_surrealdb = { workspace = true }
-storage_libsql = { workspace = true }
+storage_turso = { workspace = true }
 feature-counter = { workspace = true }
 feature-admin = { workspace = true }
 feature-agent = { workspace = true }
