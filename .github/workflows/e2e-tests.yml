@@ -173,12 +173,62 @@ jobs:
           retention-days: 7
 
   # ============================================
+  # Desktop E2E Tests (Tauri + Playwright observer)
+  # ============================================
+  desktop-e2e-playwright-tauri:
+    name: Desktop E2E (Tauri Playwright, macOS observer)
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.94.1
+          components: rustfmt, clippy
+
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "desktop-e2e-playwright-tauri"
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.11
+
+      - name: Install Tauri Playwright dependencies
+        working-directory: e2e-desktop-playwright
+        run: bun install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        working-directory: e2e-desktop-playwright
+        run: npx playwright install chromium
+
+      - name: Run Desktop E2E Tests (Tauri Playwright CI)
+        working-directory: e2e-desktop-playwright
+        run: bun run test:ci
+        timeout-minutes: 30
+
+      - name: Upload Tauri Playwright Evidence
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: desktop-e2e-playwright-tauri-evidence-${{ github.job }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            e2e-desktop-playwright/playwright-report/
+            e2e-desktop-playwright/test-results/
+          retention-days: 7
+
+  # ============================================
   # Summary Report
   # ============================================
   summary:
     name: E2E Test Summary
     runs-on: ubuntu-latest
-    needs: [desktop-e2e, web-e2e]
+    needs: [desktop-e2e, web-e2e, desktop-e2e-playwright-tauri]
     if: always()
 
     steps:
@@ -193,10 +243,12 @@ jobs:
           echo "| Web E2E (Playwright) | Ubuntu | ${{ needs.web-e2e.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Web E2E (Playwright) | Windows | ${{ needs.web-e2e.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Web E2E (Playwright) | macOS | ${{ needs.web-e2e.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Desktop E2E (Tauri Playwright observer) | macOS | ${{ needs.desktop-e2e-playwright-tauri.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
           if [ "${{ needs.desktop-e2e.result }}" == "success" ] && \
-             [ "${{ needs.web-e2e.result }}" == "success" ]; then
+             [ "${{ needs.web-e2e.result }}" == "success" ] && \
+             [ "${{ needs.desktop-e2e-playwright-tauri.result }}" == "success" ]; then
             echo "✅ **All E2E tests passed!**" >> $GITHUB_STEP_SUMMARY
           else
             echo "❌ **E2E tests failed. Check the artifacts above.**" >> $GITHUB_STEP_SUMMARY
