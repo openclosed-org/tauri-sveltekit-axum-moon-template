@@ -125,6 +125,11 @@ pub fn run() {
         }));
     }
 
+    #[cfg(feature = "e2e-testing")]
+    {
+        builder = builder.plugin(tauri_plugin_playwright::init());
+    }
+
     builder
         .setup(|app| {
             let cwd = std::env::current_dir().unwrap_or_default();
