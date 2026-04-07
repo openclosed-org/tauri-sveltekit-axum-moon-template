@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 import { triggerMockOAuth } from './auth';
 
 const APP_BASE_URL = 'http://localhost:5173';
@@ -81,6 +81,14 @@ async function openCounterPageAsTenant(page: Page, tenant: TenantIdentity): Prom
 	await page.waitForFunction('document.readyState === "complete"', 10_000);
 }
 
+async function clickWhenReady(button: Locator): Promise<void> {
+	await button.waitFor({ state: 'visible', timeout: 10_000 });
+	if (!(await button.isEnabled())) {
+		throw new Error('counter control is disabled');
+	}
+	await button.click();
+}
+
 async function ensureCounterIsReset(page: Page, tenant: TenantIdentity): Promise<void> {
 	const resetButton = page.getByRole('button', { name: 'Reset' });
 	const resetVisible = await resetButton.isVisible().catch(() => false);
@@ -88,7 +96,7 @@ async function ensureCounterIsReset(page: Page, tenant: TenantIdentity): Promise
 		throw new Error(`[${tenant.label}] counter reset failed: reset button unavailable`);
 	}
 
-	await resetButton.click();
+	await clickWhenReady(resetButton);
 
 	const counterDisplay = page.locator('.font-mono');
 	await counterDisplay.waitFor({ state: 'visible', timeout: 10000 });
@@ -111,4 +119,30 @@ export async function resetTenantPairCounter(page: Page): Promise<void> {
 			);
 		}
 	}
+}
+
+export async function waitForCounterControlsReady(page: Page): Promise<{
+	decrementButton: Locator;
+	incrementButton: Locator;
+	resetControl: Locator;
+}> {
+	const decrementButton = page.locator('button:has(svg[data-lucide="minus"])').first();
+	const incrementButton = page.locator('button:has(svg[data-lucide="plus"])').first();
+	const resetControl = page.locator('button:has(svg[data-lucide="rotate-ccw"])').first();
+
+	await decrementButton.waitFor({ state: 'visible', timeout: 10_000 });
+	await incrementButton.waitFor({ state: 'visible', timeout: 10_000 });
+	await resetControl.waitFor({ state: 'visible', timeout: 10_000 });
+
+	if (!(await decrementButton.isEnabled())) {
+		throw new Error('decrement button is disabled');
+	}
+	if (!(await incrementButton.isEnabled())) {
+		throw new Error('increment button is disabled');
+	}
+	if (!(await resetControl.isEnabled())) {
+		throw new Error('reset button is disabled');
+	}
+
+	return { decrementButton, incrementButton, resetControl };
 }

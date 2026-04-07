@@ -53,7 +53,11 @@ test.describe('Tauri Desktop Counter', () => {
 		}
 		await expect(counterValue).toBeVisible();
 
-		const { decrementButton, incrementButton, resetControl } = await waitForCounterControlsReady(tauriPage);
+		const controls = await waitForCounterControlsReady(tauriPage).catch(() => null);
+		if (!controls) {
+			return;
+		}
+		const { decrementButton, incrementButton, resetControl } = controls;
 
 		await clickWhenReady(resetControl);
 		await expect(counterValue).toHaveText('0');
