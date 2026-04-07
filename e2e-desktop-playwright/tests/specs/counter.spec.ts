@@ -1,8 +1,16 @@
 import { test, expect } from '../fixtures/tauri';
+import type { Locator } from '@playwright/test';
+import { resetTenantPairCounter, waitForCounterControlsReady } from '../fixtures/tenant';
 
 const APP_BASE_URL = 'http://localhost:5173';
 
 test.describe('Tauri Desktop Counter', () => {
+	async function clickWhenReady(button: Locator) {
+		await expect(button).toBeVisible();
+		await expect(button).toBeEnabled();
+		await button.click();
+	}
+
 	test('counter page is properly guarded without auth', async ({ tauriPage }) => {
 		await tauriPage.goto(`${APP_BASE_URL}/counter`);
 		const url = await tauriPage.url();
@@ -26,6 +34,7 @@ test.describe('Tauri Desktop Counter', () => {
 	});
 
 	test('counter interaction assertions run when authenticated', async ({ tauriPage }) => {
+		await resetTenantPairCounter(tauriPage).catch(() => undefined);
 		await tauriPage.goto(`${APP_BASE_URL}/counter`);
 
 		const resetButton = tauriPage.getByRole('button', { name: 'Reset' });
@@ -44,25 +53,22 @@ test.describe('Tauri Desktop Counter', () => {
 		}
 		await expect(counterValue).toBeVisible();
 
-		const buttons = tauriPage.locator('button');
-		const decrementButton = buttons.nth(0);
-		const incrementButton = buttons.nth(1);
-		const resetControl = buttons.nth(2);
+		const { decrementButton, incrementButton, resetControl } = await waitForCounterControlsReady(tauriPage);
 
-		await resetControl.click();
+		await clickWhenReady(resetControl);
 		await expect(counterValue).toHaveText('0');
 
-		await incrementButton.click();
+		await clickWhenReady(incrementButton);
 		await expect(counterValue).toHaveText('1');
 
-		await decrementButton.click();
+		await clickWhenReady(decrementButton);
 		await expect(counterValue).toHaveText('0');
 
-		await incrementButton.click();
-		await incrementButton.click();
+		await clickWhenReady(incrementButton);
+		await clickWhenReady(incrementButton);
 		await expect(counterValue).toHaveText('2');
 
-		await resetControl.click();
+		await clickWhenReady(resetControl);
 		await expect(counterValue).toHaveText('0');
 	});
 });
