@@ -6,12 +6,13 @@
 [build]
 # Let Cargo auto-detect parallelism (uses all available cores by default)
 
-# sccache wrapper — enables compilation caching (install via: scoop install sccache)
-# Use full path on Windows to avoid PATH resolution issues
-rustc-wrapper = "D:/dev-storage/scoop/persist/rustup/.cargo/bin/sccache.exe"
+# sccache wrapper — enables compilation caching
+# Set via env var RUSTC_WRAPPER=sccache (configure in .env or mise)
+# rustc-wrapper = "sccache"  ← uncomment after setting RUSTC_WRAPPER
 
-# Redirect all build output to D drive to save C disk space
-target-dir = "D:/dev-storage/cache/cargo-target/tauri-sveltekit-axum-moon-template"
+# Redirect all build output to save C disk space
+# Set via env var CARGO_TARGET_DIR (configure in .env or mise)
+# target-dir = "D:/dev-storage/cache/cargo-target/tauri-sveltekit-axum-moon-template"
 
 # Auto-clean unused cache files weekly (new in Cargo 1.90+)
 # Prevents ~/.cargo/registry from growing indefinitely

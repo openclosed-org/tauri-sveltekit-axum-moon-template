@@ -280,5 +280,3 @@ tasks:
   audit-bun:
     script: 'bun audit || true'
 
-  secrets-scan:
-    command: 'echo "Secrets scan - use gitleaks or similar"'

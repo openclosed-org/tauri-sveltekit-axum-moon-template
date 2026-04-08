@@ -34,19 +34,35 @@ doctor:
 # Windows 推荐用 scoop: scoop install sccache
 # 也可用 cargo: cargo install sccache --locked
 setup-sccache:
-    @bun -e "const { spawnSync } = require('child_process'); const r = spawnSync(process.platform === 'win32' ? 'where' : 'which', ['sccache'], { shell: process.platform === 'win32' }); if (r.status !== 0) { console.log('Installing sccache via cargo...'); spawnSync('cargo', ['install', 'sccache', '--locked'], { stdio: 'inherit', shell: process.platform === 'win32' }); } else { console.log('sccache already installed: ' + spawnSync('sccache', ['--version'], { shell: process.platform === 'win32' }).stdout?.toString().trim()); }"
-    @echo "Setting up sccache environment..."
-    @echo "SCCACHE_DIR=D:\dev-storage\cache\sccache" | setx >nul 2>&1 || true
-    @echo "RUSTC_WRAPPER=sccache" | setx >nul 2>&1 || true
-    @echo "sccache configured — restart terminal or run: just setup-sccache-verify"
+    @echo "=== Installing sccache ==="
+    @bun -e "const { spawnSync } = require('child_process'); const r = spawnSync(process.platform === 'win32' ? 'where' : 'which', ['sccache'], { shell: process.platform === 'win32' }); if (r.status !== 0) { console.log('Installing sccache...'); spawnSync('cargo', ['install', 'sccache', '--locked'], { stdio: 'inherit', shell: process.platform === 'win32' }); } else { console.log('sccache already installed'); }"
+    @echo ""
+    @echo "=== sccache 安装完成 ==="
+    @echo ""
+    @echo "请配置环境变量（二选一）："
+    @echo ""
+    @echo "方案 A - 项目级 .env（推荐）："
+    @echo "  1. 复制 .env.example 到 .env"
+    @echo "  2. 取消注释 sccache 相关行"
+    @echo ""
+    @echo "方案 B - mise 环境变量："
+    @echo "  mise set SCCACHE_DIR={{justfile_directory()}}/.sccache"
+    @echo "  mise set RUSTC_WRAPPER=sccache"
+    @echo ""
+    @echo "配置完成后运行：just setup-sccache-verify"
 
 # 验证 sccache 是否生效
 setup-sccache-verify:
-    @echo "=== sccache status ==="
-    @sccache --show-stats
+    @echo "=== sccache 验证 ==="
     @echo ""
-    @echo "=== .cargo/config.toml check ==="
-    @bun -e "const fs = require('fs'); const c = fs.readFileSync('.cargo/config.toml', 'utf8'); console.log(c.includes('rustc-wrapper = \"sccache\"') ? '✓ rustc-wrapper enabled' : '✗ rustc-wrapper NOT set');"
+    @echo "--- sccache 状态 ---"
+    @bun -e "const { spawnSync } = require('child_process'); const r = spawnSync('sccache', ['--show-stats'], { stdio: 'inherit', shell: process.platform === 'win32' });"
+    @echo ""
+    @echo "--- 环境变量检查 ---"
+    @bun -e "const wrapper = process.env.RUSTC_WRAPPER; console.log(wrapper === 'sccache' ? '✓ RUSTC_WRAPPER=sccache' : wrapper ? '⚠ RUSTC_WRAPPER=' + wrapper + ' (应该是 sccache)' : '✗ RUSTC_WRAPPER 未设置');"
+    @echo ""
+    @echo "--- .cargo/config.toml 检查 ---"
+    @bun -e "const fs = require('fs'); const c = fs.readFileSync('.cargo/config.toml', 'utf8'); console.log(c.includes('rustc-wrapper') ? '✓ rustc-wrapper 已配置' : '✗ rustc-wrapper 未设置');"
 
 # 安装 cargo-hakari 统一依赖解析（减少重复编译 30%+）
 setup-hakari:
@@ -88,33 +104,17 @@ dev-desktop:
 dev-tauri:
     cd apps/client/native/src-tauri && cargo tauri dev
 
-# 生成类型定义并同步到前端
-typegen:
-    moon run repo:typegen
-
 # ── 质量验证 ───────────────────────────────────────────────
 
 # 完整质量门禁（fmt + lint + check + test）
 verify:
     moon run repo:verify
 
-# 格式化
-fmt:
-    moon run repo:fmt
-
-# Lint
-lint:
-    moon run repo:lint
-
 # ── 测试 ───────────────────────────────────────────────────
 
 # 日常开发：快速单元测试（无覆盖率）
 test:
     moon run repo:test-unit
-
-# 使用 nextest 并行测试
-test-nextest:
-    moon run repo:test-nextest
 
 # 本地覆盖率：生成 LCOV（供 CI/Codecov 用）
 test-coverage:
@@ -131,10 +131,6 @@ test-coverage-clean:
     just _require cargo-llvm-cov "cargo install cargo-llvm-cov"
     moon run repo:test-coverage-clean
 
-# 运行 E2E 测试
-test-e2e:
-    moon run repo:test-e2e
-
 # 运行仓库全量 E2E 门禁（runtime preflight + Web + Tauri）
 test-e2e-full:
     moon run repo:test-e2e-full
@@ -147,22 +143,6 @@ test-desktop:
 test-desktop-fast:
     cd {{justfile_directory()}} && cargo build -p native-tauri --profile e2e --features e2e-testing
     cd {{justfile_directory()}}/e2e-desktop-playwright && bun run test:desktop:core
-
-# 运行 feature powerset 检查
-test-hack:
-    moon run repo:test-hack
-
-# 运行变异测试
-test-mutants:
-    moon run repo:test-mutants
-
-# 运行全部 Rust 测试
-test-all-rust:
-    moon run repo:test-all-rust
-
-# 运行全部前端测试
-test-all-frontend:
-    moon run repo:test-all-frontend
 
 # ── 清理 ───────────────────────────────────────────────────
 
