@@ -3,16 +3,23 @@
 //! Injected via Router::with_state() so all route handlers can access
 //! DB, cache, and HTTP client through the State extractor.
 
-use crate::config::{CloudDbProvider, Config};
+use crate::config::{CloudDbProvider, Config, DatabasePathSource};
 use crate::error::AppError;
 use domain::ports::lib_sql::LibSqlPort;
 use moka::future::Cache;
+use std::path::PathBuf;
 use std::time::Duration;
+#[cfg(test)]
 use storage_surrealdb::run_tenant_migrations as run_surreal_migrations;
 use storage_turso::EmbeddedTurso;
-use storage_turso::TursoCloud;
-use storage_turso::remote::run_tenant_migrations as run_turso_migrations;
 use surrealdb::{Surreal, engine::any::Any};
+
+#[derive(Debug, Clone)]
+pub struct StartupDatabaseInfo {
+    pub provider: CloudDbProvider,
+    pub absolute_path: PathBuf,
+    pub source: DatabasePathSource,
+}
 
 /// Shared application state for Axum routes.
 ///
@@ -22,8 +29,8 @@ pub struct AppState {
     /// SurrealDB connection pool (server-side database).
     pub db: Surreal<Any>,
 
-    /// Turso cloud database connection (alternative to SurrealDB).
-    pub turso_db: Option<TursoCloud>,
+    /// Turso cloud database connection (legacy field, currently unused).
+    pub turso_db: Option<()>,
 
     /// Which database provider is active.
     pub db_provider: CloudDbProvider,
@@ -47,9 +54,54 @@ pub struct AppState {
 }
 
 impl AppState {
+    async fn run_embedded_runtime_migrations(embedded_db: &EmbeddedTurso) -> Result<(), AppError> {
+        storage_turso::embedded::run_tenant_migrations(embedded_db)
+            .await
+            .map_err(AppError::Database)?;
+
+        // Defensive migration step: guarantee both tenant tables exist even if
+        // adapter-level batch execution semantics vary across engines.
+        embedded_db
+            .execute(
+                "CREATE TABLE IF NOT EXISTS tenant (id TEXT PRIMARY KEY, name TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now')))",
+                vec![],
+            )
+            .await
+            .map_err(AppError::Database)?;
+        embedded_db
+            .execute(
+                "CREATE TABLE IF NOT EXISTS user_tenant (id TEXT PRIMARY KEY, user_sub TEXT NOT NULL UNIQUE, tenant_id TEXT NOT NULL REFERENCES tenant(id), role TEXT NOT NULL DEFAULT 'member', joined_at TEXT NOT NULL DEFAULT (datetime('now')))",
+                vec![],
+            )
+            .await
+            .map_err(AppError::Database)?;
+        embedded_db
+            .execute(
+                "CREATE INDEX IF NOT EXISTS idx_user_tenant_tenant_id ON user_tenant(tenant_id)",
+                vec![],
+            )
+            .await
+            .map_err(AppError::Database)?;
+
+        embedded_db
+            .execute(usecases::counter_service::COUNTER_MIGRATION, vec![])
+            .await
+            .map_err(AppError::Database)?;
+
+        for migration in usecases::agent_service::AGENT_MIGRATIONS {
+            embedded_db
+                .execute(migration, vec![])
+                .await
+                .map_err(AppError::Database)?;
+        }
+
+        Ok(())
+    }
+
     /// Initialize AppState with in-memory SurrealDB for development.
     ///
     /// Production: use `rocksdb://path` or remote SurrealDB endpoint.
+    #[cfg(test)]
     pub async fn new_dev() -> Result<Self, AppError> {
         let config = Config::default();
 
@@ -67,18 +119,7 @@ impl AppState {
         let embedded_db = EmbeddedTurso::new(":memory:")
             .await
             .map_err(AppError::Database)?;
-        embedded_db
-            .execute(usecases::counter_service::COUNTER_MIGRATION, vec![])
-            .await
-            .map_err(AppError::Database)?;
-
-        // Run agent migrations (conversations + messages tables)
-        for migration in usecases::agent_service::AGENT_MIGRATIONS {
-            embedded_db
-                .execute(migration, vec![])
-                .await
-                .map_err(AppError::Database)?;
-        }
+        Self::run_embedded_runtime_migrations(&embedded_db).await?;
 
         // Moka cache — 10k entries, 5min TTL (per D-10/D-11)
         let cache: Cache<String, String> = Cache::builder()
@@ -104,39 +145,44 @@ impl AppState {
         })
     }
 
+    /// Resolve startup database metadata for logging and initialization.
+    pub fn startup_database_info(config: &Config) -> Result<StartupDatabaseInfo, AppError> {
+        let resolved = config
+            .resolved_db_path()
+            .map_err(|e| AppError::Config(format!("failed to resolve database path: {e}")))?;
+
+        Ok(StartupDatabaseInfo {
+            provider: config.database.provider.clone(),
+            absolute_path: resolved.absolute_path,
+            source: resolved.source,
+        })
+    }
+
     /// Initialize AppState with configuration (production-ready)
     pub async fn new_with_config(config: Config) -> Result<Self, AppError> {
-        let turso_db = match &config.database.provider {
-            CloudDbProvider::Turso => {
-                let turso = TursoCloud::new(&config.database.url, &config.database.auth_token)
-                    .await
-                    .map_err(AppError::Database)?;
-
-                run_turso_migrations(&turso)
-                    .await
-                    .map_err(AppError::Database)?;
-
-                Some(turso)
-            }
-            CloudDbProvider::SurrealDB => None,
-        };
-
-        // SurrealDB connection (always initialized for compatibility)
-        let db = Surreal::<Any>::init();
-        db.connect(&config.database.url)
-            .await
-            .map_err(|e| AppError::Database(e.into()))?;
-        db.use_ns(&config.database.ns)
-            .use_db(&config.database.db)
-            .await
-            .map_err(|e| AppError::Database(e.into()))?;
-
-        // Run tenant schema migrations for SurrealDB
-        if config.database.provider == CloudDbProvider::SurrealDB {
-            run_surreal_migrations(&db)
-                .await
-                .map_err(AppError::Database)?;
+        if config.database.provider != CloudDbProvider::Turso {
+            return Err(AppError::Config(
+                "runtime_server startup only supports turso provider".to_string(),
+            ));
         }
+
+        let db_info = Self::startup_database_info(&config)?;
+
+        if let Some(parent) = db_info.absolute_path.parent() {
+            tokio::fs::create_dir_all(parent).await.map_err(|e| {
+                AppError::Config(format!("failed to create database directory: {e}"))
+            })?;
+        }
+
+        let db_path = db_info.absolute_path.to_string_lossy().to_string();
+        let embedded_db = EmbeddedTurso::new(&db_path)
+            .await
+            .map_err(AppError::Database)?;
+
+        Self::run_embedded_runtime_migrations(&embedded_db).await?;
+
+        // Keep Surreal handle allocated for compatibility with existing AppState shape.
+        let db = Surreal::<Any>::init();
 
         // Moka cache
         let cache: Cache<String, String> = Cache::builder()
@@ -153,12 +199,51 @@ impl AppState {
 
         Ok(Self {
             db,
-            turso_db,
+            turso_db: None,
             db_provider: config.database.provider.clone(),
             cache,
             http_client,
             config,
-            embedded_db: None,
+            embedded_db: Some(embedded_db),
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn new_with_config_creates_parent_directory_and_embedded_db() {
+        let temp_root =
+            std::env::temp_dir().join(format!("runtime_server_state_{}", uuid::Uuid::new_v4()));
+        let db_path = temp_root.join("nested/runtime_server.db");
+
+        let mut config = Config::default();
+        config.database.provider = CloudDbProvider::Turso;
+        config.database.url = db_path.to_string_lossy().to_string();
+
+        let state = AppState::new_with_config(config)
+            .await
+            .expect("state should initialize");
+
+        assert!(db_path.parent().unwrap().exists());
+        assert!(state.embedded_db.is_some());
+
+        let _ = std::fs::remove_dir_all(temp_root);
+    }
+
+    #[tokio::test]
+    async fn new_with_config_fails_fast_for_memory_database_url() {
+        let mut config = Config::default();
+        config.database.provider = CloudDbProvider::Turso;
+        config.database.url = ":memory:".to_string();
+
+        let err = match AppState::new_with_config(config).await {
+            Ok(_) => panic!("memory path must be rejected"),
+            Err(err) => err,
+        };
+
+        assert!(err.to_string().contains("memory"));
     }
 }

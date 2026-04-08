@@ -3,29 +3,17 @@
 //! POST /api/tenant/init — ensure tenant exists for user (auto-create on first login).
 
 use axum::{Json, Router, extract::State, routing::post};
+use domain::ports::lib_sql::LibSqlPort;
 use serde::Deserialize;
 use serde_json::{Value, json};
-use std::collections::BTreeMap;
 
 use contracts_api::{InitTenantRequest, InitTenantResponse};
 use validator::Validate;
 
 use crate::error::{AppError, AppResult};
 use crate::state::AppState;
-use domain::ports::surreal_db::SurrealDbPort;
-use storage_surrealdb::TenantAwareSurrealDb;
-
-/// Helper: create a serde_json::Value::String from &str.
-fn json_str(s: &str) -> Value {
-    Value::String(s.to_string())
-}
-
-/// Result type from user_tenant SELECT query.
-/// Note: id and tenant_id are strings because TenantAwareSurrealDb::query()
-/// serializes through serde_json::Value, which converts RecordId to strings.
 #[derive(Debug, Deserialize)]
 struct UserTenantRecord {
-    #[allow(dead_code)]
     id: String,
     tenant_id: String,
     role: String,
@@ -62,14 +50,16 @@ pub async fn init_tenant(
     body.validate()
         .map_err(|e| AppError::Validation(e.to_string()))?;
 
-    // Use admin-mode DB for tenant operations (cross-tenant query)
-    let admin_db = TenantAwareSurrealDb::new_admin(state.db.clone());
+    let db = state
+        .embedded_db
+        .clone()
+        .ok_or_else(|| AppError::Internal("Embedded Turso database not initialized".to_string()))?;
 
     // 1. Check existing binding
-    let existing: Vec<UserTenantRecord> = admin_db
+    let existing: Vec<UserTenantRecord> = db
         .query(
-            "SELECT id, tenant_id, role FROM user_tenant WHERE user_sub = $sub",
-            BTreeMap::from([("sub".into(), json_str(&body.user_sub))]),
+            "SELECT id, tenant_id, role FROM user_tenant WHERE user_sub = ? LIMIT 1",
+            vec![body.user_sub.clone()],
         )
         .await
         .map_err(AppError::Database)?;
@@ -86,10 +76,10 @@ pub async fn init_tenant(
     // 2. Create tenant
     let tenant_name = body.user_name.clone();
 
-    let created_tenants: Vec<TenantRecord> = admin_db
+    let created_tenants: Vec<TenantRecord> = db
         .query(
-            "CREATE tenant SET name = $name",
-            BTreeMap::from([("name".into(), json_str(&tenant_name))]),
+            "INSERT INTO tenant (id, name) VALUES (lower(hex(randomblob(16))), ?) RETURNING id",
+            vec![tenant_name],
         )
         .await
         .map_err(AppError::Database)?;
@@ -101,14 +91,10 @@ pub async fn init_tenant(
 
     // 3. Create user_tenant binding (owner role)
     // Use parameterized query — $tenant_id prevents SQL injection
-    let _: Vec<serde_json::Value> = admin_db
-        .query(
-            "CREATE user_tenant SET user_sub = $sub, tenant_id = $tenant_id, role = 'owner'",
-            BTreeMap::from([
-                ("sub".into(), json_str(&body.user_sub)),
-                ("tenant_id".into(), json_str(tenant_id)),
-            ]),
-        )
+    db.execute(
+        "INSERT INTO user_tenant (id, user_sub, tenant_id, role) VALUES (lower(hex(randomblob(16))), ?, ?, 'owner')",
+        vec![body.user_sub, tenant_id.to_string()],
+    )
         .await
         .map_err(AppError::Database)?;
 

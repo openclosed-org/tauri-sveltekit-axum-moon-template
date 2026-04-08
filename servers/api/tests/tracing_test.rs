@@ -18,28 +18,70 @@ use moka::future::Cache;
 use runtime_server::config::{CloudDbProvider, Config};
 use runtime_server::create_router;
 use runtime_server::state::AppState;
-use storage_surrealdb::run_tenant_migrations;
-use surrealdb::{Surreal, engine::any::connect};
+use storage_turso::EmbeddedTurso;
 use tower::ServiceExt;
 use tracing_test::traced_test;
 
 async fn make_test_state() -> AppState {
-    let db: Surreal<_> = connect("mem://").await.unwrap();
-    db.use_ns("test").use_db("test").await.unwrap();
-    run_tenant_migrations(&db).await.unwrap();
+    let temp_dir =
+        std::env::temp_dir().join(format!("runtime_server_tracing_{}", uuid::Uuid::new_v4()));
+    std::fs::create_dir_all(&temp_dir).expect("Failed to create temp dir");
+    let db_path = temp_dir.join("runtime_server.db");
+    let embedded_db = EmbeddedTurso::new(db_path.to_str().expect("non-utf8 path"))
+        .await
+        .expect("Failed to initialize embedded Turso");
+    storage_turso::embedded::run_tenant_migrations(&embedded_db)
+        .await
+        .expect("Failed to run tenant migrations");
+    domain::ports::lib_sql::LibSqlPort::execute(
+        &embedded_db,
+        "CREATE TABLE IF NOT EXISTS tenant (id TEXT PRIMARY KEY, name TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now')))",
+        vec![],
+    )
+    .await
+    .expect("Failed to ensure tenant table");
+    domain::ports::lib_sql::LibSqlPort::execute(
+        &embedded_db,
+        "CREATE TABLE IF NOT EXISTS user_tenant (id TEXT PRIMARY KEY, user_sub TEXT NOT NULL UNIQUE, tenant_id TEXT NOT NULL REFERENCES tenant(id), role TEXT NOT NULL DEFAULT 'member', joined_at TEXT NOT NULL DEFAULT (datetime('now')))",
+        vec![],
+    )
+    .await
+    .expect("Failed to ensure user_tenant table");
+    domain::ports::lib_sql::LibSqlPort::execute(
+        &embedded_db,
+        "CREATE INDEX IF NOT EXISTS idx_user_tenant_tenant_id ON user_tenant(tenant_id)",
+        vec![],
+    )
+    .await
+    .expect("Failed to ensure tenant index");
+    domain::ports::lib_sql::LibSqlPort::execute(
+        &embedded_db,
+        usecases::counter_service::COUNTER_MIGRATION,
+        vec![],
+    )
+    .await
+    .expect("Failed to run counter migration");
+
+    for migration in usecases::agent_service::AGENT_MIGRATIONS {
+        domain::ports::lib_sql::LibSqlPort::execute(&embedded_db, migration, vec![])
+            .await
+            .expect("Failed to run agent migration");
+    }
 
     let cache: Cache<String, String> = Cache::builder().max_capacity(10_000).build();
     let http_client = reqwest::Client::new();
-    let config = Config::default();
+    let mut config = Config::default();
+    config.database.provider = CloudDbProvider::Turso;
+    config.database.url = db_path.to_string_lossy().to_string();
 
     AppState {
-        db,
+        db: surrealdb::Surreal::<surrealdb::engine::any::Any>::init(),
         cache,
         http_client,
         config,
         turso_db: None,
-        db_provider: CloudDbProvider::SurrealDB,
-        embedded_db: None,
+        db_provider: CloudDbProvider::Turso,
+        embedded_db: Some(embedded_db),
     }
 }
 

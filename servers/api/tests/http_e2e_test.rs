@@ -13,101 +13,37 @@ use runtime_server::config::{CloudDbProvider, Config};
 use runtime_server::create_router;
 use runtime_server::routes;
 use runtime_server::state::AppState;
-use storage_surrealdb::{TenantAwareSurrealDb, run_tenant_migrations};
 use storage_turso::EmbeddedTurso;
-use surrealdb::{Surreal, engine::any::connect};
 use tower::ServiceExt;
 
-/// Create a test AppState with an in-memory SurrealDB instance.
-async fn make_test_state() -> AppState {
-    let db: Surreal<_> = connect("mem://").await.unwrap();
-    db.use_ns("test").use_db("test").await.unwrap();
-
-    run_tenant_migrations(&db).await.unwrap();
-
-    let cache: Cache<String, String> = Cache::builder().max_capacity(10_000).build();
-    let http_client = reqwest::Client::new();
-    let config = Config::default();
-
-    AppState {
-        db,
-        cache,
-        http_client,
-        config,
-        turso_db: None,
-        db_provider: CloudDbProvider::SurrealDB,
-        embedded_db: None,
-    }
-}
-
-/// Create a test AppState with a file-based SurrealDB instance.
-/// Uses RocksDB for tests that require full CREATE/INSERT support.
-async fn make_test_state_file() -> AppState {
-    let temp_dir = std::env::temp_dir().join(format!("surreal_test_{}", uuid::Uuid::new_v4()));
-    std::fs::create_dir_all(&temp_dir).expect("Failed to create temp dir");
-
-    let db_url = format!("rocksdb://{}", temp_dir.display());
-    let db: Surreal<_> = connect(&db_url)
-        .await
-        .expect("Failed to connect to RocksDB");
-    db.use_ns("test")
-        .use_db("test")
-        .await
-        .expect("Failed to use ns/db");
-
-    run_tenant_migrations(&db)
-        .await
-        .expect("Failed to run migrations");
-
-    // Verify migrations worked
-    let mut result = db
-        .query("SELECT * FROM tenant")
-        .await
-        .expect("SELECT after migration failed");
-    let rows: Vec<serde_json::Value> = result.take(0).expect("Failed to take results");
-    assert!(
-        rows.is_empty(),
-        "Expected empty tenant table after migration"
-    );
-
-    let cache: Cache<String, String> = Cache::builder().max_capacity(10_000).build();
-    let http_client = reqwest::Client::new();
-    let config = Config::default();
-
-    AppState {
-        db,
-        cache,
-        http_client,
-        config,
-        turso_db: None,
-        db_provider: CloudDbProvider::SurrealDB,
-        embedded_db: None,
-    }
-}
-
-/// Create a test AppState with file-based SurrealDB + embedded Turso.
-/// Used for counter route end-to-end tests.
-async fn make_test_state_with_counter() -> AppState {
-    let temp_dir = std::env::temp_dir().join(format!("counter_test_{}", uuid::Uuid::new_v4()));
-    std::fs::create_dir_all(&temp_dir).expect("Failed to create temp dir");
-
-    let db_url = format!("rocksdb://{}", temp_dir.display());
-    let db: Surreal<_> = connect(&db_url)
-        .await
-        .expect("Failed to connect to RocksDB");
-    db.use_ns("test")
-        .use_db("test")
-        .await
-        .expect("Failed to use ns/db");
-
-    run_tenant_migrations(&db)
-        .await
-        .expect("Failed to run migrations");
-
-    let turso_path = temp_dir.join("counter.db");
-    let embedded_db = EmbeddedTurso::new(turso_path.to_str().expect("non-utf8 path"))
+async fn build_state_with_embedded_db(db_path: &std::path::Path) -> AppState {
+    let embedded_db = EmbeddedTurso::new(db_path.to_str().expect("non-utf8 path"))
         .await
         .expect("Failed to initialize embedded Turso");
+    storage_turso::embedded::run_tenant_migrations(&embedded_db)
+        .await
+        .expect("Failed to run tenant migrations");
+    domain::ports::lib_sql::LibSqlPort::execute(
+        &embedded_db,
+        "CREATE TABLE IF NOT EXISTS tenant (id TEXT PRIMARY KEY, name TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now')))",
+        vec![],
+    )
+    .await
+    .expect("Failed to ensure tenant table");
+    domain::ports::lib_sql::LibSqlPort::execute(
+        &embedded_db,
+        "CREATE TABLE IF NOT EXISTS user_tenant (id TEXT PRIMARY KEY, user_sub TEXT NOT NULL UNIQUE, tenant_id TEXT NOT NULL REFERENCES tenant(id), role TEXT NOT NULL DEFAULT 'member', joined_at TEXT NOT NULL DEFAULT (datetime('now')))",
+        vec![],
+    )
+    .await
+    .expect("Failed to ensure user_tenant table");
+    domain::ports::lib_sql::LibSqlPort::execute(
+        &embedded_db,
+        "CREATE INDEX IF NOT EXISTS idx_user_tenant_tenant_id ON user_tenant(tenant_id)",
+        vec![],
+    )
+    .await
+    .expect("Failed to ensure tenant index");
     domain::ports::lib_sql::LibSqlPort::execute(
         &embedded_db,
         usecases::counter_service::COUNTER_MIGRATION,
@@ -116,19 +52,54 @@ async fn make_test_state_with_counter() -> AppState {
     .await
     .expect("Failed to run counter migration");
 
+    for migration in usecases::agent_service::AGENT_MIGRATIONS {
+        domain::ports::lib_sql::LibSqlPort::execute(&embedded_db, migration, vec![])
+            .await
+            .expect("Failed to run agent migration");
+    }
+
     let cache: Cache<String, String> = Cache::builder().max_capacity(10_000).build();
     let http_client = reqwest::Client::new();
-    let config = Config::default();
+    let mut config = Config::default();
+    config.database.provider = CloudDbProvider::Turso;
+    config.database.url = db_path.to_string_lossy().to_string();
 
     AppState {
-        db,
+        db: surrealdb::Surreal::<surrealdb::engine::any::Any>::init(),
         cache,
         http_client,
         config,
         turso_db: None,
-        db_provider: CloudDbProvider::SurrealDB,
+        db_provider: CloudDbProvider::Turso,
         embedded_db: Some(embedded_db),
     }
+}
+
+/// Create a test AppState with a file-based embedded Turso instance.
+async fn make_test_state() -> AppState {
+    let temp_dir =
+        std::env::temp_dir().join(format!("runtime_server_http_{}", uuid::Uuid::new_v4()));
+    std::fs::create_dir_all(&temp_dir).expect("Failed to create temp dir");
+    let db_path = temp_dir.join("runtime_server.db");
+    build_state_with_embedded_db(&db_path).await
+}
+
+/// Create a test AppState for tenant-route scenarios.
+async fn make_test_state_file() -> AppState {
+    let temp_dir =
+        std::env::temp_dir().join(format!("runtime_server_http_file_{}", uuid::Uuid::new_v4()));
+    std::fs::create_dir_all(&temp_dir).expect("Failed to create temp dir");
+    let db_path = temp_dir.join("runtime_server.db");
+    build_state_with_embedded_db(&db_path).await
+}
+
+/// Create a test AppState with file-based embedded Turso.
+/// Used for counter route end-to-end tests.
+async fn make_test_state_with_counter() -> AppState {
+    let temp_dir = std::env::temp_dir().join(format!("counter_test_{}", uuid::Uuid::new_v4()));
+    std::fs::create_dir_all(&temp_dir).expect("Failed to create temp dir");
+    let db_path = temp_dir.join("counter.db");
+    build_state_with_embedded_db(&db_path).await
 }
 
 /// Extract JSON body from an axum Response.
@@ -285,110 +256,6 @@ async fn api_route_with_valid_jwt_and_missing_fields_returns_400() {
         .unwrap();
 
     assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
-}
-
-// ─── Tenant Init E2E ─────────────────────────────────────────────────────────
-// These tests require file-based SurrealDB (RocksDB) for full CREATE support.
-
-#[tokio::test]
-async fn diagnostic_db_create_works() {
-    // Direct DB test to verify CREATE works with RocksDB
-    let temp_dir = std::env::temp_dir().join(format!("surreal_diag_{}", uuid::Uuid::new_v4()));
-    std::fs::create_dir_all(&temp_dir).unwrap();
-    let db_url = format!("rocksdb://{}", temp_dir.display());
-    let db: Surreal<_> = connect(&db_url).await.unwrap();
-    db.use_ns("test").use_db("test").await.unwrap();
-
-    run_tenant_migrations(&db).await.unwrap();
-
-    // Test CREATE with parameters
-    let mut resp = db
-        .query("CREATE tenant SET name = $name")
-        .bind(("name", "test-tenant"))
-        .await
-        .unwrap();
-    let rows: Vec<serde_json::Value> = resp.take(0).unwrap();
-    assert!(!rows.is_empty(), "CREATE returned no rows");
-    assert!(rows[0].get("name").is_some(), "CREATE result missing name");
-
-    // Test SELECT
-    let mut resp2 = db.query("SELECT * FROM tenant").await.unwrap();
-    let rows2: Vec<serde_json::Value> = resp2.take(0).unwrap();
-    assert_eq!(rows2.len(), 1, "Expected 1 tenant");
-
-    // Test via TenantAwareSurrealDb (admin mode) - the path used by handler
-    use domain::ports::surreal_db::SurrealDbPort;
-    use std::collections::BTreeMap;
-
-    let admin_db = TenantAwareSurrealDb::new_admin(db.clone());
-
-    // Test query through the wrapper
-    let result: Vec<serde_json::Value> = admin_db
-        .query(
-            "CREATE tenant SET name = $name",
-            BTreeMap::from([(
-                "name".into(),
-                serde_json::Value::String("wrapper-test".into()),
-            )]),
-        )
-        .await
-        .unwrap();
-    assert!(
-        !result.is_empty(),
-        "TenantAwareSurrealDb CREATE returned no rows"
-    );
-
-    // Test deserializing to TenantRecord (the exact type used in handler)
-    #[derive(serde::Deserialize, Debug)]
-    struct TenantRecord {
-        id: String,
-    }
-    let result_typed: Vec<TenantRecord> = admin_db
-        .query(
-            "CREATE tenant SET name = $name",
-            BTreeMap::from([(
-                "name".into(),
-                serde_json::Value::String("typed-test".into()),
-            )]),
-        )
-        .await
-        .unwrap();
-    assert!(!result_typed.is_empty(), "Typed CREATE returned no rows");
-    println!("TenantRecord: {:?}", result_typed[0]);
-
-    // Test the full init flow: SELECT from user_tenant, CREATE tenant, CREATE user_tenant
-    let existing: Vec<serde_json::Value> = admin_db
-        .query(
-            "SELECT id, tenant_id, role FROM user_tenant WHERE user_sub = $sub",
-            BTreeMap::from([("sub".into(), serde_json::Value::String("test-user".into()))]),
-        )
-        .await
-        .unwrap();
-    assert!(existing.is_empty(), "Expected no existing user_tenant");
-
-    let created: Vec<TenantRecord> = admin_db
-        .query(
-            "CREATE tenant SET name = $name",
-            BTreeMap::from([("name".into(), serde_json::Value::String("full-test".into()))]),
-        )
-        .await
-        .unwrap();
-    assert!(!created.is_empty(), "Full flow CREATE returned no rows");
-    let tenant_id_str = created[0].id.clone();
-
-    let _: Vec<serde_json::Value> = admin_db
-        .query(
-            "CREATE user_tenant SET user_sub = $sub, tenant_id = $tenant_id, role = 'owner'",
-            BTreeMap::from([
-                ("sub".into(), serde_json::Value::String("test-user".into())),
-                ("tenant_id".into(), serde_json::Value::String(tenant_id_str)),
-            ]),
-        )
-        .await
-        .unwrap();
-
-    // Cleanup
-    let _ = std::fs::remove_dir_all(&temp_dir);
 }
 
 #[tokio::test]

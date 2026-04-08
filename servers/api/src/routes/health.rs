@@ -36,7 +36,12 @@ pub async fn healthz() -> (StatusCode, Json<Value>) {
     ),
 )]
 pub async fn readyz(State(state): State<AppState>) -> (StatusCode, Json<Value>) {
-    let db_ok = state.db.health().await.is_ok();
+    let db_ok = match &state.embedded_db {
+        Some(db) => domain::ports::lib_sql::LibSqlPort::health_check(db)
+            .await
+            .is_ok(),
+        None => false,
+    };
 
     if db_ok {
         (StatusCode::OK, Json(json!({"status": "ready"})))

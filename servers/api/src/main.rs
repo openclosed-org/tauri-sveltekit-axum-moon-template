@@ -24,6 +24,7 @@ async fn main() -> Result<(), AppError> {
 
     // Try to load config from environment, fall back to defaults
     let config = Config::from_env().unwrap_or_default();
+    let startup_db = AppState::startup_database_info(&config)?;
 
     let addr = SocketAddr::from((
         [0, 0, 0, 0],
@@ -34,7 +35,7 @@ async fn main() -> Result<(), AppError> {
     ));
 
     // Initialize shared application state
-    let state = AppState::new_dev().await?;
+    let state = AppState::new_with_config(config.clone()).await?;
     let app = create_router(state);
 
     let listener = tokio::net::TcpListener::bind(addr)
@@ -42,6 +43,12 @@ async fn main() -> Result<(), AppError> {
         .map_err(|e| AppError::Config(format!("Failed to bind to {}: {}", addr, e)))?;
 
     tracing::info!("🚀 Runtime server listening on {}", addr);
+    tracing::info!(
+        provider = ?startup_db.provider,
+        db_path = %startup_db.absolute_path.display(),
+        path_source = ?startup_db.source,
+        "runtime_server database initialized"
+    );
     tracing::info!("   Health: http://localhost:{}/healthz", config.server.port);
     tracing::info!("   Ready:  http://localhost:{}/readyz", config.server.port);
 
