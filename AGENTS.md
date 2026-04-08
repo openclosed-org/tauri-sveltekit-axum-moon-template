@@ -4,7 +4,6 @@
 
 1. 本文件定义**仓库级、长期稳定**的协作规则。
 2. 更近规则优先：子目录 `AGENTS.md`、`CLAUDE.md`、README、模块文档、测试规范 > 本文件。
-3. 易过期内容（版本坑、调试案例、兼容性结论、命令模板）沉淀到 `.agents/playbooks/`，不要堆在本文件。
 
 ---
 
@@ -139,50 +138,6 @@
 4. 测试缺失导致无法可靠验证
 5. 现有技术债已使继续叠加改动风险过高
 6. 需要依赖外部文档或版本差异才能判断正确实现
-
----
-
-## 9. 多 Agent 协作
-
-需要多 agent 协作时，按需分工，不强制角色齐全：
-
-- Planner：拆解目标、范围、验收标准、风险
-- Architect：边界、接口、数据流、取舍
-- Implementer：最小改动落地
-- Reviewer：正确性、复杂度、回归风险
-- Tester：验证设计与执行
-- Docs：更新文档、迁移说明、经验沉淀
-
-原则：
-
-1. 分工必须服务于降低错误率与减少返工。
-2. 子 agent 的输出必须回到仓库上下文中校验，不能直接照搬。
-3. 若已有合适 skills / MCP / tools，优先调用，而不是徒增 agent 层级。
-
----
-
-## 10. 经验沉淀
-
-1. 任务中形成的**已验证、可复用**经验，按领域沉淀到 `.agents/playbooks/`。
-2. 推荐分类：
-   - `.agents/playbooks/debugging/`
-   - `.agents/playbooks/tauri/`
-   - `.agents/playbooks/axum/`
-   - `.agents/playbooks/sveltekit/`
-   - `.agents/playbooks/build/`
-   - `.agents/playbooks/testing/`
-   - `.agents/playbooks/release/`
-3. 适合沉淀的内容：
-   - 版本兼容性结论
-   - 常见报错与根因
-   - 调试流程
-   - 命令模板
-   - 跨模块协作约定
-4. 不适合沉淀的内容：
-   - 未验证猜测
-   - 一次性日志
-   - 与单次临时任务强绑定的上下文
-5. 若发现现有 playbook 过期、冲突或失真，应在任务结束时同步修订。
 
 ---
 
