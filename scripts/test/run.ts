@@ -1,10 +1,12 @@
-import { spawn } from 'node:child_process';
-import process from 'node:process';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+/**
+ * Rust Test Runner
+ * 
+ * Unified interface for all Rust test suites
+ * Stage: Testing
+ */
 
-const __dirname = fileURLToPath(new URL('.', import.meta.url));
-const workspaceRoot = path.resolve(__dirname, '../..');
+import { runInherit, requireTool } from '../lib/spawn.js';
+import process from 'node:process';
 
 const GREEN = '\x1b[0;32m';
 const RED = '\x1b[0;31m';
@@ -17,65 +19,14 @@ const ok = (...args: string[]) => console.log(`${GREEN}[✓]${NC}`, ...args);
 const fail = (...args: string[]) => console.log(`${RED}[✗]${NC}`, ...args);
 const warn = (...args: string[]) => console.log(`${YELLOW}[!]${NC}`, ...args);
 
-/**
- * Run a command asynchronously
- */
-function runCommand(cmd: string, args: string[], options = {}): Promise<number> {
-  return new Promise((resolve) => {
-    const child = spawn(cmd, args, {
-      stdio: 'inherit',
-      shell: process.platform === 'win32',
-      cwd: workspaceRoot,
-      ...options,
-    });
-
-    child.on('close', (code) => {
-      resolve(code ?? 1);
-    });
-
-    child.on('error', () => {
-      resolve(1);
-    });
-  });
-}
-
-/**
- * Check if a tool is available
- */
-async function checkTool(name: string, installCmd: string): Promise<boolean> {
-  const checkCmd = process.platform === 'win32' ? 'where' : 'command';
-  const checkArgs = process.platform === 'win32' ? [name] : ['-v', name];
-
-  return new Promise((resolve) => {
-    const child = spawn(checkCmd, checkArgs, {
-      stdio: 'pipe',
-      shell: process.platform === 'win32',
-    });
-
-    child.on('close', (code) => {
-      if (code === 0) {
-        resolve(true);
-      } else {
-        warn(`${name} not found — install with: ${installCmd}`);
-        resolve(false);
-      }
-    });
-
-    child.on('error', () => {
-      warn(`${name} not found — install with: ${installCmd}`);
-      resolve(false);
-    });
-  });
-}
-
 async function runNextest(extraArgs: string[] = []): Promise<number> {
   log('Running cargo-nextest...');
-  if (!(await checkTool('cargo-nextest', 'cargo install cargo-nextest --locked'))) return 1;
+  await requireTool('cargo-nextest', 'cargo install cargo-nextest --locked');
 
   const profile = process.env.PROFILE || 'default';
   log(`Profile: ${profile}`);
 
-  const exitCode = await runCommand('cargo', ['nextest', 'run', '--workspace', '--profile', profile, ...extraArgs]);
+  const exitCode = await runInherit('cargo', ['nextest', 'run', '--workspace', '--profile', profile, ...extraArgs]);
   if (exitCode === 0) {
     ok('All nextest tests passed');
   } else {
@@ -86,14 +37,14 @@ async function runNextest(extraArgs: string[] = []): Promise<number> {
 
 async function runCoverage(extraArgs: string[] = []): Promise<number> {
   log('Running cargo-llvm-cov...');
-  if (!(await checkTool('cargo-llvm-cov', 'cargo install cargo-llvm-cov --locked'))) return 1;
+  await requireTool('cargo-llvm-cov', 'cargo install cargo-llvm-cov --locked');
 
   const outputFormat = process.env.COV_FORMAT || 'lcov';
   const outputPath = 'target/lcov.info';
 
   log(`Format: ${outputFormat} → ${outputPath}`);
 
-  const exitCode = await runCommand('cargo', [
+  const exitCode = await runInherit('cargo', [
     'llvm-cov', '--workspace',
     `--${outputFormat}`,
     '--output-path', outputPath,
@@ -103,7 +54,7 @@ async function runCoverage(extraArgs: string[] = []): Promise<number> {
 
   if (exitCode === 0) {
     ok(`Coverage report generated: ${outputPath}`);
-    await runCommand('cargo', ['llvm-cov', '--workspace', '--summary-only'], { stdio: 'pipe' });
+    await runInherit('cargo', ['llvm-cov', '--workspace', '--summary-only']);
   } else {
     fail(`Coverage run failed (exit code: ${exitCode})`);
   }
@@ -112,9 +63,9 @@ async function runCoverage(extraArgs: string[] = []): Promise<number> {
 
 async function runHack(extraArgs: string[] = []): Promise<number> {
   log('Running cargo-hack feature powerset...');
-  if (!(await checkTool('cargo-hack', 'cargo install cargo-hack --locked'))) return 1;
+  await requireTool('cargo-hack', 'cargo install cargo-hack --locked');
 
-  const exitCode = await runCommand('cargo', ['hack', 'check', '--workspace', '--feature-powerset', ...extraArgs]);
+  const exitCode = await runInherit('cargo', ['hack', 'check', '--workspace', '--feature-powerset', ...extraArgs]);
   if (exitCode === 0) {
     ok('All feature combinations compile');
   } else {
@@ -125,9 +76,9 @@ async function runHack(extraArgs: string[] = []): Promise<number> {
 
 async function runMutants(extraArgs: string[] = []): Promise<number> {
   log('Running cargo-mutants...');
-  if (!(await checkTool('cargo-mutants', 'cargo install cargo-mutants --locked'))) return 1;
+  await requireTool('cargo-mutants', 'cargo install cargo-mutants --locked');
 
-  const exitCode = await runCommand('cargo', ['mutants', '--workspace', ...extraArgs]);
+  const exitCode = await runInherit('cargo', ['mutants', '--workspace', ...extraArgs]);
   if (exitCode === 0) {
     ok('All mutants caught by tests');
   } else {
@@ -139,7 +90,7 @@ async function runMutants(extraArgs: string[] = []): Promise<number> {
 async function runQuick(): Promise<number> {
   log('Running quick smoke test...');
 
-  let exitCode = await runCommand('cargo', ['check', '--workspace', '--quiet']);
+  let exitCode = await runInherit('cargo', ['check', '--workspace', '--quiet']);
   if (exitCode === 0) {
     ok('cargo check');
   } else {
@@ -147,7 +98,7 @@ async function runQuick(): Promise<number> {
     return 1;
   }
 
-  exitCode = await runCommand('cargo', ['test', '--workspace', '--lib', '--quiet']);
+  exitCode = await runInherit('cargo', ['test', '--workspace', '--lib', '--quiet']);
   if (exitCode === 0) {
     ok('cargo test --lib');
   } else {

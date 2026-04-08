@@ -1,13 +1,12 @@
-import { spawn } from 'node:child_process';
-import process from 'node:process';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+/**
+ * Boundary Check - Architecture Dependency Validation
+ * 
+ * Enforces architectural dependency boundaries using cargo tree
+ * Stage: Quality gate / CI
+ */
 
-interface CommandResult {
-  success: boolean;
-  output: string;
-  error: string;
-}
+import { run } from '../lib/spawn.js';
+import process from 'node:process';
 
 interface BoundaryRule {
   pkgName: string;
@@ -15,91 +14,42 @@ interface BoundaryRule {
   disallowedPattern: RegExp;
 }
 
-const __dirname = fileURLToPath(new URL('.', import.meta.url));
-const workspaceRoot = path.resolve(__dirname, '..');
+async function checkBoundary(rule: BoundaryRule): Promise<boolean> {
+  console.log(`=== Checking ${rule.pkgName} dependencies ===`);
 
-/**
- * Execute a command and return result
- */
-function runCommand(cmd: string, args: string[]): Promise<CommandResult> {
-  return new Promise((resolve) => {
-    const child = spawn(cmd, args, {
-      stdio: ['pipe', 'pipe', 'pipe'],
-      shell: process.platform === 'win32',
-      cwd: workspaceRoot,
-    });
+  const result = await run('cargo', ['tree', '-p', rule.pkgName, '--depth', '1']);
 
-    let stdout = '';
-    let stderr = '';
+  if (!result.success) {
+    console.warn(`⚠️  Could not get dependency tree for ${rule.pkgName}`);
+    if (result.error) console.warn(result.error);
+    return true; // Don't fail on missing package
+  }
 
-    child.stdout?.on('data', (data) => {
-      stdout += data.toString();
-    });
+  const lines = result.output.split(/\r?\n/);
+  const violations: string[] = [];
 
-    child.stderr?.on('data', (data) => {
-      stderr += data.toString();
-    });
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith(rule.pkgName)) continue;
 
-    child.on('close', (code) => {
-      resolve({
-        success: code === 0,
-        output: stdout.trim(),
-        error: stderr.trim(),
-      });
-    });
+    const isAllowed = rule.allowedPatterns.some((pattern) => trimmed.includes(pattern));
+    if (isAllowed) continue;
 
-    child.on('error', (err) => {
-      resolve({
-        success: false,
-        output: '',
-        error: err.message,
-      });
-    });
-  });
-}
-
-/**
- * Check if a dependency violates boundary rules
- */
-function checkBoundary(pkgName: string, allowedPatterns: string[], disallowedPattern: RegExp): Promise<boolean> {
-  return new Promise(async (resolve) => {
-    console.log(`=== Checking ${pkgName} dependencies ===`);
-
-    const result = await runCommand('cargo', ['tree', '-p', pkgName, '--depth', '1']);
-
-    if (!result.success) {
-      console.warn(`⚠️  Could not get dependency tree for ${pkgName}`);
-      if (result.error) console.warn(result.error);
-      resolve(true); // Don't fail on missing package
-      return;
+    if (rule.disallowedPattern.test(trimmed)) {
+      violations.push(trimmed);
     }
+  }
 
-    const lines = result.output.split(/\r?\n/);
-    const violations: string[] = [];
-
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith(pkgName)) continue;
-
-      const isAllowed = allowedPatterns.some((pattern) => trimmed.includes(pattern));
-      if (isAllowed) continue;
-
-      if (disallowedPattern.test(trimmed)) {
-        violations.push(trimmed);
-      }
+  if (violations.length > 0) {
+    console.error(`❌ FAIL: ${rule.pkgName} depends on illegal crates:`);
+    for (const v of violations) {
+      console.error(`  - ${v}`);
     }
-
-    if (violations.length > 0) {
-      console.error(`❌ FAIL: ${pkgName} depends on illegal crates:`);
-      for (const v of violations) {
-        console.error(`  - ${v}`);
-      }
-      resolve(false);
-    } else {
-      console.log(`✅ OK: ${pkgName} boundary clean`);
-      resolve(true);
-    }
-  });
+    return false;
+  } else {
+    console.log(`✅ OK: ${rule.pkgName} boundary clean`);
+    return true;
+  }
 }
 
 async function main(): Promise<number> {
@@ -123,11 +73,7 @@ async function main(): Promise<number> {
 
   console.log('=== Architecture Boundary Check ===\n');
 
-  const results = await Promise.all(
-    rules.map(({ pkgName, allowedPatterns, disallowedPattern }) =>
-      checkBoundary(pkgName, allowedPatterns, disallowedPattern)
-    )
-  );
+  const results = await Promise.all(rules.map(checkBoundary));
 
   console.log('');
 

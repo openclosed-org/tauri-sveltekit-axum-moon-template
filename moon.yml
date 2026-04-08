@@ -1,57 +1,62 @@
-# ── Moon Task Configuration ─────────────────────────────────────────
-# Optimized for: parallel execution, platform filtering, incremental caching
-# Best practice: moon handles dependency graphs, just provides aliases
+# Moon Task Configuration
+# 2026-04 Best Practices:
+# - moon: dependency graphs, incremental caching, parallel execution
+# - just: human-friendly aliases, precondition checks
+# - scripts: TypeScript only (.ts), cross-platform via scripts/lib/spawn.ts
 
 tasks:
+  # ==========================================================================
+  # BUILD TASKS
+  # ==========================================================================
+
   build:
     command: 'cargo build --workspace'
     inputs:
-
       - 'Cargo.toml'
       - 'Cargo.lock'
 
   check:
     command: 'cargo check --workspace'
     inputs:
-
       - 'Cargo.toml'
       - 'Cargo.lock'
 
   lint:
     command: 'cargo clippy --workspace'
     inputs:
-
       - 'Cargo.toml'
       - 'Cargo.lock'
 
   test:
     command: 'cargo test --workspace'
     inputs:
-
       - 'Cargo.toml'
       - 'Cargo.lock'
 
   format:
     command: 'cargo fmt --all -- --check'
     inputs:
-
+      - '**/*.rs'
 
   format-fix:
     command: 'cargo fmt --all'
     inputs:
-
+      - '**/*.rs'
 
   bloat:
     command: 'cargo bloat --release --crates -p runtime_server'
     inputs:
-
       - 'Cargo.toml'
 
-  # ── Setup ──────────────────────────────────────────────────────────
+  # ==========================================================================
+  # SETUP TASKS
+  # ==========================================================================
+
   setup:
     script: 'bun install'
     inputs:
       - 'package.json'
+      - 'package-lock.json'
 
   bootstrap:
     deps:
@@ -65,6 +70,7 @@ tasks:
       - 'rust-toolchain.toml'
       - '.env.example'
       - 'scripts/doctor.ts'
+      - 'scripts/lib/spawn.ts'
 
   toolchain-check:
     script: 'rustc --version && bun --version && moon --version && echo "ALL OK"'
@@ -72,7 +78,10 @@ tasks:
       - 'rust-toolchain.toml'
       - '.tool-versions'
 
-  # ── Dev ────────────────────────────────────────────────────────────
+  # ==========================================================================
+  # DEVELOPMENT TASKS
+  # ==========================================================================
+
   dev-web:
     script: 'cd apps/client/web/app && bun run dev'
     inputs:
@@ -84,13 +93,7 @@ tasks:
       - 'apps/client/native/**/*'
       - 'servers/api/**/*'
       - 'scripts/dev-desktop.ts'
-
-  dev-desktop-win:
-    script: 'bun run scripts/dev-desktop.ts'
-    inputs:
-      - 'apps/client/native/**/*'
-      - 'servers/api/**/*'
-      - 'scripts/dev-desktop.ts'
+      - 'scripts/lib/spawn.ts'
 
   dev-api:
     command: 'cargo run -p runtime_server'
@@ -99,18 +102,15 @@ tasks:
     inputs:
       - 'servers/api/**/*'
 
-  dev-extension:
-    command: 'echo "Extension dev not yet implemented"'
-
-  dev-workers:
-    command: 'echo "Workers dev not yet implemented"'
-
   dev-fullstack:
     deps:
       - 'dev-api'
       - 'dev-web'
 
-  # ── Quality ────────────────────────────────────────────────────────
+  # ==========================================================================
+  # QUALITY GATE TASKS
+  # ==========================================================================
+
   fmt:
     deps:
       - 'format'
@@ -131,8 +131,8 @@ tasks:
       echo "=== Running typegen ==="
       moon run repo:typegen
       echo "=== Checking for drift ==="
-      git diff --exit-code packages/contracts/generated/ && echo "DRIFT CHECK PASSED" || (echo "DRIFT CHECK FAILED �?generated types differ from committed" && exit 1)
-      git diff --exit-code apps/client/web/app/src/lib/generated/ && echo "FRONTEND SYNC PASSED" || (echo "FRONTEND SYNC FAILED �?frontend types differ from committed" && exit 1)
+      git diff --exit-code packages/contracts/generated/ && echo "DRIFT CHECK PASSED" || (echo "DRIFT CHECK FAILED - generated types differ from committed" && exit 1)
+      git diff --exit-code apps/client/web/app/src/lib/generated/ && echo "FRONTEND SYNC PASSED" || (echo "FRONTEND SYNC FAILED - frontend types differ from committed" && exit 1)
     inputs:
       - 'packages/contracts/**/src/**'
       - 'packages/contracts/**/Cargo.toml'
@@ -206,57 +206,15 @@ tasks:
       - '~:build-desktop-bin'
       - '~:setup'
 
+  # Full E2E gate: preflight + Web + Desktop (parallel lanes)
   test-e2e-full:
-    script: |
-      bun -e "
-        const { spawnSync } = require('child_process');
-
-        console.log('=== Runtime preflight ===');
-        const preflight = spawnSync(process.execPath, ['scripts/e2e/runtime-preflight.ts'], {
-          cwd: process.cwd(),
-          stdio: 'inherit',
-          shell: false,
-        });
-
-        if ((preflight.status ?? 1) !== 0) {
-          console.log('\n=== E2E Full Gate Summary ===');
-          console.log('[FAIL] Runtime preflight (exit ' + (preflight.status ?? 1) + ')');
-          process.exit(preflight.status ?? 1);
-        }
-
-        const lanes = [
-          { name: 'Web Playwright E2E matrix', cwd: 'apps/client/web/app', cmd: process.platform === 'win32' ? 'bun.cmd' : 'bun', args: ['run', 'test:e2e'] },
-          { name: 'Tauri Playwright desktop E2E (CI)', cwd: 'e2e-desktop-playwright', cmd: process.platform === 'win32' ? 'bun.cmd' : 'bun', args: ['run', 'test:ci'] },
-        ];
-
-        const results = [];
-
-        for (const lane of lanes) {
-          console.log('=== ' + lane.name + ' ===');
-          const run = spawnSync(lane.cmd, lane.args, {
-            cwd: lane.cwd,
-            stdio: 'inherit',
-            shell: false,
-          });
-          results.push({ name: lane.name, code: run.status ?? 1 });
-        }
-
-        console.log('\n=== E2E Full Gate Summary ===');
-        let hasFailure = false;
-        for (const result of results) {
-          const ok = result.code === 0;
-          if (!ok) hasFailure = true;
-          console.log((ok ? '[PASS] ' : '[FAIL] ') + result.name + ' (exit ' + result.code + ')');
-        }
-
-        process.exit(hasFailure ? 1 : 0);
-      "
+    script: 'bun run scripts/e2e/run-e2e-gate.ts'
     inputs:
+      - 'scripts/e2e/run-e2e-gate.ts'
+      - 'scripts/e2e/runtime-preflight.ts'
+      - 'scripts/lib/spawn.ts'
       - 'apps/client/web/app/**'
       - 'e2e-desktop-playwright/**'
-
-  test-agent:
-    command: 'echo "Agent tests �?Phase 5 implementation"'
 
   test-all-rust:
     deps:
@@ -274,16 +232,18 @@ tasks:
   boundary-check:
     script: 'bun run scripts/boundary-check.ts'
     inputs:
-      - "Cargo.toml"
-      - "packages/*/Cargo.toml"
-      - "packages/**/Cargo.toml"
-      - "servers/*/Cargo.toml"
-      - "scripts/boundary-check.ts"
+      - 'Cargo.toml'
+      - 'packages/*/Cargo.toml'
+      - 'packages/**/Cargo.toml'
+      - 'servers/*/Cargo.toml'
+      - 'scripts/boundary-check.ts'
+      - 'scripts/lib/spawn.ts'
     deps:
-      - "~:setup"
+      - '~:setup'
     options:
       runFromWorkspaceRoot: true
 
+  # Main quality gate (runs all checks in parallel where possible)
   verify:
     deps:
       - 'fmt'
@@ -293,49 +253,22 @@ tasks:
       - 'test-unit'
       - '~:boundary-check'
 
-  # ── Codegen ────────────────────────────────────────────────────────
+  # ==========================================================================
+  # CODEGEN TASKS
+  # ==========================================================================
+
   typegen:
     script: 'bun run scripts/typegen.ts'
     inputs:
       - 'packages/contracts/**/src/**'
       - 'packages/contracts/**/Cargo.toml'
       - 'scripts/typegen.ts'
+      - 'scripts/lib/spawn.ts'
 
-  openapi-gen:
-    command: 'echo "OpenAPI gen �?Phase 2 implementation"'
+  # ==========================================================================
+  # SECURITY TASKS
+  # ==========================================================================
 
-  fixtures-gen:
-    command: 'echo "Fixtures gen �?Phase 5 implementation"'
-
-  icons-gen:
-    command: 'echo "Icons gen �?as needed"'
-
-  tokens-gen:
-    command: 'echo "Tokens gen �?as needed"'
-
-  # ── Ops ────────────────────────────────────────────────────────────
-  trace-open:
-    command: 'echo "Trace open �?Phase 7 implementation"'
-
-  evals-run:
-    command: 'echo "Evals run �?Phase 5 implementation"'
-
-  replay-protocol:
-    command: 'echo "Replay protocol �?Phase 7 implementation"'
-
-  release-dry-run:
-    command: 'echo "Release dry run �?Phase 9 implementation"'
-
-  release-desktop:
-    command: 'echo "Release desktop �?Phase 9 implementation"'
-
-  release-web:
-    command: 'echo "Release web �?Phase 9 implementation"'
-
-  release-server:
-    command: 'echo "Release server �?Phase 9 implementation"'
-
-  # ── Security ───────────────────────────────────────────────────────
   audit-rust:
     script: |
       bun -e "
@@ -348,7 +281,4 @@ tasks:
     script: 'bun audit || true'
 
   secrets-scan:
-    command: 'echo "Secrets scan �?use gitleaks or similar"'
-
-  licenses-check:
-    command: 'echo "Licenses check �?Phase 9 implementation"'
+    command: 'echo "Secrets scan - use gitleaks or similar"'

@@ -1,50 +1,60 @@
-# Cross-Platform Test Scripts
+# Cross-Platform Scripts Guide
 
-These `.mjs` scripts are cross-platform equivalents of the `.sh` scripts.
-They work on Windows, macOS, and Linux using Bun or Node.js.
+All scripts are now written in **TypeScript (.ts)** and run via **Bun**.
 
-| Shell Script | Cross-Platform Equivalent |
-|-------------|--------------------------|
-| `scripts/test/run.sh` | `scripts/test/run.mjs` |
-| `scripts/test/run-frontend.sh` | `scripts/test/run-frontend.mjs` |
-| `scripts/quick-test.sh` | `scripts/quick-test.mjs` |
-| `scripts/test-verify.sh` | `scripts/test-verify.mjs` |
+They work on Windows, macOS, and Linux with automatic platform detection via `scripts/lib/spawn.ts`.
+
+## Script Inventory
+
+| Script | Purpose | Stage |
+|--------|---------|-------|
+| `scripts/doctor.ts` | Toolchain and config health check | Setup |
+| `scripts/dev-desktop.ts` | Desktop dev environment (API + Tauri) | Development |
+| `scripts/typegen.ts` | Generate contract bindings and sync to frontend | Codegen |
+| `scripts/boundary-check.ts` | Architecture dependency validation | Quality Gate |
+| `scripts/test/run.ts` | Rust test runner (nextest, coverage, hack, mutants) | Testing |
+| `scripts/test/run-frontend.ts` | Frontend test runner (check, lint, unit, e2e) | Testing |
+| `scripts/e2e/runtime-preflight.ts` | E2E preflight gate (API + ports + types) | E2E |
+| `scripts/e2e/run-e2e-gate.ts` | Full E2E pipeline orchestrator | E2E |
+| `scripts/lib/spawn.ts` | Shared cross-platform spawn utilities | Library |
 
 ## Usage
 
 ```bash
-# Using bun (recommended)
-bun run scripts/test/run.mjs nextest
-bun run scripts/test/run-frontend.mjs all
-bun run scripts/quick-test.mjs
-bun run scripts/test-verify.mjs
+# Run via moon (recommended for CI/automation)
+moon run repo:doctor
+moon run repo:typegen
+moon run repo:boundary-check
+moon run repo:test-e2e-full
 
-# Using node
-node scripts/test/run.mjs nextest
-node scripts/test/run-frontend.mjs all
-node scripts/quick-test.mjs
-node scripts/test-verify.mjs
+# Run via just (recommended for humans)
+just doctor
+just typegen
+just verify
+just dev-desktop
+
+# Run directly with bun
+bun run scripts/doctor.ts
+bun run scripts/test/run.ts all
+bun run scripts/test/run-frontend.ts all
+bun run scripts/e2e/runtime-preflight.ts
 ```
 
-## Commands
+## Shared Library
 
-### run.mjs
-- `nextest` — Run tests with cargo-nextest (default)
-- `coverage` — Run tests with cargo-llvm-cov
-- `hack` — Run cargo-hack feature powerset check
-- `mutants` — Run cargo-mutants mutation testing
-- `quick` — Quick smoke test (unit only)
-- `all` — Run all test suites
+All scripts use `scripts/lib/spawn.ts` for:
+- Cross-platform process spawning (Windows/macOS/Linux)
+- Async execution with proper error handling
+- Process tree cleanup
+- Port waiting and availability checks
+- Tool availability checks
 
-### run-frontend.mjs
-- `check` — TypeScript/svelte-check
-- `lint` — Biome lint
-- `unit` — Vitest unit tests
-- `e2e` — Playwright E2E tests
-- `all` — Run all frontend checks (default)
+This eliminates code duplication and ensures consistent behavior across all scripts.
 
-### quick-test.mjs
-Fast local verification: format, clippy, build, tests, frontend check.
+## Migration History
 
-### test-verify.mjs
-Full quality gate verification with summary report.
+- **Phase 1**: Original `.sh` scripts (Unix only)
+- **Phase 2**: Migrated to `.mjs` (cross-platform but no types)
+- **Phase 3** (current): Migrated to `.ts` with shared library (type-safe, DRY, cross-platform)
+
+All `.sh` and `.mjs` files have been removed. Only `.ts` files remain.

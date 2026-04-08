@@ -1,85 +1,35 @@
+/**
+ * Doctor - Toolchain and Config Health Check
+ * 
+ * Verifies all required tools and config files are present
+ * Stage: Setup/bootstrap
+ */
+
+import { hasTool } from '../lib/spawn.js';
 import { existsSync } from 'node:fs';
-import { spawn } from 'node:child_process';
 import process from 'node:process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-interface CommandResult {
-  success: boolean;
-  output: string;
-  error: string;
-}
-
 interface ToolCheck {
   name: string;
   cmd: string;
-  args?: string[];
 }
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const workspaceRoot = path.resolve(__dirname, '..');
 
-/**
- * Execute a command asynchronously and return result
- */
-function runCommand(cmd: string, args: string[] = [], options = {}): Promise<CommandResult> {
-  return new Promise((resolve) => {
-    const child = spawn(cmd, args, {
-      stdio: ['pipe', 'pipe', 'pipe'],
-      shell: process.platform === 'win32',
-      ...options,
-    });
-
-    let stdout = '';
-    let stderr = '';
-
-    child.stdout?.on('data', (data) => {
-      stdout += data.toString();
-    });
-
-    child.stderr?.on('data', (data) => {
-      stderr += data.toString();
-    });
-
-    child.on('close', (code) => {
-      resolve({
-        success: code === 0,
-        output: stdout.trim(),
-        error: stderr.trim(),
-      });
-    });
-
-    child.on('error', (err) => {
-      resolve({
-        success: false,
-        output: '',
-        error: err.message,
-      });
-    });
-  });
-}
-
-/**
- * Check if a tool exists and get its version
- */
-async function checkVersion({ name, cmd, args = ['--version'] }: ToolCheck): Promise<boolean> {
-  try {
-    const result = await runCommand(cmd, args);
-    if (result.success) {
-      console.log(`✅ ${name}: ${result.output}`);
-      return true;
-    }
+async function checkTool({ name, cmd }: ToolCheck): Promise<boolean> {
+  const available = await hasTool(cmd);
+  if (available) {
+    const result = await import('../lib/spawn.js').then(({ run }) => run(cmd, ['--version']));
+    console.log(`✅ ${name}: ${result.output}`);
+  } else {
     console.log(`❌ MISSING: ${name} — run: just setup`);
-    return false;
-  } catch {
-    console.log(`❌ MISSING: ${name} — run: just setup`);
-    return false;
   }
+  return available;
 }
 
-/**
- * Check if a file exists
- */
 function checkFileExists(filePath: string, label: string): boolean {
   if (existsSync(filePath)) {
     console.log(`✅ ${label}: exists`);
@@ -100,7 +50,7 @@ async function main(): Promise<number> {
     { name: 'moon', cmd: 'moon' },
   ];
 
-  const results = await Promise.all(tools.map(checkVersion));
+  const results = await Promise.all(tools.map(checkTool));
 
   console.log('\n=== Config Files Check ===\n');
 

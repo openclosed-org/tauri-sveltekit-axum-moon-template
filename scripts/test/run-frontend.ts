@@ -1,4 +1,11 @@
-import { spawn } from 'node:child_process';
+/**
+ * Frontend Test Runner
+ * 
+ * Unified interface for all frontend quality checks
+ * Stage: Testing
+ */
+
+import { runInherit } from '../lib/spawn.js';
 import process from 'node:process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -17,25 +24,8 @@ const log = (...args: string[]) => console.log(`${BLUE}[frontend]${NC}`, ...args
 const ok = (...args: string[]) => console.log(`${GREEN}[✓]${NC}`, ...args);
 const fail = (...args: string[]) => console.log(`${RED}[✗]${NC}`, ...args);
 
-/**
- * Run a bun script in the web directory
- */
-function runBunScript(script: string, args: string[] = [], cwd: string = webDir): Promise<number> {
-  return new Promise((resolve) => {
-    const child = spawn('bun', ['run', '--cwd', cwd, script, ...args], {
-      stdio: 'inherit',
-      shell: process.platform === 'win32',
-      cwd,
-    });
-
-    child.on('close', (code) => {
-      resolve(code ?? 1);
-    });
-
-    child.on('error', () => {
-      resolve(1);
-    });
-  });
+async function runBunScript(script: string, args: string[] = [], cwd: string = webDir): Promise<number> {
+  return runInherit('bun', ['run', '--cwd', cwd, script, ...args], { cwd });
 }
 
 async function runCheck(): Promise<number> {
