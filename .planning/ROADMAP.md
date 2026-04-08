@@ -64,6 +64,16 @@ Plans:
 - [x] 10-02-PLAN.md — tenant-1/tenant-2 隔离断言与重复运行回归
 - [x] 10-03-PLAN.md — CI 最小诊断包与 job 级 artifact 输出
 
+### Phase 10.1: 根据 docs/STORAGE_COMPILE_REQUIREMENTS.md 落实 Turso-only 存储持久化、编译裁剪与多租户测试体系 (INSERTED)
+
+**Goal:** [Urgent work - to be planned]
+**Requirements**: TBD
+**Depends on:** Phase 10
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 10.1 to break down)
+
 ### Phase 11: Windows 桌面 E2E 门禁固化
 **Goal**: 受保护分支的合并决策可由 Windows desktop E2E required check 直接约束。
 **Depends on**: Phase 10
