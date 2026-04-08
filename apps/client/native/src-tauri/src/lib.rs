@@ -6,11 +6,36 @@ mod sync;
 use runtime_tauri::commands::{admin, agent, auth, config, counter};
 
 use domain::ports::lib_sql::LibSqlPort;
+use std::path::{Path, PathBuf};
 use storage_turso::{EmbeddedTurso, embedded::run_tenant_migrations};
 use sync::SyncEngine;
 use sync::engine::init_sync_tables;
 use tauri::{Emitter, Manager};
 use tracing_subscriber::{EnvFilter, fmt, prelude::*};
+
+const DB_PATH_ENV: &str = "NATIVE_TAURI_TURSO_DB_PATH";
+const DEFAULT_TURSO_DB_FILENAME: &str = "runtime_tauri.db";
+
+#[derive(Debug, PartialEq, Eq)]
+enum DatabasePathSource {
+    Default,
+    Env,
+}
+
+impl DatabasePathSource {
+    fn as_str(&self) -> &'static str {
+        match self {
+            Self::Default => "default",
+            Self::Env => "env",
+        }
+    }
+}
+
+#[derive(Debug)]
+struct ResolvedDatabasePath {
+    path: PathBuf,
+    source: DatabasePathSource,
+}
 
 /// Shared application state managed by Tauri.
 pub struct AppState {
@@ -40,40 +65,60 @@ fn resolve_dotenv_path(start_dir: &std::path::Path) -> Option<std::path::PathBuf
         .find(|path| path.is_file())
 }
 
+fn resolve_database_path(
+    app_data_dir: &Path,
+    env_override: Option<&str>,
+) -> Result<ResolvedDatabasePath, String> {
+    let default_path = app_data_dir.join(DEFAULT_TURSO_DB_FILENAME);
+
+    let (selected, source) = match env_override.map(str::trim).filter(|v| !v.is_empty()) {
+        Some(value) => {
+            if value.eq_ignore_ascii_case(":memory:") || value.eq_ignore_ascii_case("memory") {
+                return Err("memory path is not allowed for desktop runtime".to_string());
+            }
+            (PathBuf::from(value), DatabasePathSource::Env)
+        }
+        None => (default_path, DatabasePathSource::Default),
+    };
+
+    let normalized = if selected.is_absolute() {
+        selected
+    } else {
+        app_data_dir.join(selected)
+    };
+
+    let parent = normalized
+        .parent()
+        .ok_or_else(|| "database path parent directory is missing".to_string())?;
+
+    std::fs::create_dir_all(parent)
+        .map_err(|error| format!("failed to create database directory: {error}"))?;
+
+    let canonical_parent = parent
+        .canonicalize()
+        .map_err(|error| format!("failed to canonicalize database directory: {error}"))?;
+
+    let file_name = normalized
+        .file_name()
+        .ok_or_else(|| "database filename is missing".to_string())?;
+
+    let canonical_path = canonical_parent.join(file_name);
+    let canonical_path_str = canonical_path.to_string_lossy();
+    if canonical_path_str.eq_ignore_ascii_case(":memory:")
+        || canonical_path_str.eq_ignore_ascii_case("memory")
+    {
+        return Err("memory path is not allowed for desktop runtime".to_string());
+    }
+
+    Ok(ResolvedDatabasePath {
+        path: canonical_path,
+        source,
+    })
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     init_observability();
-
-    // Initialize the embedded libsql database
-    let rt = tokio::runtime::Runtime::new().expect("Failed to create Tokio runtime");
-    let db = rt.block_on(async {
-        let db = EmbeddedTurso::new(":memory:")
-            .await
-            .expect("Failed to initialize embedded libsql");
-        run_tenant_migrations(&db)
-            .await
-            .expect("Failed to run tenant migrations");
-        db
-    });
-
-    // Run counter table migration
-    let _ = rt.block_on(async {
-        db.execute(usecases::counter_service::COUNTER_MIGRATION, vec![])
-            .await
-            .expect("Failed to run counter migration")
-    });
-
-    for migration in usecases::agent_service::AGENT_MIGRATIONS {
-        let _ = rt.block_on(async {
-            db.execute(migration, vec![])
-                .await
-                .expect("Failed to run agent migration")
-        });
-    }
-
-    // Register EmbeddedLibSql for runtime_tauri commands (counter, admin)
-    let db_for_commands = db.clone();
-    let app_state = AppState { db };
 
     let log_plugin = tauri_plugin_log::Builder::default()
         .skip_logger()
@@ -90,8 +135,6 @@ pub fn run() {
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .plugin(log_plugin)
-        .manage(app_state)
-        .manage(db_for_commands)
         .invoke_handler(tauri::generate_handler![
             auth::start_oauth,
             auth::handle_oauth_callback,
@@ -146,6 +189,48 @@ pub fn run() {
             let client_id = std::env::var("GOOGLE_CLIENT_ID").unwrap_or_default();
             let client_secret = std::env::var("GOOGLE_CLIENT_SECRET").unwrap_or_default();
             let api_url = std::env::var("API_URL").unwrap_or_default();
+
+            let app_data_dir = app
+                .path()
+                .app_local_data_dir()
+                .expect("Failed to resolve app local data directory");
+            let db_env_override = std::env::var(DB_PATH_ENV).ok();
+            let db_path = resolve_database_path(&app_data_dir, db_env_override.as_deref())
+                .expect("Failed to resolve Turso database path");
+
+            tracing::info!(
+                provider = "turso",
+                path = %db_path.path.display(),
+                source = db_path.source.as_str(),
+                "database path resolved"
+            );
+
+            let db = tauri::async_runtime::block_on(async {
+                let file_path = db_path.path.to_string_lossy().into_owned();
+                let db = EmbeddedTurso::new(&file_path)
+                    .await
+                    .expect("Failed to initialize embedded turso database");
+
+                run_tenant_migrations(&db)
+                    .await
+                    .expect("Failed to run tenant migrations");
+
+                db.execute(usecases::counter_service::COUNTER_MIGRATION, vec![])
+                    .await
+                    .expect("Failed to run counter migration");
+
+                for migration in usecases::agent_service::AGENT_MIGRATIONS {
+                    db.execute(migration, vec![])
+                        .await
+                        .expect("Failed to run agent migration");
+                }
+
+                db
+            });
+
+            app.manage(AppState { db: db.clone() });
+            app.manage(db.clone());
+
             tracing::info!(
                 client_id_len = client_id.len(),
                 client_secret_len = client_secret.len(),
@@ -271,4 +356,46 @@ pub fn run() {
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn resolves_default_file_path_with_default_source() {
+        let temp = tempfile::tempdir().expect("temp dir");
+        let resolved = resolve_database_path(temp.path(), None).expect("resolve default path");
+
+        assert_eq!(resolved.source, DatabasePathSource::Default);
+        assert!(resolved.path.is_absolute());
+        assert_eq!(
+            resolved.path.file_name().and_then(std::ffi::OsStr::to_str),
+            Some(DEFAULT_TURSO_DB_FILENAME)
+        );
+        assert!(!resolved.path.to_string_lossy().contains(":memory:"));
+    }
+
+    #[test]
+    fn resolves_env_override_with_env_source() {
+        let temp = tempfile::tempdir().expect("temp dir");
+        let resolved =
+            resolve_database_path(temp.path(), Some("custom.db")).expect("resolve env path");
+
+        assert_eq!(resolved.source, DatabasePathSource::Env);
+        assert!(resolved.path.ends_with("custom.db"));
+    }
+
+    #[test]
+    fn creates_missing_parent_directory_for_database_file() {
+        let temp = tempfile::tempdir().expect("temp dir");
+        let missing_parent = temp.path().join("nested").join("db");
+        let env_path = missing_parent.join("data.db");
+
+        let resolved = resolve_database_path(temp.path(), env_path.to_str())
+            .expect("resolve and create parent");
+
+        assert!(missing_parent.is_dir());
+        assert_eq!(resolved.source, DatabasePathSource::Env);
+    }
 }
