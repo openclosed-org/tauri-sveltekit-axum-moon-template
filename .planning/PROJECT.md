@@ -36,6 +36,7 @@ Provide a runnable, tested, production-ready engineering base with Google Auth, 
 - Agent 页面 Tauri IPC 双路径（desktop vs browser）
 - Phase 9 功能正确性基线修复完成（AUTH-02, AUTH-03, COUNTER-02, AGENT-02, AGENT-03, AGENT-04）
 - Phase 10 多租户可重复验证通道完成（MTEN-01, MTEN-02, MTEN-03；CI artifact 可用性待人工 UAT 关闭）
+ - Phase 10.1 Turso-only 存储持久化、编译裁剪与多租户测试体系完成（MTEN-01, MTEN-03）
 
 **Known Tech Debt:**
 - AUTH-01: GoogleAuthAdapter not fully wired into Tauri commands (Phase 6 empty)
@@ -60,6 +61,9 @@ Provide a runnable, tested, production-ready engineering base with Google Auth, 
 - ✓ Agent New Chat 新线程语义且保留已保存配置（AGENT-02, AGENT-03）— v0.2.1 Phase 09
 - ✓ Settings 连接诊断支持 API key/Base URL/Model 可操作反馈（AGENT-04）— v0.2.1 Phase 09
 - ✓ 多租户固定测试通道、tenant-scoped counter 数据流与双栈证据归档（MTEN-01, MTEN-02, MTEN-03）— v0.2.1 Phase 10
+- ✓ runtime_server + native-tauri 默认 Turso 文件库启动并 fail-fast（MTEN-01）— v0.2.1 Phase 10.1
+- ✓ 默认编译/CI/E2E 门禁收敛为 Turso-only（MTEN-03）— v0.2.1 Phase 10.1
+- ✓ 多租户四维隔离回归覆盖 Web + Desktop（MTEN-01, MTEN-03）— v0.2.1 Phase 10.1
 
 ### Active (Next Milestone)
 
@@ -140,4 +144,4 @@ This document evolves at phase transitions and milestone boundaries.
 
 ---
 
-*Last updated: 2026-04-06 after Phase 9 completion*
+*Last updated: 2026-04-08 after Phase 10.1 completion*
