@@ -6,7 +6,7 @@ import { TENANT_A, TENANT_B, resetTenantPair } from '../fixtures/tenant';
 const TENANT_INIT_URL = 'http://127.0.0.1:3001/api/tenant/init';
 const COUNTER_VALUE_URL = 'http://127.0.0.1:3001/api/counter/value';
 const COUNTER_INCREMENT_URL = 'http://127.0.0.1:3001/api/counter/increment';
-const AGENT_CONVERSATIONS_URL = 'http://127.0.0.1:3001/agent/conversations';
+const AGENT_CONVERSATIONS_URL = 'http://127.0.0.1:3001/api/agent/conversations';
 
 test.describe('Tenant Isolation (E2E)', () => {
   test.describe.configure({ mode: 'serial' });
