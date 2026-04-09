@@ -1,6 +1,6 @@
 import type { TokenPair } from '$lib/generated/auth/TokenPair';
 import type { UserProfile } from '$lib/generated/auth/UserProfile';
-import { invoke } from '@tauri-apps/api/core';
+import { isTauri, safeInvoke } from '$lib/ipc/bridge';
 
 /**
  * Full auth session combining generated TokenPair + UserProfile.
@@ -14,25 +14,32 @@ export interface AuthSession {
 }
 
 export async function startOAuth(): Promise<void> {
-  return invoke('start_oauth');
+  return safeInvoke('start_oauth') as Promise<void>;
 }
 
 export async function handleOAuthCallback(url: string): Promise<AuthSession> {
-  return invoke('handle_oauth_callback', { url });
+  return safeInvoke('handle_oauth_callback', { url }) as Promise<AuthSession>;
 }
 
 export async function getSession(): Promise<AuthSession | null> {
-  return invoke('get_session');
+  return safeInvoke('get_session') as Promise<AuthSession | null>;
 }
 
 export async function logout(): Promise<void> {
-  return invoke('logout');
+  return safeInvoke('logout') as Promise<void>;
 }
 
 export async function clearAuthStore(): Promise<void> {
-  const { Store } = await import('@tauri-apps/plugin-store');
-  const store = await Store.load('auth.json');
-  await store.delete('tokens');
-  await store.delete('id_token');
-  await store.delete('user');
+  if (isTauri()) {
+    const { Store } = await import('@tauri-apps/plugin-store');
+    const store = await Store.load('auth.json');
+    await store.delete('tokens');
+    await store.delete('id_token');
+    await store.delete('user');
+  } else {
+    // Web mode: clear localStorage keys
+    localStorage.removeItem('tokens');
+    localStorage.removeItem('id_token');
+    localStorage.removeItem('user');
+  }
 }
