@@ -148,7 +148,22 @@
 
 ---
 
-## 11. 执行底线
+## 9. infiniloom — 代码库智能分析工具
+
+本项目通过 [infiniloom](https://github.com/Topos-Labs/infiniloom) 提供 AST 解析、PageRank 符号排名、依赖图分析等代码智能能力。
+所有命令封装在 `justfiles/llm-infiniloom.just` 中，通过 `just llm-*` 调用。
+
+### 使用规范
+
+1. **新任务启动时**，先 `just llm-scan` 建立全局认知，再按需深入。
+2. **改动 `contracts/`、`features/`、`usecases/` 前**，必须 `just llm-impact <file>` 评估依赖范围。
+3. **PR review 时**，用 `just llm-diff-branch` 生成带调用链的上下文。
+4. infiniloom 输出是**辅助手段**，不替代阅读源码和人工文档。
+5. 完整命令列表：`just llm-help`。
+
+---
+
+## 10. 执行底线
 
 1. 不回避问题，不制造表面通过。
 2. 不盲猜，不重复试错同一类过期方案。
