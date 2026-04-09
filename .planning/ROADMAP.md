@@ -64,6 +64,18 @@ Plans:
 - [x] 10-02-PLAN.md — tenant-1/tenant-2 隔离断言与重复运行回归
 - [x] 10-03-PLAN.md — CI 最小诊断包与 job 级 artifact 输出
 
+### Phase 10.3: 人工UAT发现的问题修复与E2E调试能力改进 (INSERTED)
+
+**Goal:** 修复人工UAT发现的阻塞性问题（Web模式崩溃、API 404/401、Settings丢失），建立 Web/Desktop 统一运行时抽象层
+**Requirements**: UAT-01, UAT-02, UAT-03, UAT-04, UAT-05, UAT-06
+**Depends on:** Phase 10
+**Plans:** 3 plans
+
+Plans:
+- [ ] 10.3-01-PLAN.md — Web/Desktop 运行时抽象层 (bridge.ts) + Tauri import 修复
+- [ ] 10.3-02-PLAN.md — API 路由前缀统一 + Counter auth header + Admin CSS 修复
+- [ ] 10.3-03-PLAN.md — Settings 持久化 + Agent Chat 闪烁修复 + 对话排序
+
 ### Phase 10.2: 改进建议和计划 Phase 1 安全加固 (INSERTED)
 
 **Goal:** 消除 JWT 签名伪造、CORS 完全开放、api_key 泄露、CI 未启用四个安全风险。

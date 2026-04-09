@@ -7,6 +7,10 @@ Thumbs.db
 # --- Logs / Runtime ---
 logs/
 *.log
+*.db
+*.db-wal
+*.db-shm
+.data/
 
 # --- Environment / Secrets ---
 .env
