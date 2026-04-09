@@ -16,6 +16,16 @@ version = 2
 unmaintained = "workspace"
 yanked = "warn"
 
+# 临时忽略的安全漏洞（等待上游依赖修复）
+ignore = [
+    # rustls-webpki 0.102.8 - CRL Distribution Point 匹配逻辑问题
+    # 原因: libsql 0.9.30 → hyper-rustls 0.25.0 → rustls 0.22.4 → rustls-webpki 0.102.8
+    # 影响: 可能导致被撤销的证书被错误接受（需要攻击者控制 CA）
+    # 风险评估: 有限影响，因为攻击者需要控制受信任的 CA
+    # 解决方案: 等待 libsql 升级到支持 rustls 0.23 的版本
+    "RUSTSEC-2026-0049"
+]
+
 # ══════════════════════════════════════════════════════════════
 # [licenses] — 许可证合规检查
 # ══════════════════════════════════════════════════════════════
