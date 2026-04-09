@@ -1,7 +1,7 @@
 import { goto } from '$app/navigation';
 import type { UserProfile } from '$lib/generated/auth/UserProfile';
 import { type AuthSession, clearAuthStore, getSession, logout, startOAuth } from '$lib/ipc/auth';
-import { listen } from '@tauri-apps/api/event';
+import { safeListen } from '$lib/ipc/bridge';
 
 export const auth = $state({
   isAuthenticated: false,
@@ -142,14 +142,14 @@ export async function markExpired(): Promise<void> {
  * Listens for auth:expired event from Rust backend refresh timer.
  */
 export function initAuthListeners(): () => void {
-  const unlisten = listen('auth:expired', () => {
+  let cleanup: (() => void) | undefined;
+
+  safeListen('auth:expired', () => {
     auth.isAuthenticated = false;
     auth.currentUser = null;
     auth.tokenExpiresAt = 0;
     // Don't auto-redirect — let auth guard handle it on next navigation
-  });
+  }).then((fn) => { cleanup = fn; });
 
-  return () => {
-    unlisten.then((fn) => fn());
-  };
+  return () => { cleanup?.(); };
 }
