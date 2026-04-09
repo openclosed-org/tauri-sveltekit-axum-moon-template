@@ -50,17 +50,17 @@ const statCards = $derived([
 
 <div class="p-4 md:p-6 space-y-6">
 	<div>
-		<h1 class="text-2xl font-semibold text-[var(--color-text)]">Admin Dashboard</h1>
-		<p class="text-sm text-[var(--color-text-muted)] mt-1">Real-time application metrics</p>
+		<h1 class="text-2xl font-semibold text-gray-900 dark:text-gray-50">Admin Dashboard</h1>
+		<p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Real-time application metrics</p>
 	</div>
 	<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
 		{#each statCards as stat}
 			<Card class="p-5">
 				<div class="flex items-center justify-between">
-					<p class="text-sm text-[var(--color-text-muted)]">{stat.label}</p>
+				<p class="text-sm text-gray-500 dark:text-gray-400">{stat.label}</p>
 					<span class="text-lg">{stat.icon}</span>
 				</div>
-				<p class="text-2xl font-semibold text-[var(--color-text)] mt-2">{loading ? '...' : stat.value}</p>
+			<p class="text-2xl font-semibold text-gray-900 dark:text-gray-50 mt-2">{loading ? '...' : stat.value}</p>
 			</Card>
 		{/each}
 	</div>
