@@ -20,7 +20,12 @@ async function invokeCommand(cmd: string) {
   const method = cmd.startsWith('counter_get') ? 'GET' : 'POST';
   const endpoint = cmd.replace('counter_', '').replace('get_value', 'value');
   const url = `http://localhost:3001/api/counter/${endpoint}`;
-  const resp = await fetch(url, { method });
+  const token = localStorage.getItem('auth_id_token');
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  const resp = await fetch(url, { method, headers });
   const data = await resp.json();
   return data.value;
 }
