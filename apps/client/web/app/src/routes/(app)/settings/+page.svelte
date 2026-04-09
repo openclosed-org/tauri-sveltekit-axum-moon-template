@@ -45,6 +45,11 @@ async function loadSettings() {
       apiKey = ((await store.get('api_key')) as string | null) ?? '';
       baseUrl = ((await store.get('base_url')) as string | null) ?? 'https://api.openai.com/v1';
       model = ((await store.get('model')) as string | null) ?? 'gpt-4o-mini';
+    } else {
+      // Web mode: localStorage fallback
+      apiKey = localStorage.getItem('settings_api_key') ?? '';
+      baseUrl = localStorage.getItem('settings_base_url') ?? 'https://api.openai.com/v1';
+      model = localStorage.getItem('settings_model') ?? 'gpt-4o-mini';
     }
   } catch {
     // ignore load failures
@@ -64,6 +69,11 @@ async function saveSettings() {
       await store.set('base_url', baseUrl);
       await store.set('model', model);
       await store.save();
+    } else {
+      // Web mode: localStorage fallback
+      localStorage.setItem('settings_api_key', apiKey);
+      localStorage.setItem('settings_base_url', baseUrl);
+      localStorage.setItem('settings_model', model);
     }
 
     saved = true;
