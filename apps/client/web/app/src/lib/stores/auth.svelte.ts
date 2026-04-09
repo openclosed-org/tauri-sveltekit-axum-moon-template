@@ -67,6 +67,10 @@ export function setSession(session: AuthSession): void {
   auth.tokenExpiresAt = session.tokens.expires_in;
   auth.authLoading = false;
   auth.authError = null;
+  // Web mode: persist id_token for counter page Authorization header
+  if (typeof window !== 'undefined' && !(window as { __TAURI__?: unknown }).__TAURI__) {
+    localStorage.setItem('auth_id_token', session.id_token);
+  }
 }
 
 /**

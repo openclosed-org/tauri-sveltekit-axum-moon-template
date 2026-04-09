@@ -22,7 +22,17 @@ export async function handleOAuthCallback(url: string): Promise<AuthSession> {
 }
 
 export async function getSession(): Promise<AuthSession | null> {
-  return safeInvoke('get_session') as Promise<AuthSession | null>;
+  if (isTauri()) {
+    return safeInvoke('get_session') as Promise<AuthSession | null>;
+  }
+  // Web mode: read id_token from localStorage
+  const idToken = localStorage.getItem('auth_id_token');
+  if (!idToken) return null;
+  return {
+    tokens: { access_token: '', refresh_token: '', expires_in: 0 },
+    id_token: idToken,
+    user: { sub: '', email: '', name: '', picture: '' },
+  } as unknown as AuthSession;
 }
 
 export async function logout(): Promise<void> {
@@ -41,5 +51,6 @@ export async function clearAuthStore(): Promise<void> {
     localStorage.removeItem('tokens');
     localStorage.removeItem('id_token');
     localStorage.removeItem('user');
+    localStorage.removeItem('auth_id_token');
   }
 }
