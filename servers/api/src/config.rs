@@ -9,7 +9,7 @@ use figment::{
     Figment, Profile,
     providers::{Env, Format, Toml},
 };
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -25,6 +25,53 @@ pub struct ServerConfig {
     pub host: String,
     pub port: u16,
     pub request_timeout_secs: u64,
+    /// CORS allowed origins. Empty = permissive (dev mode). Set to enforce whitelist (prod).
+    /// Read from `APP_SERVER__CORS_ALLOWED_ORIGINS` env var (comma-separated).
+    #[serde(default, deserialize_with = "deserialize_comma_separated_vec")]
+    pub cors_allowed_origins: Vec<String>,
+}
+
+/// Deserialize a comma-separated string into a `Vec<String>`.
+///
+/// Supports both TOML array (`["a","b"]`) and env var comma-separated (`a,b`).
+/// When the input is already a sequence (TOML array), falls back to default Vec deserialization.
+fn deserialize_comma_separated_vec<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    struct CommaSeparatedVec;
+
+    impl<'de> serde::de::Visitor<'de> for CommaSeparatedVec {
+        type Value = Vec<String>;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+            formatter.write_str("a comma-separated string or a sequence of strings")
+        }
+
+        fn visit_str<E>(self, value: &str) -> Result<Vec<String>, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(value
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect())
+        }
+
+        fn visit_seq<A>(self, mut seq: A) -> Result<Vec<String>, A::Error>
+        where
+            A: serde::de::SeqAccess<'de>,
+        {
+            let mut vec = Vec::new();
+            while let Some(item) = seq.next_element::<String>()? {
+                vec.push(item);
+            }
+            Ok(vec)
+        }
+    }
+
+    deserializer.deserialize_any(CommaSeparatedVec)
 }
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize, PartialEq)]
@@ -80,6 +127,7 @@ impl Default for Config {
                 host: "0.0.0.0".to_string(),
                 port: 3001,
                 request_timeout_secs: 30,
+                cors_allowed_origins: Vec::new(),
             },
             database: DatabaseConfig {
                 provider: CloudDbProvider::Turso,
