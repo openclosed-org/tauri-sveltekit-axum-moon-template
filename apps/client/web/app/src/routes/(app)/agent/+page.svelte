@@ -42,6 +42,13 @@ async function loadSettings(): Promise<AgentConfig> {
         model: model ?? defaults.model,
       };
     }
+
+    // Web mode: localStorage fallback
+    return {
+      api_key: localStorage.getItem('settings_api_key') ?? defaults.api_key,
+      base_url: localStorage.getItem('settings_base_url') ?? defaults.base_url,
+      model: localStorage.getItem('settings_model') ?? defaults.model,
+    };
   } catch {
     loadError = settingsReadGuidance;
   }
