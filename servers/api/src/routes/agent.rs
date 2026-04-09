@@ -16,11 +16,11 @@ use std::pin::Pin;
 pub fn router() -> Router<AppState> {
     Router::new()
         .route(
-            "/agent/conversations",
+            "/api/agent/conversations",
             get(list_conversations).post(create_conversation),
         )
-        .route("/agent/conversations/{id}/messages", get(get_messages))
-        .route("/agent/chat", post(chat_handler))
+        .route("/api/agent/conversations/{id}/messages", get(get_messages))
+        .route("/api/agent/chat", post(chat_handler))
 }
 
 fn get_db(state: &AppState) -> Result<storage_turso::EmbeddedTurso, Json<serde_json::Value>> {
