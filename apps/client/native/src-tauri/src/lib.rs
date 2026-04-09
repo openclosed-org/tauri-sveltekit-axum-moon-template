@@ -176,6 +176,15 @@ pub fn run() {
         builder = builder.plugin(tauri_plugin_playwright::init());
     }
 
+    #[cfg(debug_assertions)]
+    {
+        builder = builder.plugin(tauri_plugin_mcp::init_with_config(
+            tauri_plugin_mcp::PluginConfig::new("My App".to_string())
+                .start_socket_server(true)
+                .socket_path("/tmp/tauri-mcp.sock"),
+        ));
+    }
+
     builder
         .setup(|app| {
             let cwd = std::env::current_dir().unwrap_or_default();

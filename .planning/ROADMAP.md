@@ -69,12 +69,12 @@ Plans:
 **Goal:** 修复人工UAT发现的阻塞性问题（Web模式崩溃、API 404/401、Settings丢失），建立 Web/Desktop 统一运行时抽象层
 **Requirements**: UAT-01, UAT-02, UAT-03, UAT-04, UAT-05, UAT-06
 **Depends on:** Phase 10
-**Plans:** 3 plans
+**Plans:** 3/3 plans complete
 
 Plans:
-- [ ] 10.3-01-PLAN.md — Web/Desktop 运行时抽象层 (bridge.ts) + Tauri import 修复
-- [ ] 10.3-02-PLAN.md — API 路由前缀统一 + Counter auth header + Admin CSS 修复
-- [ ] 10.3-03-PLAN.md — Settings 持久化 + Agent Chat 闪烁修复 + 对话排序
+- [x] 10.3-01-PLAN.md — Web/Desktop 运行时抽象层 (bridge.ts) + Tauri import 修复
+- [x] 10.3-02-PLAN.md — API 路由前缀统一 + Counter auth header + Admin CSS 修复
+- [x] 10.3-03-PLAN.md — Settings 持久化 + Agent Chat 闪烁修复 + 对话排序
 
 ### Phase 10.2: 改进建议和计划 Phase 1 安全加固 (INSERTED)
 

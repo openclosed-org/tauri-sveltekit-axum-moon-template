@@ -13,7 +13,7 @@ updated: 2026-04-06T14:12:39.626Z
 ## Tests
 
 ### 1. CI Artifact Usability Check
-expected: web/desktop 都产出 job-scoped 证据包，保留 7 天，包含 tenant mapping 与 Playwright/WDIO 失败诊断文件
+expected: web/desktop 都产出 job-scoped 证据包，保留 7 天，包含 tenant mapping 与 Playwright/tauri-playwright 失败诊断文件
 result: [pending]
 
 ## Summary

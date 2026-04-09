@@ -12,7 +12,7 @@ re_verification:
   regressions: []
 human_verification:
   - test: "在 GitHub Actions 触发 .github/workflows/e2e-tests.yml 并下载 web/desktop artifacts"
-    expected: "web/desktop 都产出 job-scoped 证据包，保留 7 天，包含 tenant mapping 与 Playwright/WDIO 失败诊断文件"
+    expected: "web/desktop 都产出 job-scoped 证据包，保留 7 天，包含 tenant mapping 与 Playwright/tauri-playwright 失败诊断文件"
     why_human: "需要真实 CI 运行和 GitHub artifact UI 下载验证，静态代码扫描无法证明“可检索且可用”"
 ---
 
@@ -30,8 +30,8 @@ human_verification:
 | # | Truth | Status | Evidence |
 | --- | --- | --- | --- |
 | 1 | Tester can switch between at least two tenants in a repeatable harness without manual environment patching | ✓ VERIFIED | `apps/client/web/app/tests/fixtures/tenant.ts` 固定 `TENANT_A/TENANT_B`，并提供 `initTenantPair/resetTenantPairCounter`；Web E2E 引入并复用该 harness。 |
-| 2 | Tenant mapping is fixed and repeatable across runs | ✓ VERIFIED | Web: `tenant_a_user/tenant_b_user`；Desktop: `e2e-tests/helpers/tenant.mjs` 使用同一 userSub，`tenant-isolation.e2e.mjs` 明确断言与 Web 一致。 |
-| 3 | Tenant init failure stops the test immediately instead of falling back silently | ✓ VERIFIED | `tenant.ts` 与 `e2e-tests/helpers/tenant.mjs` 均在 init/reset/read 失败时 `throw`，且错误包含 tenant label。 |
+| 2 | Tenant mapping is fixed and repeatable across runs | ✓ VERIFIED | Web: `tenant_a_user/tenant_b_user`；Desktop: `e2e-desktop-playwright/tests/fixtures/tenant.ts` 使用同一 userSub，`tenant-isolation.spec.ts` 明确断言与 Web 一致。 |
+| 3 | Tenant init failure stops the test immediately instead of falling back silently | ✓ VERIFIED | Web `tenant.ts` 与 Desktop `tenant.ts` 均在 init/reset/read 失败时 `throw`，且错误包含 tenant label。 |
 | 4 | Counter mutations in tenant-1 do not alter tenant-2 values | ✓ VERIFIED | `counter_service.rs` 读写改为 `tenant_id` 维度（`*_for_tenant` + `WHERE tenant_id = ?`）；`http_e2e_test.rs` 的 `counter_mutation_isolated_between_two_tenants` 断言 A 改变不影响 B。 |
 | 5 | Isolation assertions remain true across repeated runs | ✓ VERIFIED | `http_e2e_test.rs` 的 `counter_isolation_repeated_run_stays_stable` 覆盖 run-1/run-2；Web/Desktop tenant isolation spec 也分别含 run-1/run-2 同 seed 断言。 |
 | 6 | Web and desktop suites both exercise the same fixed tenant pair | ✓ VERIFIED | Web fixture: `tenant_a_user`,`tenant_b_user`；Desktop helper/suite 使用同一 pair，并有一致性断言。 |
@@ -48,11 +48,11 @@ human_verification:
 | `apps/client/web/app/tests/fixtures/tenant.ts` | Fixed tenant mapping and reset helper | ✓ VERIFIED | 存在且为实质实现，提供固定租户、init/reset helper，并被测试调用。 |
 | `apps/client/web/app/tests/e2e/tenant-isolation.test.ts` | Repeatable Web tenant isolation regression | ✓ VERIFIED | 存在，beforeEach reset + run-1/run-2 isolation 断言。 |
 | `apps/client/web/app/tests/e2e/counter.test.ts` | Counter flow reuse of tenant harness | ✓ VERIFIED | `beforeEach` 调用 `resetTenantPairCounter`。 |
-| `e2e-tests/helpers/tenant.mjs` | Desktop tenant reset/login/counter helpers | ✓ VERIFIED | 存在，封装 init/reset/read/increment，失败即抛错。 |
-| `e2e-tests/specs/tenant-isolation.e2e.mjs` | WDIO desktop isolation regression | ✓ VERIFIED | 存在，覆盖 tenant-1/tenant-2 + run-1/run-2。 |
+| `e2e-desktop-playwright/tests/fixtures/tenant.ts` | Desktop tenant reset/login/counter helpers | ✓ VERIFIED | 存在，封装 TENANT_A/TENANT_B + initTenantPair/resetTenantPairCounter，失败即抛错。 |
+| `e2e-desktop-playwright/tests/specs/tenant-isolation.spec.ts` | tauri-playwright desktop isolation regression | ✓ VERIFIED | 存在，覆盖 tenant-1/tenant-2 + run-1/run-2 + settings/agent conversation isolation。 |
 | `.github/workflows/e2e-tests.yml` | Job-scoped uploads + 7-day retention | ✓ VERIFIED | web/desktop 均 `if: always()` 上传，命名 job-scoped，保留 7 天。 |
 | `apps/client/web/app/playwright.config.ts` | Web failure evidence settings | ✓ VERIFIED | `trace: on-first-retry`、`screenshot/video` failure policy、`outputDir: test-results`。 |
-| `e2e-tests/wdio.conf.mjs` | WDIO JUnit and logs output | ✓ VERIFIED | JUnit reporter 开启，`outputDir: ./test-results/wdio-logs`。 |
+| `e2e-desktop-playwright/playwright.config.ts` | tauri-playwright evidence output | ✓ VERIFIED | trace/screenshot/video failure policy，`outputDir: test-results`。 |
 | `packages/core/usecases/src/counter_service.rs` | Tenant-scoped counter read/write/reset | ✓ VERIFIED | 新增 `*_for_tenant` 方法，migration 主键 `tenant_id`，含双租户隔离单测。 |
 | `servers/api/src/routes/counter.rs` | Counter endpoints wired to TenantId | ✓ VERIFIED | 路由使用 tenant extension 并调用 tenant-aware service methods。 |
 | `servers/api/tests/http_e2e_test.rs` | HTTP cross-tenant regression tests | ✓ VERIFIED | 含 401 缺租户、隔离、重复运行稳定性测试。 |
@@ -64,9 +64,9 @@ human_verification:
 | `apps/client/web/app/tests/fixtures/tenant.ts` | `servers/api/src/routes/tenant.rs` | `POST /api/tenant/init` | ✓ WIRED | gsd key-link 通过，fixture 中存在 `api/tenant/init` 调用。 |
 | `apps/client/web/app/tests/e2e/tenant-isolation.test.ts` | `apps/client/web/app/tests/fixtures/auth.ts` | `triggerMockOAuth` | ✓ WIRED | OAuth mock bootstrap 调用存在。 |
 | `apps/client/web/app/tests/e2e/tenant-isolation.test.ts` | `apps/client/web/app/tests/fixtures/tenant.ts` | `initTenantPair/resetTenantPairCounter` | ✓ WIRED | import+调用齐全。 |
-| `e2e-tests/specs/tenant-isolation.e2e.mjs` | `e2e-tests/helpers/tenant.mjs` | `resetTenantPair` | ✓ WIRED | import+调用齐全。 |
+| `e2e-desktop-playwright/tests/specs/tenant-isolation.spec.ts` | `e2e-desktop-playwright/tests/fixtures/tenant.ts` | `TENANT_A/TENANT_B/resetTenantPairCounter` | ✓ WIRED | import+调用齐全。 |
 | `.github/workflows/e2e-tests.yml` | `apps/client/web/app/playwright.config.ts` | `upload-artifact` for Playwright evidence | ✓ WIRED | workflow 上传 playwright-report/results/test-results。 |
-| `.github/workflows/e2e-tests.yml` | `e2e-tests/wdio.conf.mjs` | `wdio-junit` + desktop evidence | ✓ WIRED | workflow 上传 junit/diagnostics/wdio-logs。 |
+| `.github/workflows/e2e-tests.yml` | `e2e-desktop-playwright/playwright.config.ts` | `tauri-playwright` desktop evidence | ✓ WIRED | workflow 上传 playwright-report/test-results for tauri lane。 |
 | `servers/api/src/middleware/tenant.rs` | `servers/api/src/routes/counter.rs` | request tenant extension extraction | ✓ WIRED | 虽 `verify key-links` 的 regex 误报未命中，但 `lib.rs` 已 route_layer 注入 middleware，`counter.rs` 读取 `Extension<TenantId>`。 |
 | `servers/api/src/routes/counter.rs` | `packages/core/usecases/src/counter_service.rs` | tenant-aware counter service calls | ✓ WIRED | `increment_for_tenant/decrement_for_tenant/reset_for_tenant/get_value_for_tenant` 均被调用。 |
 
@@ -75,7 +75,7 @@ human_verification:
 | Artifact | Data Variable | Source | Produces Real Data | Status |
 | --- | --- | --- | --- | --- |
 | `apps/client/web/app/tests/e2e/tenant-isolation.test.ts` | `tenantAAfter`, `tenantBAfter` | `/api/counter/*` UI flow | Yes — API route 使用 `TenantId` + tenant-aware service | ✓ FLOWING |
-| `e2e-tests/helpers/tenant.mjs` | `body.value` | `/api/counter/value` | Yes — token→middleware→tenant_id→libsql 查询链路闭合 | ✓ FLOWING |
+| `e2e-desktop-playwright/tests/fixtures/tenant.ts` | `body.value` | `/api/counter/value` | Yes — token→middleware→tenant_id→libsql 查询链路闭合 | ✓ FLOWING |
 | `servers/api/src/routes/counter.rs` | `tenant_id` | `Extension<TenantId>` from middleware | Yes — 缺失 tenant 直接 401，存在时进入 tenant-aware methods | ✓ FLOWING |
 | `packages/core/usecases/src/counter_service.rs` | counter row by tenant | libsql `counter` table | Yes — `tenant_id` 主键+按 tenant 查询/更新，无全局 `id=1` 路径 | ✓ FLOWING |
 
@@ -83,7 +83,7 @@ human_verification:
 
 | Behavior | Command | Result | Status |
 | --- | --- | --- | --- |
-| Desktop tenant helper exports required APIs | `node -e "import('./e2e-tests/helpers/tenant.mjs')..."` | `function function function` | ✓ PASS |
+| Desktop tenant fixture exports required APIs | `node -e "import('./e2e-desktop-playwright/tests/fixtures/tenant.ts')..."` | exports TENANT_A/TENANT_B/initTenantPair/resetTenantPairCounter | ✓ PASS |
 | Counter route wired to tenant-aware methods | `node -e "read counter.rs and assert Extension<TenantId> + *_for_tenant"` | `ok` | ✓ PASS |
 | CI artifact naming + 7-day retention present | `node -e "read e2e-tests.yml and assert evidence names + retention"` | `ok` | ✓ PASS |
 | Real CI artifact retrievability | (需要触发 GitHub Actions) | 未在本地执行 | ? SKIP |
@@ -109,7 +109,7 @@ human_verification:
 ### 1. CI Artifact Usability Check
 
 **Test:** 在 GitHub Actions 手动触发 `.github/workflows/e2e-tests.yml`（建议包含至少一个 tenant isolation 失败样例），并下载 web + desktop 两类证据包。  
-**Expected:** artifact 名称带 job 维度标识（含 job/os/run_id/run_attempt），`retention-days = 7`，内容可直接用于诊断（Playwright 报告与失败证据、WDIO JUnit/日志、tenant mapping 诊断文件）。  
+**Expected:** artifact 名称带 job 维度标识（含 job/os/run_id/run_attempt），`retention-days = 7`，内容可直接用于诊断（Playwright 报告与失败证据、tauri-playwright 诊断文件、tenant mapping 诊断文件）。  
 **Why human:** 需要真实 CI 执行与 GitHub UI 下载检查，无法通过静态代码扫描完全替代。
 
 ### Gaps Summary

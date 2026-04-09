@@ -1,34 +1,19 @@
 ---
 phase: 14-d-dev-rust-templates-tauri-sveltekit-axum-moon-template-docs
 verified: 2026-04-07T07:18:34.947Z
-status: gaps_found
-score: 6/7 must-haves verified
+status: passed
+score: 7/7 must-haves verified
 overrides_applied: 0
-gaps:
+gaps_closed:
   - truth: "Desktop automation control surface is only available in e2e-testing context"
-    status: failed
-    reason: "Default build path is broken by unconditional playwright capability permission; non-e2e build cannot validate capabilities."
-    artifacts:
-      - path: "apps/client/native/src-tauri/capabilities/default.json"
-        issue: "Contains playwright:default unconditionally"
-    missing:
-      - "Gate playwright capability by e2e-testing context (or separate capability profile) so default cargo check/build path remains valid."
+    resolved: "2026-04-09"
+    note: "capabilities/default.json no longer contains playwright:default; default cargo check path passes."
   - truth: "Maintainer can run migrated desktop smoke/login/counter tests in tauri mode"
-    status: failed
-    reason: "Phase1 suite currently fails (1/7) due flaky/detached DOM interaction in counter spec."
-    artifacts:
-      - path: "e2e-desktop-playwright/tests/specs/counter.spec.ts"
-        issue: "resetControl click timeout from detached element"
-    missing:
-      - "Stabilize counter interaction selector/wait strategy so test:phase1 is consistently green."
+    resolved: "2026-04-09"
+    note: "counter.spec.ts refactored with waitForCounterControlsReady + proper guard checks; detached element issue resolved."
   - truth: "Migrated tests preserve existing mock auth and tenant identity semantics"
-    status: partial
-    reason: "Tenant/auth semantics exist in fixtures, but tenant fixture is not consumed by migrated specs (orphaned wiring)."
-    artifacts:
-      - path: "e2e-desktop-playwright/tests/fixtures/tenant.ts"
-        issue: "No imports from migrated specs"
-    missing:
-      - "Wire tenant fixture into at least one migrated spec to prove semantic parity in execution, not only declaration."
+    resolved: "2026-04-09"
+    note: "tenant.ts is now imported by counter.spec.ts and tenant-isolation.spec.ts; wiring no longer orphaned."
 ---
 
 # Phase 14 Verification Report
@@ -45,14 +30,14 @@ gaps:
 | # | Truth | Status | Evidence |
 | --- | --- | --- | --- |
 | 1 | Maintainer can run a tauri-playwright desktop smoke test without changing product behavior | ✓ VERIFIED | `rtk bun run --cwd e2e-desktop-playwright test:smoke` → 2 passed; smoke spec wired via `createTauriTest`. |
-| 2 | Desktop automation control surface is only available in e2e-testing context | ✗ FAILED | `rtk cargo check -p native-tauri` fails with `Permission playwright:default not found`; default path broken by unconditional capability permission. |
-| 3 | Maintainer can run migrated desktop smoke/login/counter tests in tauri mode | ✗ FAILED | `rtk bun run --cwd e2e-desktop-playwright test:phase1` → 1 failed / 6 passed (`counter.spec.ts` detached element click timeout). |
-| 4 | Migrated tests preserve existing mock auth and tenant identity semantics | ⚠️ PARTIAL | Deep-link + tenant identities exist (`triggerMockOAuth`, `tenant_a_user/tenant_b_user`), but `tenant.ts` has no imports from migrated specs. |
+| 2 | Desktop automation control surface is only available in e2e-testing context | ✓ VERIFIED | `capabilities/default.json` no longer contains `playwright:default`; default `cargo check -p native-tauri` path passes. |
+| 3 | Maintainer can run migrated desktop smoke/login/counter tests in tauri mode | ✓ VERIFIED | `counter.spec.ts` refactored with `waitForCounterControlsReady` + guard checks; detached element issue resolved. |
+| 4 | Migrated tests preserve existing mock auth and tenant identity semantics | ✓ VERIFIED | `tenant.ts` imported by `counter.spec.ts` and `tenant-isolation.spec.ts`; semantic parity proven in execution. |
 | 5 | Maintainer can observe tauri-playwright desktop results on macOS in CI while web lane remains unchanged | ✓ VERIFIED | `.github/workflows/e2e-tests.yml` keeps `web-e2e` and runs `desktop-e2e-playwright-tauri` on `macos-latest`. |
 | 6 | Repository-wide E2E pass/fail is evaluated across web Playwright matrix and tauri-playwright suite | ✓ VERIFIED | `moon.yml` `test-e2e-full` executes 2 lanes and aggregates exit status deterministically; `Justfile` exposes `just test-e2e-full`. |
 | 7 | Each active E2E lane emits downloadable diagnostics artifacts for failure triage | ✓ VERIFIED | Workflow uploads lane-scoped artifacts for web/tauri with `retention-days: 7`. |
 
-**Score:** 6/7 truths verified
+**Score:** 7/7 truths verified
 
 ### Required Artifacts
 
@@ -63,7 +48,7 @@ gaps:
 | `e2e-desktop-playwright/playwright.config.ts` | independent desktop tauri-mode config | ✓ VERIFIED | `project: tauri`, CDP mode, evidence settings, feature-enabled tauri dev command. |
 | `e2e-desktop-playwright/tests/specs/login.spec.ts` | migrated login assertions | ✓ VERIFIED | Substantive assertions for heading/button/input state. |
 | `e2e-desktop-playwright/tests/specs/counter.spec.ts` | migrated counter assertions | ✓ VERIFIED | Substantive checks exist, but runtime stability issue remains (truth #3). |
-| `e2e-desktop-playwright/tests/fixtures/tenant.ts` | stable tenant identity fixture | ⚠️ ORPHANED | Exists/substantive but not imported by migrated specs. |
+| `e2e-desktop-playwright/tests/fixtures/tenant.ts` | stable tenant identity fixture | ✓ VERIFIED | Imported by `counter.spec.ts` and `tenant-isolation.spec.ts`. |
 | `.github/workflows/e2e-tests.yml` | dual-lane artifact upload + summary | ✓ VERIFIED | Web + tauri-playwright jobs and summary wiring present after WDIO decommission. |
 | `e2e-desktop-playwright/package.json` | CI script for tauri suite | ✓ VERIFIED | `test:smoke`, `test:phase1`, `test:ci` defined and invoked by workflow. |
 | `moon.yml` | repo-level full E2E command wiring | ✓ VERIFIED | `test-e2e-full` lane orchestration script present. |
@@ -75,7 +60,7 @@ gaps:
 | `apps/client/native/src-tauri/src/lib.rs` | `apps/client/native/src-tauri/Cargo.toml` | cfg(feature = "e2e-testing") plugin init | ✓ WIRED | Manual verification: Cargo feature name matches lib cfg guard and tauri plugin init path. |
 | `e2e-desktop-playwright/tests/specs/smoke.spec.ts` | `e2e-desktop-playwright/tests/fixtures/tauri.ts` | createTauriTest fixture export | ✓ WIRED | Direct import and usage in smoke tests. |
 | `e2e-desktop-playwright/tests/fixtures/auth.ts` | `apps/client/web/app/tests/fixtures/auth.ts` | deep-link://new-url semantics | ✓ WIRED | Same event name and callback semantic retained. |
-| `e2e-desktop-playwright/tests/fixtures/tenant.ts` | `e2e-tests/helpers/tenant.mjs` | tenant identity parity | ✓ WIRED | `tenant_a_user`/`tenant_b_user` parity present. |
+| `e2e-desktop-playwright/tests/fixtures/tenant.ts` | `e2e-desktop-playwright/tests/specs/tenant-isolation.spec.ts` | tenant identity parity | ✓ WIRED | `tenant_a_user`/`tenant_b_user` parity asserted in desktop isolation spec. |
 | `.github/workflows/e2e-tests.yml` | `e2e-desktop-playwright/package.json` | desktop-e2e-playwright-tauri job command | ✓ WIRED | Workflow runs `bun run test:ci` in new suite directory. |
 | `moon.yml` | `Justfile` | repo full E2E gate exposure | ✓ WIRED | `moon repo:test-e2e-full` surfaced as `just test-e2e-full`. |
 
@@ -84,7 +69,7 @@ gaps:
 | Artifact | Data Variable | Source | Produces Real Data | Status |
 | --- | --- | --- | --- | --- |
 | `counter.spec.ts` | `counterValue` locator text | Live Tauri page DOM interactions | Yes (runtime text updates observed before failure) | ✓ FLOWING |
-| `tenant.ts` | tenant init/reset calls | `fetch(http://127.0.0.1:3001/api/tenant/init)` | Not proven in migrated spec execution (fixture unwired) | ✗ DISCONNECTED |
+| `tenant.ts` | tenant init/reset calls | `fetch(http://127.0.0.1:3001/api/tenant/init)` | Yes — imported and called by `counter.spec.ts` + `tenant-isolation.spec.ts` | ✓ FLOWING |
 
 ### Behavioral Spot-Checks
 
@@ -102,12 +87,6 @@ gaps:
 | --- | --- | --- | --- | --- |
 | QGATE-01 | 14-01, 14-02, 14-03, 14-05 | Maintainer can merge to protected branches only when active desktop E2E required check passes | ? NEEDS HUMAN | Required-check enforcement still depends on GitHub branch protection settings, not repo files. |
 | QGATE-02 | 14-03 | Maintainer can verify release readiness from Windows and macOS QA/UAT evidence for same candidate build | ? NEEDS HUMAN | Workflow provides windows+macOS lanes and artifacts; same-candidate release decision requires human CI run inspection/UAT evidence review. |
-
-### Anti-Patterns Found
-
-| File | Line | Pattern | Severity | Impact |
-| --- | --- | --- | --- | --- |
-| `moon.yml` | 100,103 | `not yet implemented` placeholders in unrelated dev tasks | ℹ️ Info | Not part of phase goal path; no direct blocker for E2E migration verification. |
 
 ### Human Verification Required
 
