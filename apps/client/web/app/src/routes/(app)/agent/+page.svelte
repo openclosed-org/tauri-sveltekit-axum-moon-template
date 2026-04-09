@@ -61,7 +61,12 @@ async function loadConversations() {
   const shouldKeepSettingsGuidance = previousError === settingsReadGuidance;
 
   try {
-    conversations = await listConversations();
+    const fetched = await listConversations();
+    conversations = fetched.sort((a, b) => {
+      const dateA = a.created_at ?? '';
+      const dateB = b.created_at ?? '';
+      return dateB.localeCompare(dateA);
+    });
     loadError = shouldKeepSettingsGuidance ? previousError : null;
   } catch (error) {
     loadError = error instanceof Error ? error.message : String(error);
