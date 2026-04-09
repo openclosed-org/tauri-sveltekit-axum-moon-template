@@ -3,4 +3,8 @@
 /**
  * Agent configuration (user-provided API key + endpoint).
  */
-export type AgentConfig = { api_key: string, base_url: string, model: string, };
+export type AgentConfig = { 
+/**
+ * API key — skipped during serialization to prevent accidental exposure.
+ */
+api_key: string, base_url: string, model: string, };
