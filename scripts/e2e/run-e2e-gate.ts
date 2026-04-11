@@ -61,7 +61,7 @@ async function main(): Promise<number> {
   const lanes: TestLane[] = [
     {
       name: 'Web Playwright E2E matrix',
-      cwd: 'apps/client/web/app',
+      cwd: 'apps/web',
       args: ['run', 'test:e2e'],
     },
     {

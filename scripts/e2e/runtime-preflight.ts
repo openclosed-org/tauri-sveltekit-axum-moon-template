@@ -105,7 +105,7 @@ async function main(): Promise<void> {
   const typesReady = await checkSvelteTypes();
   if (!typesReady) {
     fail(`missing required SvelteKit types directory: ${svelteTypesDir}`, [
-      'generate sync artifacts: rtk bun run --cwd apps/client/web/app check'
+      'generate sync artifacts: rtk bun run --cwd apps/web check'
     ]);
   }
 

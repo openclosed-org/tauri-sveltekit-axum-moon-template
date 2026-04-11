@@ -25,7 +25,7 @@ const contractDirs: BindingPath[] = [
   { src: 'packages/contracts/events/bindings/events', dest: 'packages/contracts/generated/events' },
 ];
 
-const frontendDest = 'apps/client/web/app/src/lib/generated';
+const frontendDest = 'apps/web/src/lib/generated';
 
 function safeCopy(src: string, dest: string): void {
   if (!existsSync(src)) {
