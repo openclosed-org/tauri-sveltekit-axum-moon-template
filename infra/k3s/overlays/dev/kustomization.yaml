@@ -1,0 +1,56 @@
+# Kustomization — Dev overlay
+# Minimal resources, single replica, debug enabled
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+namespace: app
+
+commonLabels:
+  app.kubernetes.io/env: dev
+
+patches:
+  # ── Relax resource limits for dev ──────────────────────────
+  - target:
+      kind: Deployment
+      name: api-server
+    patch: |
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits
+        value:
+          cpu: "1"
+          memory: 1Gi
+      - op: replace
+        path: /spec/template/spec/containers/0/env
+        value:
+          - name: RUST_LOG
+            value: "debug,runtime_server=trace"
+          - name: APP_DATABASE__URL
+            value: "/data/runtime.db"
+
+  - target:
+      kind: Deployment
+      name: web-server
+    patch: |
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits
+        value:
+          cpu: "500m"
+          memory: 512Mi
+
+  # ── Update ingress hosts for dev ───────────────────────────
+  - target:
+      kind: Ingress
+      name: app-ingress
+    patch: |
+      - op: replace
+        path: /spec/rules/0/host
+        value: api.dev.local
+      - op: replace
+        path: /spec/rules/1/host
+        value: app.dev.local
+      - op: replace
+        path: /spec/rules/2/host
+        value: dev.local

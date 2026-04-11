@@ -1,0 +1,37 @@
+# Service — API and Web services (ClusterIP)
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-server
+  namespace: app
+  labels:
+    app.kubernetes.io/name: api-server
+    app.kubernetes.io/component: backend
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: api-server
+  ports:
+    - name: http
+      port: 3001
+      targetPort: http
+      protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-server
+  namespace: app
+  labels:
+    app.kubernetes.io/name: web-server
+    app.kubernetes.io/component: frontend
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: web-server
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP

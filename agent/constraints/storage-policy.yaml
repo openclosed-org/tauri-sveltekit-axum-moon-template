@@ -1,0 +1,64 @@
+# Agent Constraints — 存储策略约束
+
+version: "1.0"
+
+storage_policy:
+  # All repository methods MUST declare SyncStrategy
+  sync_strategy_required: true
+
+  # Valid SyncStrategy values (extensible only via ADR)
+  allowed_strategies:
+    - "OfflineFirst"     # Local first, async sync (default)
+    - "OnlineOnly"       # Must be online, direct cloud write
+    - "QueueOnly"        # Offline queue, batch sync when online
+    - "OnChainFinality"  # On-chain transaction, irreversible
+    - "EventualRelay"    # Decentralized relay, eventual consistency
+
+  # Conflict resolver constraints
+  conflict_resolution:
+    built_in_strategies:
+      - "Lww"           # Last-Write-Wins (timestamp-based)
+      - "ClientWins"    # Local overwrites remote (user private data)
+      - "ServerWins"    # Remote overwrites local (shared/platform data)
+
+    custom_strategy_requirements:
+      - "Must pass ADR approval"
+      - "Must have complete test coverage"
+      - "Must not be implemented directly in business modules"
+
+  # Data classification routing
+  data_routing:
+    app_config:
+      storage: "Tauri Store"
+      sync: "None (local only)"
+      example: "Theme/language/preferences"
+
+    user_private:
+      storage: "Turso Embedded"
+      sync: "OfflineFirst"
+      conflict: "ClientWins"
+      example: "Drafts/personal settings"
+
+    tenant_business:
+      storage: "Turso Embedded + Cloud"
+      sync: "OfflineFirst"
+      conflict: "LWW + business rules"
+      example: "Counter/orders"
+
+    shared_public:
+      storage: "Turso Cloud Only"
+      sync: "OnlineOnly"
+      conflict: "ServerWins"
+      example: "Product catalog/announcements"
+
+    analytics_logs:
+      storage: "Turso QueueOnly"
+      sync: "QueueOnly"
+      conflict: "None (append-only)"
+      example: "Click streams/error logs"
+
+    chain_state:
+      storage: "Indexer → Turso read-optimized"
+      sync: "OnChainFinality / EventualRelay"
+      conflict: "Chain authority / multi-relay consensus"
+      example: "TX hashes/relay events/index data"

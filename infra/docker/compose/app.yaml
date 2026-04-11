@@ -1,0 +1,127 @@
+# Podman Compose — Main Application Stack
+#
+# Usage:
+#   podman compose -f infra/docker/compose/app.yaml up -d
+#   podman compose -f infra/docker/compose/app.yaml down
+#
+# This starts the API service with SurrealDB sidecar and Pingora gateway.
+# The SvelteKit web frontend and Tauri desktop app run
+# natively on the host (via `just dev-web` / `just dev-desktop`).
+#
+# Stack:
+#   - gateway:3000        — Pingora reverse proxy (entry point)
+#   - api:3001            — Axum API server (distroless)
+#   - surrealdb:8000      — SurrealDB (dev sidecar, kv-mem)
+#   - web-static:3002     — static-web-server (SvelteKit SPA)
+#
+# NOT included (replaced by application-layer alternatives):
+#   - PostgreSQL → Turso (libSQL) / SurrealDB
+#   - Redis → Moka (in-process cache)
+#   - NATS server → in-process event bus (tokio broadcast, Phase 1)
+#   - nginx → Pingora + static-web-server (both Rust)
+
+services:
+  # ── Pingora Gateway (Reverse Proxy) ────────────────────────
+  # Single entry point for all HTTP traffic.
+  # Routes /api/* → api:3001, /* → web-static:3002
+  gateway:
+    build:
+      context: ../../..
+      dockerfile: infra/docker/Dockerfile.gateway
+    ports:
+      - "3000:3000"
+    environment:
+      - API_UPSTREAM=api:3001
+      - WEB_UPSTREAM=web-static:3002
+      - BIND=0.0.0.0:3000
+    depends_on:
+      api:
+        condition: service_healthy
+      web-static:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # ── API Service (Axum) ──────────────────────────────────────
+  api:
+    build:
+      context: ../../..
+      dockerfile: infra/docker/Dockerfile.api
+    expose:
+      - "3001"
+    environment:
+      - APP_DATABASE__PROVIDER=surrealdb
+      - APP_DATABASE__URL=ws://surrealdb:8000/rpc
+      - APP_SERVER__HOST=0.0.0.0
+      - APP_SERVER__PORT=3001
+      - APP_AUTH__JWT_SECRET=dev-secret-change-in-production
+      - RUST_LOG=info,runtime_server=debug
+    volumes:
+      - api-data:/data
+    depends_on:
+      surrealdb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  # ── Web Static Server (SvelteKit SPA) ──────────────────────
+  # Serves the SvelteKit build output with SPA fallback routing.
+  web-static:
+    build:
+      context: ../../..
+      dockerfile: infra/docker/Dockerfile.web
+    expose:
+      - "3002"
+    environment:
+      - PORT=3002
+    command:
+      - "--host"
+      - "0.0.0.0"
+      - "--port"
+      - "3002"
+      - "--root"
+      - "/app/web-build"
+      - "--page-fallback"
+      - "/app/web-build/index.html"
+      - "--compression"
+      - "--security-headers"
+      - "--log-level"
+      - "warn"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3002/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  # ── SurrealDB (dev sidecar) ────────────────────────────────
+  # Phase 1: in-memory (kv-mem) for local dev
+  # Phase 2: switch to persistent storage (tikv/rocksdb backend)
+  surrealdb:
+    image: surrealdb/surrealdb:latest
+    expose:
+      - "8000"
+    command: >
+      start
+      --log warn
+      --user root
+      --pass root
+      --bind 0.0.0.0:8000
+      memory
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8000/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  api-data:

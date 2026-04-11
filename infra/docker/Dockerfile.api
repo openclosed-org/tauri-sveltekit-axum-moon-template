@@ -1,0 +1,61 @@
+# Multi-stage Dockerfile for the Axum API service
+# Compatible with Dockerfile syntax used by Podman.
+#
+# Build:
+#   podman build -f infra/docker/Dockerfile.api -t api-server .
+#
+# Run:
+#   podman run -p 3001:3001 api-server
+#
+# Uses distroless/static for minimal attack surface (~6MB runtime image).
+
+# ── Stage 1: Builder ─────────────────────────────────────────
+FROM rust:1.94-slim AS builder
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    pkg-config \
+    libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy dependency definitions first for layer caching
+COPY Cargo.toml Cargo.lock ./
+COPY justfiles/ ./justfiles/
+COPY Justfile ./
+
+# Copy all workspace crates
+COPY packages/ ./packages/
+COPY servers/ ./servers/
+COPY apps/ ./apps/
+
+# Build the API service only
+RUN cargo build --release --package api-server
+
+# ── Stage 2: Runtime (distroless/static) ─────────────────────
+FROM gcr.io/distroless/static-debian12:nonroot AS runtime
+
+# Copy CA certificates for HTTPS (TLS, OIDC, external APIs)
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+
+# Copy the built binary
+COPY --from=builder /app/target/release/api-server /usr/local/bin/api-server
+
+# Create data directory (owned by nonroot user: 65532)
+RUN mkdir -p /data
+
+WORKDIR /
+
+EXPOSE 3001
+
+ENV RUST_LOG=info,runtime_server=debug
+ENV APP_SERVER__HOST=0.0.0.0
+ENV APP_SERVER__PORT=3001
+ENV APP_DATABASE__URL=/data/runtime.db
+
+# Healthcheck via wget (available in distroless/static-debian12 via busybox)
+# If wget is not available, use a separate healthcheck sidecar container
+HEALTHCHECK --interval=10s --timeout=5s --retries=3 --start-period=30s \
+    CMD ["/usr/local/bin/api-server", "--health"]
+
+ENTRYPOINT ["/usr/local/bin/api-server"]

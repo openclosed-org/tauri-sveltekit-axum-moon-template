@@ -1,0 +1,14 @@
+[package]
+name = "event-bus"
+version = "0.1.0"
+edition = "2024"
+description = "Shared event bus: async-nats adapter + Outbox pattern"
+
+[dependencies]
+async-trait = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+# Phase 1: in-memory channel (dev)
+# Phase 2: async-nats (prod)
+# async-nats = "0.38"

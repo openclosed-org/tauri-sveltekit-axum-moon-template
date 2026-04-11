@@ -1,0 +1,78 @@
+# Vector Configuration — Log Router (Podman-compatible)
+#
+# This config collects Podman container logs and forwards them to OpenObserve.
+# Used by: infra/docker/compose/observability.yaml
+#
+# Podman compatibility: Vector reads logs via the Podman socket
+# (/run/podman/podman.sock) instead of Docker's /var/lib/docker/containers.
+
+data_dir: /tmp/vector
+
+# ── Sources ──────────────────────────────────────────────────
+# Read Podman container logs via the Podman API socket
+sources:
+  podman_logs:
+    type: podman_logs
+    endpoint: "/run/podman/podman.sock"
+    exclude_containers:
+      - vector
+      - openobserve
+
+# Fallback: if podman_logs source isn't available, use Docker logs source
+# (Podman's API is Docker-compatible for the logs endpoint)
+# sources:
+#   docker_logs:
+#     type: docker_logs
+#     exclude_containers:
+#       - vector
+#       - openobserve
+
+# ── Transforms ───────────────────────────────────────────────
+transforms:
+  # Add metadata labels
+  add_metadata:
+    type: remap
+    inputs:
+      - docker_logs
+    source: |
+      .environment = "dev"
+      .service = .container_name ?? "unknown"
+
+  # Parse JSON logs (if the app outputs structured JSON logs)
+  parse_json:
+    type: remap
+    inputs:
+      - add_metadata
+    source: |
+      parsed, err = parse_json(.message)
+      if err == null {
+          .structured = parsed
+          .level = parsed.level ?? .level ?? "info"
+      } else {
+          .level = "info"
+      }
+
+# ── Sinks ────────────────────────────────────────────────────
+sinks:
+  # Send all logs to OpenObserve via HTTP API
+  openobserve:
+    type: http
+    inputs:
+      - parse_json
+    uri: "http://openobserve:5080/api/default/_json"
+    method: post
+    auth:
+      strategy: basic
+      user: "admin@localhost"
+      password: "admin"
+    encoding:
+      codec: json
+    batch:
+      max_bytes: 524288  # 512KB
+      timeout_secs: 5
+    healthcheck:
+      enabled: true
+    request:
+      headers:
+        Organization: default
+        Stream-Type: logs

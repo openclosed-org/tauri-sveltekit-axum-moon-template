@@ -1,0 +1,1 @@
+//! External dependency abstractions — CounterRepository.

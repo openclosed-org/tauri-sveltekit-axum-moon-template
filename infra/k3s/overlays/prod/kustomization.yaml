@@ -1,0 +1,65 @@
+# Kustomization — Production overlay
+# Strict resource quotas, HPA, multi-replica
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+  - hpa-api.yaml
+  - hpa-web.yaml
+
+namespace: app
+
+commonLabels:
+  app.kubernetes.io/env: prod
+
+patches:
+  # ── Production replicas ────────────────────────────────────
+  - target:
+      kind: Deployment
+      name: api-server
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 2
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            cpu: 250m
+            memory: 256Mi
+          limits:
+            cpu: "2"
+            memory: 2Gi
+
+  - target:
+      kind: Deployment
+      name: web-server
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 2
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+
+  # ── Update ingress hosts for production ────────────────────
+  - target:
+      kind: Ingress
+      name: app-ingress
+    patch: |
+      - op: replace
+        path: /spec/rules/0/host
+        value: api.example.com
+      - op: replace
+        path: /spec/rules/1/host
+        value: app.example.com
+      - op: replace
+        path: /spec/rules/2/host
+        value: example.com

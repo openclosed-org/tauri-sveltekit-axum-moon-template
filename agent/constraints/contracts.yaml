@@ -1,0 +1,57 @@
+# Agent Constraints — 契约变更流程
+
+version: "1.0"
+
+contract_change_workflow:
+  steps:
+    - step: 1
+      action: "Update docs/contracts/changelog.md"
+      required: true
+      note: "Mark [BREAKING] if interface incompatible"
+
+    - step: 2
+      action: "Notify all dependent parties (frontend/other services)"
+      required: true
+
+    - step: 3
+      action: "Run just gen-openapi"
+      required: true
+      output: "Update openapi.snapshot.json"
+
+    - step: 4
+      action: "Run just gen-asyncapi"
+      required: true
+      output: "Update asyncapi.yaml"
+
+    - step: 5
+      action: "Run just gen-frontend-sdk"
+      required: true
+      output: "Update packages/sdk/typescript"
+
+    - step: 6
+      action: "Verify git diff --exit-code on snapshots"
+      required: true
+
+    - step: 7
+      action: "Update agent/checklists/schema-change.md"
+      required: true
+
+    - step: 8
+      action: "Update agent/codemap.yml if boundary changes"
+      required: false
+      condition: "Only if new modules or dependency changes"
+
+versioning_rules:
+  http_api:
+    strategy: "path versioning"
+    example: "/v1/counter"
+    breaking_change: "Must add new version path"
+
+  events:
+    strategy: "subject versioning"
+    example: "counter.v1.incremented"
+    breaking_change: "Must add new subject"
+
+  dto:
+    strategy: "JSON Schema $id + $schema"
+    breaking_change: "Must add new $id"

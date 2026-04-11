@@ -1,0 +1,52 @@
+# Ingress — Traefik routing rules
+# Routes:
+#   api.example.com/*  → api-server:3001
+#   app.example.com/*  → web-server:80
+#   example.com/*      → web-server:80 (redirect from www)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: app-ingress
+  namespace: app
+  labels:
+    app.kubernetes.io/part-of: tauri-sveltekit-axum
+  annotations:
+    # Traefik-specific annotations
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.middlewares: app-redirect-https@kubernetescrd
+spec:
+  rules:
+    # ── API routes ─────────────────────────────────────────────
+    - host: api.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: api-server
+                port:
+                  name: http
+    # ── Web app routes ─────────────────────────────────────────
+    - host: app.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web-server
+                port:
+                  name: http
+    # ── Root domain → web app ──────────────────────────────────
+    - host: example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web-server
+                port:
+                  name: http
+  # TLS is handled by Traefik + Let's Encrypt (configured in k3s)

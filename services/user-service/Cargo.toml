@@ -1,0 +1,15 @@
+[package]
+name = "user-service"
+version = "0.1.0"
+edition = "2024"
+description = "User domain service: authentication, profiles, permissions"
+
+[dependencies]
+# Domain layer (pure Rust — no external dependencies)
+# Application layer (pure Rust — depends on trait abstractions)
+# Interface layer
+axum = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+# Infrastructure layer
+tokio = { workspace = true }

@@ -1,0 +1,158 @@
+# Agent Codemap — 模块边界 + 依赖约束
+
+# **格式**: YAML, 严格 schema 校验
+# **变更**: 必须通过 ADR 流程 + 更新 agent/checklists/
+
+version: "1.0"
+schema: "agent-codemap/v1"
+
+modules:
+  # ==========================================================================
+  # ROOT CONFIG LAYER — 最底层，无依赖
+  # ==========================================================================
+  - name: "config-root"
+    path: "."
+    allowed_dependencies: []
+    forbidden_dependencies: ["services/*", "apps/*"]
+    allowed_external_crates: []
+    patterns:
+      - "All toolchain versions pinned via .mise.toml"
+      - "Task orchestration via moon.yml"
+      - "Command entry via Justfile"
+
+  # ==========================================================================
+  # PACKAGES/CORE — 基础抽象层
+  # ==========================================================================
+  - name: "packages-core-kernel"
+    path: "packages/core/kernel"
+    allowed_dependencies: []
+    forbidden_dependencies:
+      - "services/*"
+      - "apps/*"
+      - "packages/adapters/*"
+    allowed_external_crates:
+      - "serde"
+      - "thiserror"
+      - "uuid"
+      - "chrono"
+    patterns:
+      - "Define only base types: TenantId, UserId, Error, Cursor"
+      - "No business logic, no I/O"
+
+  - name: "packages-core-platform"
+    path: "packages/core/platform"
+    allowed_dependencies:
+      - "packages/core/kernel"
+    forbidden_dependencies:
+      - "services/*"
+      - "apps/*"
+    allowed_external_crates:
+      - "serde"
+      - "tracing"
+      - "async-trait"
+    patterns:
+      - "Define platform capability traits: Config, Telemetry, Clock"
+      - "No concrete implementations"
+
+  # ==========================================================================
+  # PACKAGES/CONTRACTS — 契约唯一真理源
+  # ==========================================================================
+  - name: "packages-contracts"
+    path: "packages/contracts"
+    allowed_dependencies:
+      - "packages/core/kernel"
+    forbidden_dependencies:
+      - "services/*"
+      - "apps/*"
+      - "axum"
+      - "tokio"
+    allowed_external_crates:
+      - "serde"
+      - "ts-rs"
+      - "utoipa"
+    patterns:
+      - "All shared DTOs defined here"
+      - "HTTP API, Event, DTO contracts only"
+      - "No implementation code"
+
+  # ==========================================================================
+  # PACKAGES/ADAPTERS — 外部依赖翻译层
+  # ==========================================================================
+  - name: "packages-adapters"
+    path: "packages/adapters"
+    allowed_dependencies:
+      - "packages/core/*"
+    forbidden_dependencies:
+      - "services/*"
+      - "apps/*"
+    allowed_external_crates:
+      - "*"
+    patterns:
+      - "Only implement traits from packages/core"
+      - "No business logic"
+      - "Must not be directly depended on by services (use ports/ abstraction)"
+
+  # ==========================================================================
+  # SERVICES — 领域服务层
+  # ==========================================================================
+  - name: "services"
+    path: "services"
+    allowed_dependencies:
+      - "packages/core/*"
+      - "packages/contracts"
+    forbidden_dependencies:
+      - "services/*" # No direct service-to-service deps
+      - "apps/*"
+      - "axum"
+      - "tokio"
+    allowed_external_crates:
+      - "serde"
+      - "uuid"
+      - "chrono"
+      - "thiserror"
+      - "tracing"
+      - "async-trait"
+    patterns:
+      - "Each service = independent Cargo crate + DB schema + contract"
+      - "Internal structure: domain/ → application/ → ports/ → contracts/ → sync/"
+      - "Cross-service communication via contracts/events only"
+
+  # ==========================================================================
+  # BFF LAYER — 前后端聚合
+  # ==========================================================================
+  - name: "bff"
+    path: "apps/bff"
+    allowed_dependencies:
+      - "services/* (via trait)"
+      - "packages/contracts"
+    forbidden_dependencies:
+      - "apps/*"
+    allowed_external_crates:
+      - "axum"
+      - "serde"
+      - "tokio"
+      - "utoipa"
+    patterns:
+      - "Each BFF = independent crate, independently buildable"
+      - "No domain logic, only view-model assembly"
+      - "Must have OpenAPI spec"
+
+  # ==========================================================================
+  # APPS — 纯展示层
+  # ==========================================================================
+  - name: "apps"
+    path: "apps"
+    allowed_dependencies:
+      - "packages/contracts/sdk"
+      - "packages/ui"
+    forbidden_dependencies:
+      - "services/*"
+      - "packages/adapters/*"
+    allowed_external_crates:
+      - "svelte"
+      - "sveltekit"
+      - "tauri"
+    patterns:
+      - "No business logic, only rendering + user interaction"
+      - "Use generated SDK only"
+      - "SvelteKit manages UI composition and transient state"

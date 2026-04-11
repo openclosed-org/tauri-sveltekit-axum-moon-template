@@ -1,0 +1,15 @@
+[package]
+name = "tenant-service"
+version = "0.1.0"
+edition = "2024"
+description = "Tenant domain service — isolation strategy, member management, tenant lifecycle"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+async-trait = { workspace = true }
+
+[lints]
+workspace = true

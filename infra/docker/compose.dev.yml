@@ -1,0 +1,83 @@
+# DEPRECATED — This file is kept for backward compatibility only.
+# Use infra/docker/compose/app.yaml instead (Podman-native stack).
+#
+# Migration:
+#   docker compose -f infra/docker/compose.dev.yml up -d   # old
+#   podman compose -f infra/docker/compose/app.yaml up -d  # new
+#
+# This file will be removed in Phase 2.
+
+services:
+  # ── API Service (Axum) ──────────────────────────────────────
+  api:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.api
+    ports:
+      - "3001:3001"
+    environment:
+      - APP_DATABASE__PROVIDER=turso
+      - APP_DATABASE__URL=servers/api/.data/runtime_server.db
+      - APP_SERVER__HOST=0.0.0.0
+      - APP_SERVER__PORT=3001
+      - APP_AUTH__JWT_SECRET=dev-secret-change-in-production
+      - RUST_LOG=info,runtime_server=debug
+    volumes:
+      - api-data:/app/servers/api/.data
+    depends_on:
+      - postgres
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  # ── PostgreSQL (optional sidecar for future migration) ─────
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: dev
+      POSTGRES_PASSWORD: dev
+      POSTGRES_DB: app
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dev"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ── Redis (optional sidecar for future cache) ──────────────
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ── NATS (optional sidecar for future event bus) ───────────
+  nats:
+    image: nats:2-alpine
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    command: "-js"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "http://localhost:8222/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  api-data:
+  postgres-data:
+  redis-data:

@@ -1,0 +1,57 @@
+# Kustomization — Staging overlay
+# Production-like configuration, moderate resources
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+namespace: app
+
+commonLabels:
+  app.kubernetes.io/env: staging
+
+patches:
+  # ── Staging resource limits ────────────────────────────────
+  - target:
+      kind: Deployment
+      name: api-server
+    patch: |
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            cpu: 200m
+            memory: 256Mi
+          limits:
+            cpu: "1"
+            memory: 1Gi
+
+  - target:
+      kind: Deployment
+      name: web-server
+    patch: |
+      - op: replace
+        path: /spec/template/spec/containers/0/resources
+        value:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+
+  # ── Update ingress hosts for staging ───────────────────────
+  - target:
+      kind: Ingress
+      name: app-ingress
+    patch: |
+      - op: replace
+        path: /spec/rules/0/host
+        value: api.staging.example.com
+      - op: replace
+        path: /spec/rules/1/host
+        value: app.staging.example.com
+      - op: replace
+        path: /spec/rules/2/host
+        value: staging.example.com

@@ -1,0 +1,44 @@
+# Agent Constraints — 禁止代码模式
+
+version: "1.0"
+
+forbidden_patterns:
+  - pattern: "sqlx::query!"
+    reason: "Raw SQL bypasses port abstraction"
+    fix: "Use domain ports trait methods instead"
+    scope: "services/**"
+
+  - pattern: "impl.*Service.*for.*Handler"
+    reason: "Services should not implement handler traits"
+    fix: "Implement service logic in application/, wire in BFF"
+    scope: "services/**"
+
+  - pattern: "use services::\\w+::.*"
+    reason: "Direct service-to-service dependency"
+    fix: "Use contracts/events for cross-service communication"
+    scope: "services/**"
+
+  - pattern: "use packages::adapters::.*"
+    reason: "Services must not depend on adapters directly"
+    fix: "Define port trait in service/ports/, adapter implements it"
+    scope: "services/**"
+
+  - pattern: "struct.*Request.*{.*pub.*password.*}"
+    reason: "Sensitive data in DTOs must be handled carefully"
+    fix: "Use non-serializable types for secrets"
+    scope: "packages/contracts/**"
+
+  - pattern: "#\\[serde\\(skip_serializing\\)\\].*pub"
+    reason: "Public fields with skip_serializing indicate design smell"
+    fix: "Use separate internal/external types"
+    scope: "packages/contracts/**"
+
+  - pattern: "use apps::.*"
+    reason: "Backend must not depend on frontend"
+    fix: "Dependency direction: apps → services, never reverse"
+    scope: "servers/**, services/**, packages/**"
+
+  - pattern: "fs::.*private_key"
+    reason: "Private key handling in backend is security risk"
+    fix: "Keys never leave client/enclave; backend only verifies signatures"
+    scope: "**"

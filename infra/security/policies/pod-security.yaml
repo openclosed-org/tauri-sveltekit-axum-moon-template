@@ -1,0 +1,79 @@
+# Pod Security Standards — Restricted mode
+#
+# Enforces the "restricted" Pod Security Standard:
+#   - Containers must run as non-root
+#   - Root filesystem must be read-only (where possible)
+#   - Privilege escalation must be disabled
+#   - Capabilities must be dropped (ALL)
+#   - Host namespaces (hostNetwork, hostPID, hostIPC) are forbidden
+#   - HostPath volumes are forbidden
+#   - Privileged containers are forbidden
+#
+# This is applied at the namespace level via the namespace.yaml annotation:
+#   pod-security.kubernetes.io/enforce: restricted
+#
+# This file serves as documentation and can be used as a validation reference.
+# The actual enforcement is handled by the Kubernetes Pod Security Admission controller.
+#
+# Apply: kubectl apply -f infra/security/policies/pod-security.yaml
+# (This creates a ResourceQuota + LimitRange as additional safety nets)
+
+---
+# ── Resource Quota — Prevent resource exhaustion ─────────────
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: app-resource-quota
+  namespace: app
+spec:
+  hard:
+    # CPU limits
+    requests.cpu: "4"
+    limits.cpu: "8"
+
+    # Memory limits
+    requests.memory: 4Gi
+    limits.memory: 8Gi
+
+    # Pod count limit
+    pods: "20"
+
+    # Service count limit
+    services: "10"
+
+    # ConfigMap/Secret limits
+    configmaps: "20"
+    secrets: "20"
+
+    # PVC limit
+    persistentvolumeclaims: "5"
+
+---
+# ── Limit Range — Default container limits ───────────────────
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: app-limit-range
+  namespace: app
+spec:
+  limits:
+    # Default limits for containers
+    - default:
+        cpu: 500m
+        memory: 512Mi
+      defaultRequest:
+        cpu: 100m
+        memory: 128Mi
+      max:
+        cpu: "4"
+        memory: 4Gi
+      min:
+        cpu: 50m
+        memory: 64Mi
+      type: Container
+
+    # Pod-level limits
+    - max:
+        cpu: "8"
+        memory: 8Gi
+      type: Pod

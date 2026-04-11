@@ -1,0 +1,31 @@
+[package]
+name = "pingora-gateway"
+version = "0.1.0"
+edition = "2024"
+description = "Pingora-based reverse proxy for the tauri-sveltekit-axum stack"
+publish = false
+
+[dependencies]
+# Pingora 0.8 — Cloudflare's Rust reverse proxy framework
+pingora = "0.8"
+pingora-core = "0.8"
+pingora-http = "0.8"
+pingora-limits = "0.8"
+pingora-proxy = "0.8"
+
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# Logging
+log = "0.4"
+env_logger = "0.11"
+
+# Error handling
+anyhow = "1"
+
+# HTTP types + bytes
+http = "1"
+bytes = "1"
+
+[lints]
+workspace = true

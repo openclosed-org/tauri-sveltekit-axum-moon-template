@@ -1,0 +1,33 @@
+# ConfigMap — environment variable injection for all services
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: app
+  labels:
+    app.kubernetes.io/part-of: tauri-sveltekit-axum
+data:
+  # ── Server Config ──────────────────────────────────────────
+  APP_SERVER__HOST: "0.0.0.0"
+  APP_SERVER__PORT: "3001"
+
+  # ── Database Config (SurrealDB + Turso) ───────────────────
+  APP_DATABASE__PROVIDER: "surrealdb"
+  APP_DATABASE__URL: "ws://surrealdb:8000/rpc"
+
+  # ── Cache Config (Moka — in-process, no sidecar needed) ───
+  APP_CACHE__PROVIDER: "moka"
+
+  # ── Auth Config (secrets should come from SOPS-encrypted Secret) ─
+  APP_AUTH__JWT_ISSUER: "https://app.example.com"
+
+  # ── Telemetry Config ───────────────────────────────────────
+  OTEL_SERVICE_NAME: "api-server"
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://openobserve.observability:5080/api/default"
+
+  # ── Web Frontend Config ────────────────────────────────────
+  PUBLIC_API_BASE_URL: "https://api.example.com"
+
+  # ── Gateway Config ─────────────────────────────────────────
+  API_UPSTREAM: "api-server:3001"
+  WEB_UPSTREAM: "web-server:3002"
