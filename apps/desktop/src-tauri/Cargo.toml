@@ -1,0 +1,62 @@
+[package]
+license = "MIT"
+name = "native-tauri"
+version = "0.1.0"
+edition = "2024"
+rust-version.workspace = true
+
+[build-dependencies]
+tauri-build = { workspace = true }
+
+[dependencies]
+tauri = { workspace = true }
+tauri-plugin-opener = { workspace = true }
+tauri-plugin-dialog = { workspace = true }
+tauri-plugin-store = { workspace = true }
+tauri-plugin-fs = { workspace = true }
+tauri-plugin-deep-link = { workspace = true }
+tauri-plugin-window-state = { workspace = true }
+tauri-plugin-single-instance = { workspace = true }
+tauri-plugin-log = { workspace = true }
+tauri-plugin-playwright = { version = "0.2.2" }
+tauri-plugin-mcp = { git = "https://github.com/P3GLEG/tauri-plugin-mcp", tag = "v0.1.0" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+reqwest = { workspace = true }
+sha2 = { workspace = true }
+base64 = { workspace = true }
+rand = { workspace = true }
+url = { workspace = true }
+tokio = { workspace = true }
+
+# Logging (unified tracing backbone)
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+tracing-log = { workspace = true }
+log = { workspace = true }
+
+# Environment variables (2026 best practice - dotenvy)
+dotenvy = { workspace = true }
+
+# Database
+storage_turso = { workspace = true }
+async-trait = { workspace = true }
+
+# Time and error handling
+chrono = { workspace = true }
+thiserror = { workspace = true }
+
+# Internal crates
+domain = { workspace = true }
+usecases = { workspace = true }
+runtime_tauri = { workspace = true }
+workspace-hack = { version = "0.1", path = "../../../packages/core/workspace-hack" }
+
+[features]
+e2e-testing = []
+
+[dev-dependencies]
+tempfile = "3"
+
+[lints]
+workspace = true
