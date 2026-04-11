@@ -16,7 +16,7 @@ pub async fn readyz() -> (axum::http::StatusCode, Json<serde_json::Value>) {
 }
 
 /// 健康检查路由 — 无状态路由。
-pub fn router() -> Router {
+pub fn router<S: Clone + Send + Sync + 'static>() -> Router<S> {
     Router::new()
         .route("/healthz", get(healthz))
         .route("/readyz", get(readyz))

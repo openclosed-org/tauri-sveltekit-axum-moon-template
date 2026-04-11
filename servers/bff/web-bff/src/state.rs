@@ -1,22 +1,51 @@
 //! BFF 状态 — 组合所有服务依赖并注入 Axum State。
 //!
-//! Phase 0: 最小状态 — 仅含配置。后续逐步注入 services/ 实例。
+//! Phase 0: 最小状态 — 仅含配置。Phase 1+: 注入 services/ 实例。
 
 use crate::config::Config;
+use storage_turso::EmbeddedTurso;
 
 /// Web BFF 应用状态。
 ///
-/// Automatically implements Clone + Send + Sync (all fields are cheaply cloneable).
+/// All fields are cheaply cloneable (Arc-wrapped internally where needed).
 #[derive(Clone)]
 pub struct BffState {
     pub config: Config,
-    // Phase 1+: 注入 counter_service, event_bus 等
-    // pub counter_service: Arc<dyn CounterService>,
-    // pub event_bus: Arc<dyn EventBus>,
+
+    /// Embedded libsql for local features (counter, admin, tenant, agent).
+    pub embedded_db: Option<EmbeddedTurso>,
+
+    /// Shared HTTP client for external service calls.
+    pub http_client: reqwest::Client,
 }
 
 impl BffState {
     pub async fn new(config: Config) -> anyhow::Result<Self> {
-        Ok(Self { config })
+        // Embedded libsql initialization
+        let embedded_db = match &config.database_url {
+            Some(url) => {
+                let db = EmbeddedTurso::new(url).await.ok();
+                if let Some(ref db) = db {
+                    // Run tenant migrations
+                    storage_turso::embedded::run_tenant_migrations(db)
+                        .await
+                        .ok();
+                }
+                db
+            }
+            None => None,
+        };
+
+        let http_client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(30))
+            .pool_max_idle_per_host(10)
+            .build()
+            .unwrap_or_default();
+
+        Ok(Self {
+            config,
+            embedded_db,
+            http_client,
+        })
     }
 }

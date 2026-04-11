@@ -2,14 +2,41 @@
 name = "user-service"
 version = "0.1.0"
 edition = "2024"
-description = "User domain service: authentication, profiles, permissions"
+description = "User service — tenant initialization, authentication logic, and user lifecycle management"
+license = "MIT"
+rust-version.workspace = true
 
 [dependencies]
-# Domain layer (pure Rust — no external dependencies)
-# Application layer (pure Rust — depends on trait abstractions)
-# Interface layer
+# Internal — core domain, contracts
+domain = { workspace = true }
+kernel = { workspace = true }
+
+# Axum HTTP framework
 axum = { workspace = true }
+tokio = { workspace = true }
+
+# Serialization & validation
 serde = { workspace = true }
 serde_json = { workspace = true }
-# Infrastructure layer
-tokio = { workspace = true }
+validator = { version = "0.20", features = ["derive"] }
+
+# Error handling
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+
+# Async trait
+async-trait = { workspace = true }
+
+# Utilities
+chrono = { workspace = true }
+rand = { workspace = true }
+
+[dev-dependencies]
+tower = { workspace = true, features = ["util"] }
+http-body-util = { workspace = true }
+
+[features]
+default = []
+
+[lints]
+workspace = true

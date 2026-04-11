@@ -10,6 +10,7 @@ rust-version.workspace = true
 # Internal — services (trait-only), contracts, core
 counter-service = { workspace = true }
 event-bus = { workspace = true }
+usecases = { workspace = true }
 contracts_api = { workspace = true }
 contracts_events = { workspace = true }
 kernel = { workspace = true }
@@ -17,6 +18,7 @@ domain = { workspace = true }
 feature-counter = { workspace = true }
 feature-admin = { workspace = true }
 feature-agent = { workspace = true }
+storage_turso = { workspace = true }
 
 # Axum HTTP framework
 axum = { workspace = true }
@@ -25,6 +27,7 @@ tokio = { workspace = true }
 tower = { workspace = true }
 tower-http = { workspace = true }
 hyper = { workspace = true }
+reqwest = { workspace = true }
 
 # Serialization & validation
 serde = { workspace = true }

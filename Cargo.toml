@@ -69,6 +69,7 @@ members = [
     # Servers
     "servers/api",
     "servers/gateway",
+    "servers/indexer",
     "servers/bff/web-bff",
 ]
 resolver = "3"

@@ -1,6 +1,6 @@
 //! Web BFF — Backend For Frontend (Web 端)
 //!
-//! Phase 0: 骨架 — 路由和中间件已就位。
+//! Phase 0: 路由和中间件已就位，admin/agent/tenant/counter 已迁移。
 
 pub mod config;
 pub mod error;
@@ -33,12 +33,20 @@ impl MakeRequestId for MakeRequestUuidV7 {
 pub fn create_router(state: BffState) -> Router {
     let cors = build_cors_layer(&state.config.cors_allowed_origins);
 
-    let public_routes = handlers::health::router();
+    // Public routes — no auth required
+    let public_routes: Router<BffState> = handlers::health::router();
 
-    // Phase 0: 无状态路由 + Extension 注入配置
+    // API routes — tenant-scoped, may require JWT auth
+    let api_routes = Router::new()
+        .merge(handlers::tenant::router())
+        .merge(handlers::counter::router())
+        .merge(handlers::admin::router())
+        .merge(handlers::agent::router());
+
     Router::new()
         .merge(public_routes)
-        .layer(axum::Extension(state.config.clone()))
+        .merge(api_routes)
+        .with_state(state)
         .layer(cors)
         .layer(
             TraceLayer::new_for_http().make_span_with(|req: &axum::http::Request<_>| {

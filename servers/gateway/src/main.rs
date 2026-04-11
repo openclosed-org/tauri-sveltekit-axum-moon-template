@@ -16,9 +16,9 @@ use async_trait::async_trait;
 use bytes::Bytes;
 use pingora::prelude::*;
 use pingora_core::upstreams::peer::HttpPeer;
-use pingora_core::upstreams::rr::LoadBalancer;
 use pingora_http::ResponseHeader;
-use pingora_proxy::{http_proxy_service, ProxyHttp};
+use pingora_load_balancing::{selection::RoundRobin, LoadBalancer, Backend, health_check::TcpHealthCheck};
+use pingora_proxy::{http_proxy_service, ProxyHttp, Session};
 
 // ── Configuration ────────────────────────────────────────────
 
@@ -43,30 +43,28 @@ impl GatewayConfig {
 // ── Gateway proxy ────────────────────────────────────────────
 
 struct Gateway {
-    api_upstreams: Arc<LoadBalancer<Backend>>,
-    web_upstreams: Arc<LoadBalancer<Backend>>,
+    api_upstreams: Arc<LoadBalancer<RoundRobin>>,
+    web_upstreams: Arc<LoadBalancer<RoundRobin>>,
 }
 
 impl Gateway {
     fn new(config: &GatewayConfig) -> Self {
         // API upstream with health check
         let mut api_upstreams =
-            LoadBalancer::try_from_iter([config.api_upstream.as_str()])
+            LoadBalancer::<RoundRobin>::try_from_iter([config.api_upstream.as_str()])
                 .expect("valid API upstream address");
-        let mut api_hc = TcpHealthCheck::new();
-        api_hc.set_connect_timeout(std::time::Duration::from_secs(2));
-        api_upstreams.set_health_check(Box::new(api_hc));
+        let api_hc = TcpHealthCheck::new();
+        api_upstreams.set_health_check(api_hc);
         api_upstreams.health_check_frequency = Some(std::time::Duration::from_secs(5));
         let api_bg = background_service("api-health-check", api_upstreams);
         let api_upstreams = api_bg.task();
 
         // Web upstream with health check
         let mut web_upstreams =
-            LoadBalancer::try_from_iter([config.web_upstream.as_str()])
+            LoadBalancer::<RoundRobin>::try_from_iter([config.web_upstream.as_str()])
                 .expect("valid web upstream address");
-        let mut web_hc = TcpHealthCheck::new();
-        web_hc.set_connect_timeout(std::time::Duration::from_secs(2));
-        web_upstreams.set_health_check(Box::new(web_hc));
+        let web_hc = TcpHealthCheck::new();
+        web_upstreams.set_health_check(web_hc);
         web_upstreams.health_check_frequency = Some(std::time::Duration::from_secs(5));
         let web_bg = background_service("web-health-check", web_upstreams);
         let web_upstreams = web_bg.task();

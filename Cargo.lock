@@ -4432,6 +4432,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "indexer"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "contracts_events",
+ "domain",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
 name = "indexmap"
 version = "1.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6596,6 +6612,7 @@ name = "pingora-gateway"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "bytes",
  "env_logger",
  "http",
@@ -6604,6 +6621,7 @@ dependencies = [
  "pingora-core",
  "pingora-http",
  "pingora-limits",
+ "pingora-load-balancing",
  "pingora-proxy",
  "tokio",
 ]
@@ -6636,12 +6654,43 @@ dependencies = [
 ]
 
 [[package]]
+name = "pingora-ketama"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0286fb5a0359dca1e2e137dfe14ca4d94f676635a5eae4616bb3d8d4ce06d120"
+dependencies = [
+ "crc32fast",
+]
+
+[[package]]
 name = "pingora-limits"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c7568624fc0e2f11fa32d27053ac862048b40bad98140b07a11d82f1b4989700"
 dependencies = [
  "ahash 0.8.12",
+]
+
+[[package]]
+name = "pingora-load-balancing"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d2606e9e22e72927a69772cefe56b0d41d251c3ffdfcd548a6020fe157fb79ad"
+dependencies = [
+ "arc-swap",
+ "async-trait",
+ "derivative",
+ "fnv",
+ "futures",
+ "http",
+ "log",
+ "pingora-core",
+ "pingora-error",
+ "pingora-http",
+ "pingora-ketama",
+ "pingora-runtime",
+ "rand 0.8.5",
+ "tokio",
 ]
 
 [[package]]
@@ -11176,10 +11225,20 @@ dependencies = [
 name = "user-service"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "async-trait",
  "axum 0.8.8",
+ "chrono",
+ "domain",
+ "http-body-util",
+ "kernel",
+ "rand 0.8.5",
  "serde",
  "serde_json",
+ "thiserror 2.0.18",
  "tokio",
+ "tower 0.5.3",
+ "validator",
 ]
 
 [[package]]
@@ -11557,8 +11616,10 @@ dependencies = [
  "hyper",
  "jsonwebtoken",
  "kernel",
+ "reqwest",
  "serde",
  "serde_json",
+ "storage_turso",
  "thiserror 2.0.18",
  "tokio",
  "tower 0.5.3",
@@ -11567,6 +11628,7 @@ dependencies = [
  "tracing-log",
  "tracing-subscriber",
  "tracing-test",
+ "usecases",
  "utoipa",
  "utoipa-swagger-ui",
  "uuid",

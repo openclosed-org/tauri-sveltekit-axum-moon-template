@@ -10,6 +10,8 @@ pub struct Config {
     pub server_port: u16,
     pub cors_allowed_origins: Vec<String>,
     pub jwt_secret: String,
+    /// Embedded Turso database URL (e.g., ":memory:" or "file:path.db").
+    pub database_url: Option<String>,
 }
 
 impl Config {
@@ -29,6 +31,7 @@ impl Default for Config {
             server_port: 3010,
             cors_allowed_origins: vec![],
             jwt_secret: "dev-secret-change-in-production".to_string(),
+            database_url: None,
         }
     }
 }

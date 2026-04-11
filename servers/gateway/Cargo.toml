@@ -12,6 +12,7 @@ pingora-core = "0.8"
 pingora-http = "0.8"
 pingora-limits = "0.8"
 pingora-proxy = "0.8"
+pingora-load-balancing = "0.8"
 
 # Async runtime
 tokio = { version = "1", features = ["full"] }
@@ -26,6 +27,9 @@ anyhow = "1"
 # HTTP types + bytes
 http = "1"
 bytes = "1"
+
+# Async trait support
+async-trait = "0.1"
 
 [lints]
 workspace = true
