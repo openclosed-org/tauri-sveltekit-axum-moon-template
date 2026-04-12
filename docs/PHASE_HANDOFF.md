@@ -50,7 +50,7 @@ Update this table as phases complete:
 
 | Phase | Status | Completion Report | Git Commit | Notes |
 |-------|--------|-------------------|------------|-------|
-| Phase 1: Fix deps | ⬜ Not Started | - | - | MUST complete first |
+| Phase 1: Fix deps | ✅ COMPLETE | `docs/refactoring/phase-1-completion.md` | `d25ce49` | Zero violations! |
 | Phase 2: platform/ | ⬜ Not Started | - | - | Blocks most parallel work |
 | Phase 3: workers/ | ⬜ Not Started | - | - | After Phase 2 |
 | Phase 4: verification/ | ⬜ Not Started | - | - | After Phase 2 |
