@@ -1,23 +1,12 @@
-# services/user-service
+# User — 用户域
 
-> User domain service — authentication, profiles, permissions, sessions.
+> 用户实体、OAuth 身份验证、用户-租户绑定关系。
+> 处理用户首次登录时的租户自动初始化流程。
 
-## Status
-- [ ] Phase 0: Stub — business logic lives in `packages/core/usecases/`
-- [ ] Phase 1: Implement domain/application/ports
-- [ ] Phase 2: Independent deployment (separate binary + Docker image)
+```bash
+cargo test -p user-service
+cargo build -p user-service
+```
 
-## Dependencies
-- `packages/core/kernel` (TenantId, UserId, AppError)
-- `packages/core/domain` (port traits)
-- `packages/contracts/*` (HTTP/Event contracts)
-- `packages/features/auth` (AuthService trait)
-
-## Architecture
-- `domain/` — Pure domain logic (User entity, value objects, invariants)
-- `application/` — Use cases (register, login, update_profile)
-- `ports/` — External dependency abstractions (UserRepository, SessionStore)
-- `contracts/` — Stable contract definitions (DTOs, events)
-- `sync/` — OfflineFirst sync strategies
-- `infrastructure/` — External service integrations
-- `interfaces/` — API route handlers
+注意：此服务的业务逻辑已通过 HTTP 路由暴露，但尚无专属 user 路由文件（租户初始化通过 tenant 路由触发）。
+架构说明见 [services/README.md](../README.md)。

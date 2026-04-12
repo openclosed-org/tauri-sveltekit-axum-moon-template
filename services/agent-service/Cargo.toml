@@ -2,10 +2,39 @@
 name = "agent-service"
 version = "0.1.0"
 edition = "2024"
-description = "Agent domain service: configuration, task execution, results"
+description = "Agent domain service — AI agent orchestration, tool calling, conversation management"
+license = "MIT"
+rust-version.workspace = true
 
 [dependencies]
-axum = { workspace = true }
+# Core abstractions
+domain = { workspace = true }
+kernel = { workspace = true }
+
+# Feature traits
+feature-agent = { workspace = true }
+
+# Contracts
+contracts_api = { workspace = true }
+
+# Minimal runtime
 serde = { workspace = true }
 serde_json = { workspace = true }
-tokio = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+async-trait = { workspace = true }
+chrono = { workspace = true }
+uuid = { workspace = true, features = ["v4"] }
+futures-util = { workspace = true }
+reqwest = { workspace = true }
+bytes = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt"] }
+
+[[test]]
+name = "unit_tests"
+path = "tests/unit/agent_service_test.rs"
+
+[lints]
+workspace = true

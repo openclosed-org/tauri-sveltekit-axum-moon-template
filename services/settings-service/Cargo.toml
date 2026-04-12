@@ -1,0 +1,36 @@
+[package]
+name = "settings-service"
+version = "0.1.0"
+edition = "2024"
+description = "Settings domain service — user-level preferences (api_key, base_url, model)"
+license = "MIT"
+rust-version.workspace = true
+
+[dependencies]
+# Core abstractions
+domain = { workspace = true }
+kernel = { workspace = true }
+
+# Feature traits
+feature-settings = { workspace = true }
+
+# Contracts
+contracts_api = { workspace = true }
+
+# Minimal runtime
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+async-trait = { workspace = true }
+chrono = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt"] }
+
+[[test]]
+name = "unit_tests"
+path = "tests/unit/settings_service_test.rs"
+
+[lints]
+workspace = true

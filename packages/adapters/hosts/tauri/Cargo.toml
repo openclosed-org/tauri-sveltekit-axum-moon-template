@@ -7,7 +7,11 @@ rust-version.workspace = true
 
 [dependencies]
 domain = { workspace = true }
-usecases = { workspace = true }
+counter-service = { workspace = true }
+tenant-service = { workspace = true }
+agent-service = { workspace = true }
+admin-service = { workspace = true }
+event-bus = { workspace = true }
 adapter-google = { workspace = true }
 feature-auth = { workspace = true }
 contracts_auth = { workspace = true }
@@ -15,6 +19,8 @@ contracts_api = { workspace = true }
 feature-counter = { workspace = true }
 feature-admin = { workspace = true }
 feature-agent = { workspace = true }
+feature-settings = { workspace = true }
+settings-service = { workspace = true }
 storage_turso = { workspace = true }
 tauri = { workspace = true }
 tauri-plugin-store = { workspace = true }

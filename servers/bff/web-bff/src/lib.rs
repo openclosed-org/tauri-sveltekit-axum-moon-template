@@ -41,7 +41,11 @@ pub fn create_router(state: BffState) -> Router {
         .merge(handlers::tenant::router())
         .merge(handlers::counter::router())
         .merge(handlers::admin::router())
-        .merge(handlers::agent::router());
+        .merge(handlers::agent::router())
+        .merge(handlers::settings::router())
+        .merge(handlers::user::router())
+        .route_layer(axum::middleware::from_fn(middleware::tenant::tenant_middleware))
+        .layer(axum::Extension(state.config.jwt_secret.clone()));
 
     Router::new()
         .merge(public_routes)

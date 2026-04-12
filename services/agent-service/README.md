@@ -1,23 +1,10 @@
-# services/agent-service
+# Agent — AI Agent 域
 
-> Agent domain service — AI agent orchestration, tool calling, conversation management.
+> Agent 配置、对话管理、LLM 流式调用、工具执行。
 
-## Status
-- [ ] Phase 0: Stub — business logic lives in `packages/core/usecases/`
-- [ ] Phase 1: Implement domain/application/ports
-- [ ] Phase 2: Independent deployment
+```bash
+cargo build -p agent-service
+```
 
-## Dependencies
-- `packages/core/kernel` (TenantId, UserId, AppError)
-- `packages/core/domain` (port traits)
-- `packages/contracts/*` (HTTP/Event contracts)
-- `packages/features/agent` (AgentService trait, Conversation struct)
-
-## Architecture
-- `domain/` — Agent entity, tool definitions, conversation state
-- `application/` — Use cases (chat_stream, tool_call, configure)
-- `ports/` — External dependency abstractions (LLMProvider, ToolRegistry)
-- `contracts/` — Stable contract definitions
-- `sync/` — OfflineFirst sync strategies
-- `infrastructure/` — LLM provider implementations
-- `interfaces/` — API route handlers
+当前状态：业务实现在 `packages/core/usecases/agent_service.rs`，待迁移至本目录。
+架构说明见 [services/README.md](../README.md)。

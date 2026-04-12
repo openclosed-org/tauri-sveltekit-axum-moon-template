@@ -1,1 +1,3 @@
-//! Use cases — chat_stream, tool_call, configure.
+//! Application layer — agent conversation management and tool execution.
+
+pub mod migrations;

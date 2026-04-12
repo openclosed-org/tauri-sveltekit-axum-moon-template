@@ -162,6 +162,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "320119579fcad9c21884f5c4861d16174d0e06250625266f50fe6898340abefa"
 
 [[package]]
+name = "admin-service"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "counter-service",
+ "feature-admin",
+ "kernel",
+ "serde",
+ "serde_json",
+ "tenant-service",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "aead"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -225,10 +241,21 @@ dependencies = [
 name = "agent-service"
 version = "0.1.0"
 dependencies = [
- "axum 0.8.8",
+ "async-trait",
+ "bytes",
+ "chrono",
+ "contracts_api",
+ "domain",
+ "feature-agent",
+ "futures-util",
+ "kernel",
+ "reqwest",
  "serde",
  "serde_json",
+ "thiserror 2.0.18",
  "tokio",
+ "tracing",
+ "uuid",
 ]
 
 [[package]]
@@ -5358,9 +5385,11 @@ dependencies = [
 name = "native-tauri"
 version = "0.1.0"
 dependencies = [
+ "agent-service",
  "async-trait",
  "base64 0.22.1",
  "chrono",
+ "counter-service",
  "domain",
  "dotenvy",
  "log",
@@ -5390,7 +5419,6 @@ dependencies = [
  "tracing-log",
  "tracing-subscriber",
  "url",
- "usecases",
  "workspace-hack",
 ]
 
@@ -7906,6 +7934,8 @@ dependencies = [
 name = "runtime_server"
 version = "0.1.0"
 dependencies = [
+ "admin-service",
+ "agent-service",
  "anyhow",
  "async-trait",
  "axum 0.8.8",
@@ -7919,6 +7949,7 @@ dependencies = [
  "feature-admin",
  "feature-agent",
  "feature-counter",
+ "feature-settings",
  "figment",
  "futures-util",
  "h3",
@@ -7934,9 +7965,11 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
+ "settings-service",
  "storage_surrealdb",
  "storage_turso",
  "surrealdb",
+ "tenant-service",
  "testcontainers",
  "testcontainers-modules",
  "thiserror 2.0.18",
@@ -7949,7 +7982,7 @@ dependencies = [
  "tracing-subscriber",
  "tracing-test",
  "trybuild",
- "usecases",
+ "user-service",
  "utoipa",
  "utoipa-swagger-ui",
  "uuid",
@@ -7962,31 +7995,37 @@ name = "runtime_tauri"
 version = "0.1.0"
 dependencies = [
  "adapter-google",
+ "admin-service",
+ "agent-service",
  "async-trait",
  "base64 0.22.1",
  "chrono",
  "contracts_api",
  "contracts_auth",
+ "counter-service",
  "domain",
  "dotenvy",
+ "event-bus",
  "feature-admin",
  "feature-agent",
  "feature-auth",
  "feature-counter",
+ "feature-settings",
  "futures-util",
  "rand 0.8.5",
  "reqwest",
  "serde",
  "serde_json",
+ "settings-service",
  "sha2",
  "storage_turso",
  "tauri",
  "tauri-plugin-opener",
  "tauri-plugin-store",
+ "tenant-service",
  "tokio",
  "tracing",
  "url",
- "usecases",
  "workspace-hack",
 ]
 
@@ -8642,6 +8681,23 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "170fb83ab34de17dc69aa7c67482b22218ddb85da56546f9bd6b929e32a05930"
 dependencies = [
  "stable_deref_trait",
+]
+
+[[package]]
+name = "settings-service"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "contracts_api",
+ "domain",
+ "feature-settings",
+ "kernel",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -9968,9 +10024,14 @@ name = "tenant-service"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "chrono",
+ "contracts_api",
+ "domain",
+ "kernel",
  "serde",
  "serde_json",
  "thiserror 2.0.18",
+ "tokio",
  "tracing",
 ]
 
@@ -11199,29 +11260,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "usecases"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "bytes",
- "chrono",
- "contracts_api",
- "domain",
- "feature-admin",
- "feature-agent",
- "feature-counter",
- "futures-util",
- "reqwest",
- "serde",
- "serde_json",
- "thiserror 2.0.18",
- "tokio",
- "tracing",
- "uuid",
- "workspace-hack",
-]
-
-[[package]]
 name = "user-service"
 version = "0.1.0"
 dependencies = [
@@ -11596,6 +11634,8 @@ dependencies = [
 name = "web-bff"
 version = "0.1.0"
 dependencies = [
+ "admin-service",
+ "agent-service",
  "anyhow",
  "async-trait",
  "axum 0.8.8",
@@ -11610,6 +11650,7 @@ dependencies = [
  "feature-admin",
  "feature-agent",
  "feature-counter",
+ "feature-settings",
  "figment",
  "futures-util",
  "http-body-util",
@@ -11619,7 +11660,9 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
+ "settings-service",
  "storage_turso",
+ "tenant-service",
  "thiserror 2.0.18",
  "tokio",
  "tower 0.5.3",
@@ -11628,7 +11671,7 @@ dependencies = [
  "tracing-log",
  "tracing-subscriber",
  "tracing-test",
- "usecases",
+ "user-service",
  "utoipa",
  "utoipa-swagger-ui",
  "uuid",

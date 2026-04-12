@@ -84,16 +84,21 @@ impl AppState {
             .map_err(AppError::Database)?;
 
         embedded_db
-            .execute(usecases::counter_service::COUNTER_MIGRATION, vec![])
+            .execute(counter_service::application::COUNTER_MIGRATION, vec![])
             .await
             .map_err(AppError::Database)?;
 
-        for migration in usecases::agent_service::AGENT_MIGRATIONS {
+        for migration in agent_service::application::migrations::AGENT_MIGRATIONS {
             embedded_db
                 .execute(migration, vec![])
                 .await
                 .map_err(AppError::Database)?;
         }
+
+        // Clone embedded_db to get an owned handle for the settings repository
+        let settings_db = embedded_db.clone();
+        let settings_repo = settings_service::infrastructure::LibSqlSettingsRepository::new(settings_db);
+        settings_repo.migrate().await.map_err(|e| AppError::Database(e.into()))?;
 
         Ok(())
     }

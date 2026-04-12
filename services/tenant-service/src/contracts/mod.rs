@@ -1,1 +1,1 @@
-//! Stable contract definitions — DTOs, events.
+//! Stable contract definitions — re-exported from packages/contracts/.

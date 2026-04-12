@@ -4,7 +4,9 @@ pub mod admin;
 pub mod agent;
 pub mod counter;
 pub mod health;
+pub mod settings;
 pub mod tenant;
+pub mod user;
 
 use crate::state::AppState;
 use axum::Router;
@@ -22,4 +24,6 @@ pub fn api_router() -> Router<AppState> {
         .merge(counter::router())
         .merge(admin::router())
         .merge(agent::router())
+        .merge(settings::router())
+        .merge(user::router())
 }

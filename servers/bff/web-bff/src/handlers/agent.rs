@@ -50,7 +50,7 @@ pub async fn list_conversations(State(state): State<BffState>) -> Json<serde_jso
         Ok(db) => db,
         Err(e) => return e,
     };
-    let service = usecases::agent_service::LibSqlAgentService::new(db, state.http_client.clone());
+    let service = agent_service::infrastructure::LibSqlAgentRepository::new(db, state.http_client.clone());
     match service.get_conversations().await {
         Ok(convs) => Json(serde_json::json!(convs)),
         Err(e) => Json(serde_json::json!({ "error": e.to_string() })),
@@ -76,7 +76,7 @@ pub async fn create_conversation(
         Ok(db) => db,
         Err(e) => return e,
     };
-    let service = usecases::agent_service::LibSqlAgentService::new(db, state.http_client.clone());
+    let service = agent_service::infrastructure::LibSqlAgentRepository::new(db, state.http_client.clone());
     match service.create_conversation(&req.title).await {
         Ok(conv) => Json(serde_json::json!(conv)),
         Err(e) => Json(serde_json::json!({ "error": e.to_string() })),
@@ -104,7 +104,7 @@ pub async fn get_messages(
         Ok(db) => db,
         Err(e) => return e,
     };
-    let service = usecases::agent_service::LibSqlAgentService::new(db, state.http_client.clone());
+    let service = agent_service::infrastructure::LibSqlAgentRepository::new(db, state.http_client.clone());
     match service.get_messages(&id).await {
         Ok(msgs) => Json(serde_json::json!(msgs)),
         Err(e) => Json(serde_json::json!({ "error": e.to_string() })),
@@ -137,7 +137,7 @@ pub async fn chat_handler(
             })));
         }
     };
-    let service = usecases::agent_service::LibSqlAgentService::new(db, state.http_client.clone());
+    let service = agent_service::infrastructure::LibSqlAgentRepository::new(db, state.http_client.clone());
     match service
         .chat_stream(
             &req.conversation_id,

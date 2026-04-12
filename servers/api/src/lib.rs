@@ -60,6 +60,8 @@ impl MakeRequestId for MakeRequestUuidV7 {
         routes::agent::create_conversation,
         routes::agent::get_messages,
         routes::agent::chat_handler,
+        routes::settings::get_settings,
+        routes::settings::update_settings,
     ),
     components(schemas(
         HealthResponse,
@@ -82,6 +84,8 @@ impl MakeRequestId for MakeRequestUuidV7 {
         (name = "counter", description = "Counter operations"),
         (name = "admin", description = "Admin dashboard operations"),
         (name = "agent", description = "Agent chat and conversation management"),
+        (name = "settings", description = "User settings and preferences"),
+        (name = "user", description = "User profile and tenant memberships"),
     ),
     servers(
         (url = "http://localhost:3001", description = "Local development server"),

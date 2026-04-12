@@ -5,7 +5,6 @@ members = [
     # Core
     "packages/core/workspace-hack",
     "packages/core/domain",
-    "packages/core/usecases",
     "packages/core/kernel",
     "packages/core/platform",
     # Contracts
@@ -59,13 +58,15 @@ members = [
     "packages/features/profile",
     "packages/features/social-graph",
     "packages/features/wallet",
-    # Services (all stubs, ready for incremental implementation)
+    # Services (Clean Architecture — incremental implementation)
     "services/user-service",
     "services/tenant-service",
     "services/counter-service",
     "services/chat-service",
     "services/agent-service",
     "services/event-bus",
+    "services/admin-service",
+    "services/settings-service",
     # Servers
     "servers/api",
     "servers/gateway",
@@ -99,7 +100,6 @@ rust-version = "1.94"
 [workspace.dependencies]
 # Internal crates
 domain = { path = "packages/core/domain" }
-usecases = { path = "packages/core/usecases" }
 kernel = { path = "packages/core/kernel" }
 platform = { path = "packages/core/platform" }
 contracts_api = { path = "packages/contracts/api" }
@@ -121,6 +121,11 @@ feature-agent = { path = "packages/features/agent" }
 feature-chat = { path = "packages/features/chat" }
 feature-settings = { path = "packages/features/settings" }
 counter-service = { path = "services/counter-service" }
+tenant-service = { path = "services/tenant-service" }
+user-service = { path = "services/user-service" }
+agent-service = { path = "services/agent-service" }
+admin-service = { path = "services/admin-service" }
+settings-service = { path = "services/settings-service" }
 event-bus = { path = "services/event-bus" }
 web-bff = { path = "servers/bff/web-bff" }
 
@@ -211,6 +216,7 @@ futures-util = "0.3"
 url = "2"
 uuid = { version = "1.23.0", features = ["v4", "v7", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
+bytes = "1"
 
 # ── Phase 5 (DB/Infra) ────────────────────────────────────────
 # Local embedded DB

@@ -26,11 +26,19 @@ async fn get_dashboard_stats(State(state): State<AppState>) -> Json<serde_json::
         Some(db) => db,
         None => return Json(serde_json::json!({ "error": "Embedded database not initialized" })),
     };
-    let tenant_service = usecases::tenant_service::LibSqlTenantService::new(db.clone());
-    let counter_service = usecases::counter_service::LibSqlCounterService::new(db.clone());
-    let admin_service =
-        usecases::admin_service::LibSqlAdminService::new(db, tenant_service, counter_service);
-    match admin_service.get_dashboard_stats().await {
+
+    // Build tenant service via new service location
+    let tenant_repo = tenant_service::infrastructure::LibSqlTenantRepository::new(db.clone());
+    let tenant_svc = tenant_service::application::TenantService::new(tenant_repo);
+
+    // Build counter service
+    let counter_repo = counter_service::infrastructure::LibSqlCounterRepository::new(db.clone());
+    let counter_svc = counter_service::application::RepositoryBackedCounterService::new(counter_repo);
+
+    // Build admin service
+    let admin_svc = admin_service::application::AdminDashboardService::new(tenant_svc, counter_svc);
+
+    match admin_svc.get_dashboard_stats().await {
         Ok(stats) => Json(serde_json::json!(stats)),
         Err(e) => Json(serde_json::json!({ "error": e.to_string() })),
     }

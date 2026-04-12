@@ -1,0 +1,100 @@
+//! LibSQL implementation of TenantRepository.
+//!
+//! Translates the abstract TenantRepository trait into concrete SQL operations
+//! against a LibSqlPort (embedded Turso / SQLite).
+
+use async_trait::async_trait;
+use domain::ports::lib_sql::LibSqlPort;
+use serde::Deserialize;
+
+use crate::domain::{CreateTenantInput, Tenant};
+use crate::ports::{RepositoryError, TenantRepository};
+
+/// Raw row shape from the tenant table.
+#[derive(Debug, Deserialize)]
+struct TenantRow {
+    id: String,
+    name: String,
+    created_at: String,
+}
+
+/// LibSQL-backed TenantRepository.
+pub struct LibSqlTenantRepository<P: LibSqlPort> {
+    port: P,
+}
+
+impl<P: LibSqlPort> LibSqlTenantRepository<P> {
+    pub fn new(port: P) -> Self {
+        Self { port }
+    }
+
+    /// Run the tenant table migration (idempotent).
+    pub async fn migrate(&self) -> Result<(), RepositoryError> {
+        const TENANT_MIGRATION: &str =
+            "CREATE TABLE IF NOT EXISTS tenant (\
+                id TEXT PRIMARY KEY,\
+                name TEXT NOT NULL,\
+                created_at TEXT NOT NULL DEFAULT (datetime('now'))\
+            )";
+        self.port.execute(TENANT_MIGRATION, vec![]).await?;
+        Ok(())
+    }
+}
+
+#[async_trait]
+impl<P: LibSqlPort> TenantRepository for LibSqlTenantRepository<P> {
+    async fn create_tenant(
+        &self,
+        input: CreateTenantInput,
+    ) -> Result<Tenant, RepositoryError> {
+        self.port
+            .execute(
+                "INSERT INTO tenant (id, name) VALUES (?, ?)",
+                vec![input.id.clone(), input.name.clone()],
+            )
+            .await?;
+
+        Ok(Tenant {
+            id: input.id,
+            name: input.name,
+            created_at: chrono::Utc::now().to_rfc3339(),
+        })
+    }
+
+    async fn get_tenant(&self, id: &str) -> Result<Option<Tenant>, RepositoryError> {
+        let rows: Vec<TenantRow> = self
+            .port
+            .query(
+                "SELECT id, name, created_at FROM tenant WHERE id = ?",
+                vec![id.to_string()],
+            )
+            .await?;
+        Ok(rows.into_iter().next().map(row_to_tenant))
+    }
+
+    async fn list_tenants(&self) -> Result<Vec<Tenant>, RepositoryError> {
+        let rows: Vec<TenantRow> = self
+            .port
+            .query(
+                "SELECT id, name, created_at FROM tenant ORDER BY created_at DESC",
+                vec![],
+            )
+            .await?;
+        Ok(rows.into_iter().map(row_to_tenant).collect())
+    }
+
+    async fn delete_tenant(&self, id: &str) -> Result<(), RepositoryError> {
+        self.port
+            .execute("DELETE FROM tenant WHERE id = ?", vec![id.to_string()])
+            .await?;
+        Ok(())
+    }
+}
+
+fn row_to_tenant(row: TenantRow) -> Tenant {
+    Tenant {
+        id: row.id,
+        name: row.name,
+        created_at: row.created_at,
+    }
+}

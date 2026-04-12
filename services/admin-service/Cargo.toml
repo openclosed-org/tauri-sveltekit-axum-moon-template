@@ -1,0 +1,29 @@
+[package]
+name = "admin-service"
+version = "0.1.0"
+edition = "2024"
+description = "Admin domain service — dashboard stats aggregation"
+license = "MIT"
+rust-version.workspace = true
+
+[dependencies]
+# Feature traits
+feature-admin = { workspace = true }
+
+# Downstream services (for trait impls)
+tenant-service = { workspace = true }
+counter-service = { workspace = true }
+kernel = { workspace = true }
+
+# Minimal runtime
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+async-trait = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt"] }
+
+[lints]
+workspace = true

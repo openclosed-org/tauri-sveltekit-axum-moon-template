@@ -6,8 +6,11 @@ use tauri::Manager;
 
 fn build_turso_counter_service(
     db: EmbeddedTurso,
-) -> usecases::counter_service::LibSqlCounterService<EmbeddedTurso> {
-    usecases::counter_service::LibSqlCounterService::new(db)
+) -> counter_service::application::RepositoryBackedCounterService<
+    counter_service::infrastructure::LibSqlCounterRepository<EmbeddedTurso>,
+> {
+    let repo = counter_service::infrastructure::LibSqlCounterRepository::new(db);
+    counter_service::application::RepositoryBackedCounterService::new(repo)
 }
 
 #[tauri::command]

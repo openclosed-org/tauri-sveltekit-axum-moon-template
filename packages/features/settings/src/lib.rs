@@ -1,81 +1,31 @@
-//! Settings feature — user preferences, theme, and privacy configuration.
+//! Settings feature — user-level Agent connection preferences.
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
-/// User settings.
+/// Agent connection settings.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UserSettings {
-    pub user_id: String,
-    pub theme: Theme,
-    pub language: String,
-    pub notifications_enabled: bool,
-    pub privacy: PrivacySettings,
-}
-
-/// UI theme preference.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum Theme {
-    Light,
-    Dark,
-    System,
-}
-
-impl Default for Theme {
-    fn default() -> Self {
-        Self::System
-    }
-}
-
-/// Privacy settings.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PrivacySettings {
-    pub profile_visible: bool,
-    pub activity_visible: bool,
-    pub data_collection_consent: bool,
-}
-
-impl Default for PrivacySettings {
-    fn default() -> Self {
-        Self {
-            profile_visible: true,
-            activity_visible: true,
-            data_collection_consent: false,
-        }
-    }
-}
-
-impl Default for UserSettings {
-    fn default() -> Self {
-        Self {
-            user_id: String::new(),
-            theme: Theme::default(),
-            language: "en".to_string(),
-            notifications_enabled: true,
-            privacy: PrivacySettings::default(),
-        }
-    }
+pub struct AgentConnectionSettings {
+    pub api_key: String,
+    pub base_url: String,
+    pub model: String,
 }
 
 /// Settings service trait.
 #[async_trait]
 pub trait SettingsService: Send + Sync {
-    /// Get settings for a user.
-    async fn get_settings(&self, user_id: &str) -> Result<UserSettings, SettingsError>;
-
-    /// Update all settings.
-    async fn update_settings(
+    /// Get settings for a user (creates defaults if missing).
+    async fn get_settings(
         &self,
-        user_id: &str,
-        settings: UserSettings,
-    ) -> Result<UserSettings, SettingsError>;
+        user_sub: &str,
+    ) -> Result<crate::AgentConnectionSettings, SettingsError>;
 
-    /// Update a single setting (e.g., theme).
-    async fn update_theme(&self, user_id: &str, theme: Theme) -> Result<(), SettingsError>;
-
-    /// Reset settings to defaults.
-    async fn reset_settings(&self, user_id: &str) -> Result<UserSettings, SettingsError>;
+    /// Update agent connection settings.
+    async fn update_agent_connection(
+        &self,
+        user_sub: &str,
+        settings: AgentConnectionSettings,
+    ) -> Result<crate::AgentConnectionSettings, SettingsError>;
 }
 
 #[derive(Debug, thiserror::Error)]

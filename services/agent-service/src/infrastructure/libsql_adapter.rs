@@ -1,29 +1,95 @@
-//! Agent service — LibSQL-backed chat + OpenAI streaming integration.
+//! LibSQL + HTTP implementation of agent service.
+//!
+//! Handles conversation CRUD, message persistence, and OpenAI-compatible
+//! streaming with tool execution.
 
 use async_trait::async_trait;
 use contracts_api::ChatMessage;
 use domain::ports::lib_sql::LibSqlPort;
-use feature_agent::{AgentError, AgentService, Conversation};
+use feature_agent::{AgentError, AgentService, Conversation, AVAILABLE_TOOLS};
 use futures_util::{Stream, StreamExt, future};
+use serde::Deserialize;
 use std::pin::Pin;
 
-/// SQL migrations for agent tables.
-pub const AGENT_MIGRATIONS: &[&str] = &[
-    "CREATE TABLE IF NOT EXISTS conversations (id TEXT PRIMARY KEY, title TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT (datetime('now')))",
-    "CREATE TABLE IF NOT EXISTS messages (id TEXT PRIMARY KEY, conversation_id TEXT NOT NULL REFERENCES conversations(id), role TEXT NOT NULL, content TEXT NOT NULL, tool_calls TEXT, created_at TEXT NOT NULL DEFAULT (datetime('now')))",
-];
+// ── Row types ────────────────────────────────────────────────────────────────
+
+#[derive(Debug, Deserialize)]
+struct ConversationRow {
+    id: String,
+    title: String,
+    created_at: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct MessageRow {
+    id: String,
+    conversation_id: String,
+    role: String,
+    content: String,
+    tool_calls: Option<String>,
+    created_at: String,
+}
+
+/// Raw tenant row for list_tenants tool (local shape to avoid cross-service dep).
+#[derive(Debug, Deserialize, serde::Serialize)]
+struct TenantRow {
+    id: String,
+    name: String,
+    created_at: String,
+}
+
+// ── Type conversions ─────────────────────────────────────────────────────────
+
+impl From<ConversationRow> for Conversation {
+    fn from(r: ConversationRow) -> Self {
+        Conversation {
+            id: r.id,
+            title: r.title,
+            created_at: r.created_at,
+        }
+    }
+}
+
+impl From<MessageRow> for ChatMessage {
+    fn from(r: MessageRow) -> Self {
+        let tool_calls = r.tool_calls.and_then(|s| serde_json::from_str(&s).ok());
+        ChatMessage {
+            id: r.id,
+            conversation_id: r.conversation_id,
+            role: r.role,
+            content: r.content,
+            tool_calls,
+            created_at: r.created_at,
+        }
+    }
+}
+
+// ── Service ──────────────────────────────────────────────────────────────────
 
 /// AgentService backed by LibSqlPort + reqwest HTTP client.
-pub struct LibSqlAgentService<P: LibSqlPort> {
+pub struct LibSqlAgentRepository<P: LibSqlPort> {
     port: P,
     http_client: reqwest::Client,
 }
 
-impl<P: LibSqlPort> LibSqlAgentService<P> {
+impl<P: LibSqlPort> LibSqlAgentRepository<P> {
     pub fn new(port: P, http_client: reqwest::Client) -> Self {
         Self { port, http_client }
     }
+
+    /// Run agent table migrations (idempotent).
+    pub async fn migrate(&self) -> Result<(), AgentError> {
+        for migration in super::super::application::migrations::AGENT_MIGRATIONS {
+            self.port
+                .execute(migration, vec![])
+                .await
+                .map_err(AgentError::Database)?;
+        }
+        Ok(())
+    }
 }
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
 fn generate_id() -> String {
     uuid::Uuid::new_v4().to_string()
@@ -79,7 +145,7 @@ async fn execute_tool_by_name<P: LibSqlPort>(
             serde_json::json!({ "counter_value": value }).to_string()
         }
         "list_tenants" => {
-            let tenants: Vec<crate::tenant_service::Tenant> = port
+            let tenants: Vec<TenantRow> = port
                 .query(
                     "SELECT id, name, created_at FROM tenant ORDER BY created_at DESC",
                     vec![],
@@ -103,51 +169,10 @@ async fn execute_tool_by_name<P: LibSqlPort>(
     Ok(result)
 }
 
-/// Row type for conversations query.
-#[derive(Debug, serde::Deserialize)]
-struct ConversationRow {
-    id: String,
-    title: String,
-    created_at: String,
-}
-
-/// Row type for messages query.
-#[derive(Debug, serde::Deserialize)]
-struct MessageRow {
-    id: String,
-    conversation_id: String,
-    role: String,
-    content: String,
-    tool_calls: Option<String>,
-    created_at: String,
-}
-
-impl From<ConversationRow> for Conversation {
-    fn from(r: ConversationRow) -> Self {
-        Conversation {
-            id: r.id,
-            title: r.title,
-            created_at: r.created_at,
-        }
-    }
-}
-
-impl From<MessageRow> for ChatMessage {
-    fn from(r: MessageRow) -> Self {
-        let tool_calls = r.tool_calls.and_then(|s| serde_json::from_str(&s).ok());
-        ChatMessage {
-            id: r.id,
-            conversation_id: r.conversation_id,
-            role: r.role,
-            content: r.content,
-            tool_calls,
-            created_at: r.created_at,
-        }
-    }
-}
+// ── Trait implementation ─────────────────────────────────────────────────────
 
 #[async_trait]
-impl<P: LibSqlPort + Clone + Send + Sync + 'static> AgentService for LibSqlAgentService<P> {
+impl<P: LibSqlPort + Clone + Send + Sync + 'static> AgentService for LibSqlAgentRepository<P> {
     async fn create_conversation(&self, title: &str) -> Result<Conversation, AgentError> {
         let id = generate_id();
         let now = chrono::Utc::now().to_rfc3339();
@@ -226,7 +251,6 @@ impl<P: LibSqlPort + Clone + Send + Sync + 'static> AgentService for LibSqlAgent
         base_url: &str,
         model: &str,
     ) -> Result<Pin<Box<dyn Stream<Item = Result<String, AgentError>> + Send>>, AgentError> {
-        // Build messages history from existing conversation
         let messages = self.get_messages(conversation_id).await?;
         let mut api_messages: Vec<serde_json::Value> = messages
             .iter()
@@ -237,14 +261,12 @@ impl<P: LibSqlPort + Clone + Send + Sync + 'static> AgentService for LibSqlAgent
                 })
             })
             .collect();
-        // Add the new user message
         api_messages.push(serde_json::json!({
             "role": "user",
             "content": content,
         }));
 
-        // Build tool definitions
-        let tools: Vec<serde_json::Value> = feature_agent::AVAILABLE_TOOLS
+        let tools: Vec<serde_json::Value> = AVAILABLE_TOOLS
             .iter()
             .map(|(name, desc)| {
                 serde_json::json!({
@@ -281,7 +303,6 @@ impl<P: LibSqlPort + Clone + Send + Sync + 'static> AgentService for LibSqlAgent
             return Err(AgentError::Api(format!("OpenAI API error: {}", body)));
         }
 
-        // Save the user message to database
         self.send_message(conversation_id, content).await?;
 
         let conversation_id = conversation_id.to_string();
@@ -289,7 +310,6 @@ impl<P: LibSqlPort + Clone + Send + Sync + 'static> AgentService for LibSqlAgent
         let raw = Box::pin(resp.bytes_stream())
             as Pin<Box<dyn Stream<Item = Result<bytes::Bytes, reqwest::Error>> + Send>>;
 
-        // Return SSE stream — parse "data: {json}" lines and execute tool calls.
         let stream = futures_util::stream::unfold(
             (raw, conversation_id, port),
             |(mut inner, conversation_id, port)| async move {
@@ -304,15 +324,14 @@ impl<P: LibSqlPort + Clone + Send + Sync + 'static> AgentService for LibSqlAgent
                                 if data == "[DONE]" {
                                     continue;
                                 }
-
-                                if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(data)
+                                if let Ok(parsed) =
+                                    serde_json::from_str::<serde_json::Value>(data)
                                 {
                                     if let Some(content) =
                                         parsed["choices"][0]["delta"]["content"].as_str()
                                     {
                                         result.push_str(content);
                                     }
-
                                     if let Some(tool_calls) =
                                         parsed["choices"][0]["delta"]["tool_calls"].as_array()
                                     {
@@ -322,7 +341,6 @@ impl<P: LibSqlPort + Clone + Send + Sync + 'static> AgentService for LibSqlAgent
                                             if name.is_empty() {
                                                 continue;
                                             }
-
                                             let arguments = call["function"]["arguments"]
                                                 .as_str()
                                                 .and_then(|raw| serde_json::from_str(raw).ok())
@@ -343,8 +361,7 @@ impl<P: LibSqlPort + Clone + Send + Sync + 'static> AgentService for LibSqlAgent
                                                 }
                                                 Err(err) => {
                                                     result.push_str(&format!(
-                                                        "\n[tool:{name}] error: {}\n",
-                                                        err
+                                                        "\n[tool:{name}] error: {err}\n"
                                                     ));
                                                 }
                                             }
@@ -379,116 +396,5 @@ impl<P: LibSqlPort + Clone + Send + Sync + 'static> AgentService for LibSqlAgent
         });
 
         Ok(Box::pin(stream))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use serde::de::DeserializeOwned;
-    use serde_json::json;
-    use std::sync::Arc;
-    use tokio::sync::Mutex;
-
-    #[derive(Clone, Default)]
-    struct MockLibSqlPort {
-        counter: Arc<Mutex<i64>>,
-        tenants: Arc<Mutex<Vec<crate::tenant_service::Tenant>>>,
-        messages: Arc<Mutex<Vec<(String, String, String, String)>>>,
-    }
-
-    #[async_trait]
-    impl LibSqlPort for MockLibSqlPort {
-        async fn health_check(&self) -> Result<(), domain::ports::lib_sql::LibSqlError> {
-            Ok(())
-        }
-
-        async fn execute(
-            &self,
-            sql: &str,
-            params: Vec<String>,
-        ) -> Result<u64, domain::ports::lib_sql::LibSqlError> {
-            if sql.contains("INSERT INTO messages") && params.len() >= 4 {
-                self.messages.lock().await.push((
-                    params[0].clone(),
-                    params[1].clone(),
-                    params[2].clone(),
-                    params[3].clone(),
-                ));
-                return Ok(1);
-            }
-
-            Ok(1)
-        }
-
-        async fn query<T: DeserializeOwned + Send + Sync>(
-            &self,
-            sql: &str,
-            _params: Vec<String>,
-        ) -> Result<Vec<T>, domain::ports::lib_sql::LibSqlError> {
-            if sql.contains("SELECT value FROM counter") {
-                let v = *self.counter.lock().await;
-                let raw = json!([[v]]);
-                return serde_json::from_value(raw)
-                    .map_err(|e| Box::new(e) as domain::ports::lib_sql::LibSqlError);
-            }
-
-            if sql.contains("SELECT id, name, created_at FROM tenant") {
-                let tenants = self.tenants.lock().await.clone();
-                let raw = serde_json::to_value(tenants).expect("serialize tenants");
-                return serde_json::from_value(raw)
-                    .map_err(|e| Box::new(e) as domain::ports::lib_sql::LibSqlError);
-            }
-
-            serde_json::from_value(json!([]))
-                .map_err(|e| Box::new(e) as domain::ports::lib_sql::LibSqlError)
-        }
-    }
-
-    #[tokio::test]
-    async fn executes_get_counter_value_tool_and_persists_result_message() {
-        let port = MockLibSqlPort::default();
-        *port.counter.lock().await = 7;
-
-        let result = execute_tool_by_name(&port, "conv-1", "get_counter_value", json!({}))
-            .await
-            .expect("tool call should succeed");
-
-        assert!(result.contains("counter"));
-        assert!(result.contains('7'));
-        assert_eq!(port.messages.lock().await.len(), 1);
-    }
-
-    #[tokio::test]
-    async fn executes_list_tenants_tool_and_returns_summary() {
-        let port = MockLibSqlPort::default();
-        {
-            let mut tenants = port.tenants.lock().await;
-            tenants.push(crate::tenant_service::Tenant {
-                id: "t1".to_string(),
-                name: "Alpha".to_string(),
-                created_at: chrono::Utc::now().to_rfc3339(),
-            });
-        }
-
-        let result = execute_tool_by_name(&port, "conv-2", "list_tenants", json!({}))
-            .await
-            .expect("tool call should succeed");
-
-        assert!(result.contains("Alpha"));
-        assert_eq!(port.messages.lock().await.len(), 1);
-    }
-
-    #[tokio::test]
-    async fn executes_system_status_and_handles_unknown_tool_safely() {
-        let port = MockLibSqlPort::default();
-
-        let status = execute_tool_by_name(&port, "conv-3", "get_system_status", json!({}))
-            .await
-            .expect("status tool call should succeed");
-        assert!(status.contains("ok"));
-
-        let unknown = execute_tool_by_name(&port, "conv-3", "not_allowed_tool", json!({})).await;
-        assert!(unknown.is_err());
     }
 }

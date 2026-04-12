@@ -56,13 +56,13 @@ async fn make_test_state() -> AppState {
     .expect("Failed to ensure tenant index");
     domain::ports::lib_sql::LibSqlPort::execute(
         &embedded_db,
-        usecases::counter_service::COUNTER_MIGRATION,
+        counter_service::application::COUNTER_MIGRATION,
         vec![],
     )
     .await
     .expect("Failed to run counter migration");
 
-    for migration in usecases::agent_service::AGENT_MIGRATIONS {
+    for migration in agent_service::application::migrations::AGENT_MIGRATIONS {
         domain::ports::lib_sql::LibSqlPort::execute(&embedded_db, migration, vec![])
             .await
             .expect("Failed to run agent migration");

@@ -1,20 +1,25 @@
 //! Admin Tauri commands — bridge to AdminService.
 
-use feature_admin::{AdminDashboardStats, AdminService};
+use feature_admin::AdminService;
 use storage_turso::EmbeddedTurso;
 use tauri::Manager;
 
 #[tauri::command]
 pub async fn admin_get_dashboard_stats(
     app: tauri::AppHandle,
-) -> Result<AdminDashboardStats, String> {
+) -> Result<serde_json::Value, String> {
     let db = app.state::<EmbeddedTurso>().inner().clone();
-    let tenant_service = usecases::tenant_service::LibSqlTenantService::new(db.clone());
-    let counter_service = usecases::counter_service::LibSqlCounterService::new(db.clone());
-    let admin_service =
-        usecases::admin_service::LibSqlAdminService::new(db, tenant_service, counter_service);
-    admin_service
-        .get_dashboard_stats()
-        .await
-        .map_err(|e| e.to_string())
+
+    let tenant_repo = tenant_service::infrastructure::LibSqlTenantRepository::new(db.clone());
+    let tenant_svc = tenant_service::application::TenantService::new(tenant_repo);
+
+    let counter_repo = counter_service::infrastructure::LibSqlCounterRepository::new(db.clone());
+    let counter_svc = counter_service::application::RepositoryBackedCounterService::new(counter_repo);
+
+    let admin_svc = admin_service::application::AdminDashboardService::new(tenant_svc, counter_svc);
+
+    match admin_svc.get_dashboard_stats().await {
+        Ok(stats) => Ok(serde_json::json!(stats)),
+        Err(e) => Err(e.to_string()),
+    }
 }

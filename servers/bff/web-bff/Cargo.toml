@@ -9,8 +9,12 @@ rust-version.workspace = true
 [dependencies]
 # Internal — services (trait-only), contracts, core
 counter-service = { workspace = true }
+tenant-service = { workspace = true }
+user-service = { workspace = true }
+agent-service = { workspace = true }
+admin-service = { workspace = true }
+settings-service = { workspace = true }
 event-bus = { workspace = true }
-usecases = { workspace = true }
 contracts_api = { workspace = true }
 contracts_events = { workspace = true }
 kernel = { workspace = true }
@@ -18,6 +22,7 @@ domain = { workspace = true }
 feature-counter = { workspace = true }
 feature-admin = { workspace = true }
 feature-agent = { workspace = true }
+feature-settings = { workspace = true }
 storage_turso = { workspace = true }
 
 # Axum HTTP framework

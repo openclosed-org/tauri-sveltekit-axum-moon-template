@@ -1,21 +1,11 @@
-# services/tenant-service
+# Tenant — 多租户域
 
-> Tenant domain service — multi-tenant isolation strategy, member management, tenant lifecycle.
+> 租户实体、成员管理、隔离策略。
+> 与 user-service 协作完成 OAuth 回调后的租户初始化流程。
 
-## Status
-- [ ] Phase 0: Stub — business logic lives in `packages/core/usecases/`
-- [ ] Phase 1: Implement domain/application/ports
-- [ ] Phase 2: Independent deployment
+```bash
+cargo build -p tenant-service
+```
 
-## Dependencies
-- `packages/core/kernel` (TenantId, AppError)
-- `packages/core/domain` (port traits)
-- `packages/contracts/*` (HTTP/Event contracts)
-- `packages/features/auth` (AuthService trait for tenant auth)
-
-## Architecture
-- `domain/` — Tenant entity, membership rules, isolation policies
-- `application/` — Use cases (create_tenant, add_member, remove_member)
-- `ports/` — External dependency abstractions (TenantRepository)
-- `contracts/` — Stable contract definitions (DTOs, events)
-- `sync/` — OfflineFirst sync strategies
+当前状态：业务实现在 `packages/core/usecases/tenant_service.rs`，待迁移至本目录。
+架构说明见 [services/README.md](../README.md)。

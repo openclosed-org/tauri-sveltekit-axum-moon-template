@@ -1,1 +1,1 @@
-//! API route handlers and request/response adapters.
+//! Factory functions for composing the agent service at the BFF/HTTP layer.

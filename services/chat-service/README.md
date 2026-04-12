@@ -1,23 +1,6 @@
-# services/chat-service
+# Chat — 聊天域
 
-> Chat domain service — conversations, messages, real-time streaming.
+> 消息、会话、实时流。
 
-## Status
-- [ ] Phase 0: Stub — business logic lives in `packages/core/usecases/`
-- [ ] Phase 1: Implement domain/application/ports
-- [ ] Phase 2: Independent deployment
-
-## Dependencies
-- `packages/core/kernel` (TenantId, UserId, AppError)
-- `packages/core/domain` (port traits)
-- `packages/contracts/*` (HTTP/Event contracts)
-- `packages/features/chat` (ChatService trait, ChatMessage struct)
-
-## Architecture
-- `domain/` — ChatMessage, ChatSession entities
-- `application/` — Use cases (send_message, get_history)
-- `ports/` — External dependency abstractions (MessageStore)
-- `contracts/` — Stable contract definitions
-- `sync/` — OfflineFirst sync strategies
-- `infrastructure/` — WebSocket/SSE real-time implementations
-- `interfaces/` — API route handlers
+当前状态：待实现。Tauri 端已有 chat commands（`packages/adapters/hosts/tauri/src/commands/chat.rs`），服务端待补全。
+架构说明见 [services/README.md](../README.md)。

@@ -7,10 +7,10 @@ use futures_util::StreamExt;
 use storage_turso::EmbeddedTurso;
 use tauri::{AppHandle, Manager, ipc::Channel};
 
-fn agent_service(app: &AppHandle) -> usecases::agent_service::LibSqlAgentService<EmbeddedTurso> {
+fn agent_service(app: &AppHandle) -> agent_service::infrastructure::LibSqlAgentRepository<EmbeddedTurso> {
     let db = app.state::<EmbeddedTurso>().inner().clone();
     let http_client = reqwest::Client::new();
-    usecases::agent_service::LibSqlAgentService::new(db, http_client)
+    agent_service::infrastructure::LibSqlAgentRepository::new(db, http_client)
 }
 
 #[tauri::command]

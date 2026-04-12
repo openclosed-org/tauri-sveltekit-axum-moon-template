@@ -8,7 +8,6 @@ rust-version.workspace = true
 [dependencies]
 # Internal crates
 domain = { workspace = true }
-usecases = { workspace = true }
 contracts_api = { workspace = true }
 kernel = { workspace = true }
 storage_surrealdb = { workspace = true, optional = true }
@@ -16,7 +15,13 @@ storage_turso = { workspace = true, optional = true }
 feature-counter = { workspace = true }
 feature-admin = { workspace = true }
 feature-agent = { workspace = true }
+feature-settings = { workspace = true }
 counter-service = { workspace = true }
+tenant-service = { workspace = true }
+user-service = { workspace = true }
+agent-service = { workspace = true }
+admin-service = { workspace = true }
+settings-service = { workspace = true }
 event-bus = { workspace = true }
 
 # Axum HTTP framework (per D-01, D-02, D-09)
