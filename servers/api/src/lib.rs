@@ -4,6 +4,7 @@
 //! It owns HTTP concerns: routing, middleware, serialization boundaries.
 //! Business logic lives in `domain` and `application` crates.
 
+pub mod adapters;
 pub mod config;
 pub mod error;
 #[cfg(feature = "http3")]

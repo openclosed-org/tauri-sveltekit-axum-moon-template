@@ -11,10 +11,6 @@ rust-version.workspace = true
 domain = { workspace = true }
 kernel = { workspace = true }
 
-# Axum HTTP framework
-axum = { workspace = true }
-tokio = { workspace = true }
-
 # Serialization & validation
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -34,6 +30,7 @@ rand = { workspace = true }
 [dev-dependencies]
 tower = { workspace = true, features = ["util"] }
 http-body-util = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt"] }
 
 [features]
 default = []

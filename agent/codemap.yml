@@ -1,158 +1,591 @@
-# Agent Codemap — 模块边界 + 依赖约束
+version: 1
+repo: boilerplate
+purpose: >
+  平台模型优先、契约优先、服务是库不是进程、拓扑切换不靠重构的 monorepo 约束图。
 
-# **格式**: YAML, 严格 schema 校验
-# **变更**: 必须通过 ADR 流程 + 更新 agent/checklists/
+principles:
+  - id: platform-model-first
+    rule: 所有服务、部署单元、资源、工作流、策略、拓扑、环境变化先修改 platform/model
+  - id: contracts-first
+    rule: HTTP/Event/RPC/DTO/ErrorCode 变化先修改 packages/contracts
+  - id: services-are-libraries
+    rule: services 仅承载业务能力，不承载进程入口
+  - id: workers-are-first-class
+    rule: 所有异步执行逻辑必须进入 workers
+  - id: vendor-in-adapters-only
+    rule: 具体中间件 SDK 只能出现在 packages/*/adapters 或等价 vendor 适配目录
+  - id: generated-readonly
+    rule: 所有生成物目录只读，不允许手工维护
+  - id: topology-not-refactor
+    rule: 拓扑切换只能通过 platform/model/topologies 完成
 
-version: "1.0"
-schema: "agent-codemap/v1"
+layers:
+  - name: root
+    paths:
+      - ".mise.toml"
+      - "justfile"
+      - "moon.yml"
+      - "Cargo.toml"
+      - "package.json"
+      - ".github/**"
+    role: 根配置与入口层
+
+  - name: agent
+    paths:
+      - "agent/**"
+    role: Agent 约束、模板、操作清单
+
+  - name: platform-model
+    paths:
+      - "platform/schema/**"
+      - "platform/model/**"
+      - "platform/generators/**"
+      - "platform/validators/**"
+      - "platform/catalog/**"
+    role: 平台模型与生成/校验层
+
+  - name: apps
+    paths:
+      - "apps/**"
+    role: Web/Desktop/Mobile 客户端壳层
+
+  - name: servers
+    paths:
+      - "servers/**"
+    role: 同步请求入口层
+
+  - name: services
+    paths:
+      - "services/**"
+    role: 纯业务能力层
+
+  - name: workers
+    paths:
+      - "workers/**"
+    role: 异步执行层
+
+  - name: packages-core
+    paths:
+      - "packages/kernel/**"
+      - "packages/platform/**"
+      - "packages/contracts/**"
+      - "packages/sdk/**"
+      - "packages/runtime/**"
+      - "packages/authn/**"
+      - "packages/authz/**"
+      - "packages/data/**"
+      - "packages/messaging/**"
+      - "packages/cache/**"
+      - "packages/storage/**"
+      - "packages/observability/**"
+      - "packages/security/**"
+      - "packages/web3/**"
+      - "packages/wasm/**"
+      - "packages/ui/**"
+      - "packages/devx/**"
+    role: 共享抽象与适配层
+
+  - name: infra
+    paths:
+      - "infra/**"
+    role: 基础设施声明与交付层
+
+  - name: ops
+    paths:
+      - "ops/**"
+    role: 运维执行层
+
+  - name: verification
+    paths:
+      - "verification/**"
+    role: 跨模块验证层
+
+  - name: docs
+    paths:
+      - "docs/**"
+    role: ADR、架构和运维文档层
+
+  - name: fixtures
+    paths:
+      - "fixtures/**"
+    role: 测试数据与种子
+
+  - name: tools
+    paths:
+      - "tools/**"
+    role: 本地工具与诊断层
 
 modules:
-  # ==========================================================================
-  # ROOT CONFIG LAYER — 最底层，无依赖
-  # ==========================================================================
-  - name: "config-root"
-    path: "."
-    allowed_dependencies: []
-    forbidden_dependencies: ["services/*", "apps/*"]
-    allowed_external_crates: []
-    patterns:
-      - "All toolchain versions pinned via .mise.toml"
-      - "Task orchestration via moon.yml"
-      - "Command entry via Justfile"
+  services:
+    user:
+      path: services/user
+      kind: domain-service
+      owns:
+        - 用户身份资料
+        - 会话相关业务规则
+        - 用户级领域事件
+      depends_on:
+        - packages/kernel
+        - packages/platform
+        - packages/contracts
+        - packages/runtime/ports
+        - packages/authn
+        - packages/authz
+      forbidden:
+        - services/*
+        - servers/*
+        - workers/*
+        - infra/**
+        - packages/**/adapters/**
 
-  # ==========================================================================
-  # PACKAGES/CORE — 基础抽象层
-  # ==========================================================================
-  - name: "packages-core-kernel"
-    path: "packages/core/kernel"
-    allowed_dependencies: []
-    forbidden_dependencies:
-      - "services/*"
-      - "apps/*"
-      - "packages/adapters/*"
-    allowed_external_crates:
-      - "serde"
-      - "thiserror"
-      - "uuid"
-      - "chrono"
-    patterns:
-      - "Define only base types: TenantId, UserId, Error, Cursor"
-      - "No business logic, no I/O"
+    tenant:
+      path: services/tenant
+      kind: domain-service
+      owns:
+        - 多租户隔离与成员关系
+        - tenant 级领域规则
+      depends_on:
+        - packages/kernel
+        - packages/platform
+        - packages/contracts
+        - packages/runtime/ports
+        - packages/authz
+      forbidden:
+        - services/*
+        - packages/**/adapters/**
 
-  - name: "packages-core-platform"
-    path: "packages/core/platform"
-    allowed_dependencies:
-      - "packages/core/kernel"
-    forbidden_dependencies:
-      - "services/*"
-      - "apps/*"
-    allowed_external_crates:
-      - "serde"
-      - "tracing"
-      - "async-trait"
-    patterns:
-      - "Define platform capability traits: Config, Telemetry, Clock"
-      - "No concrete implementations"
+    settings:
+      path: services/settings
+      kind: domain-service
+      owns:
+        - 用户或租户设置
+        - 设置相关规则和变更事件
+      depends_on:
+        - packages/kernel
+        - packages/platform
+        - packages/contracts
+        - packages/runtime/ports
+      forbidden:
+        - services/*
+        - packages/**/adapters/**
 
-  # ==========================================================================
-  # PACKAGES/CONTRACTS — 契约唯一真理源
-  # ==========================================================================
-  - name: "packages-contracts"
-    path: "packages/contracts"
-    allowed_dependencies:
-      - "packages/core/kernel"
-    forbidden_dependencies:
-      - "services/*"
-      - "apps/*"
-      - "axum"
-      - "tokio"
-    allowed_external_crates:
-      - "serde"
-      - "ts-rs"
-      - "utoipa"
-    patterns:
-      - "All shared DTOs defined here"
-      - "HTTP API, Event, DTO contracts only"
-      - "No implementation code"
+    counter:
+      path: services/counter
+      kind: demo-service
+      owns:
+        - 最小完整业务链路示例
+        - 模块模板参考实现
+      depends_on:
+        - packages/kernel
+        - packages/platform
+        - packages/contracts
+        - packages/runtime/ports
+      forbidden:
+        - services/*
+        - packages/**/adapters/**
 
-  # ==========================================================================
-  # PACKAGES/ADAPTERS — 外部依赖翻译层
-  # ==========================================================================
-  - name: "packages-adapters"
-    path: "packages/adapters"
-    allowed_dependencies:
-      - "packages/core/*"
-    forbidden_dependencies:
-      - "services/*"
-      - "apps/*"
-    allowed_external_crates:
-      - "*"
-    patterns:
-      - "Only implement traits from packages/core"
-      - "No business logic"
-      - "Must not be directly depended on by services (use ports/ abstraction)"
+    admin:
+      path: services/admin
+      kind: domain-service
+      owns:
+        - 平台级管理动作
+        - 审计与平台治理业务规则
+      depends_on:
+        - packages/kernel
+        - packages/platform
+        - packages/contracts
+        - packages/runtime/ports
+        - packages/authz
+      forbidden:
+        - services/*
+        - packages/**/adapters/**
 
-  # ==========================================================================
-  # SERVICES — 领域服务层
-  # ==========================================================================
-  - name: "services"
-    path: "services"
-    allowed_dependencies:
-      - "packages/core/*"
-      - "packages/contracts"
-    forbidden_dependencies:
-      - "services/*" # No direct service-to-service deps
-      - "apps/*"
-      - "axum"
-      - "tokio"
-    allowed_external_crates:
-      - "serde"
-      - "uuid"
-      - "chrono"
-      - "thiserror"
-      - "tracing"
-      - "async-trait"
-    patterns:
-      - "Each service = independent Cargo crate + DB schema + contract"
-      - "Internal structure: domain/ → application/ → ports/ → contracts/ → sync/"
-      - "Cross-service communication via contracts/events only"
+    indexing:
+      path: services/indexing
+      kind: domain-service
+      owns:
+        - 索引域规则
+        - 索引事件标准化约束
+      depends_on:
+        - packages/kernel
+        - packages/platform
+        - packages/contracts
+        - packages/runtime/ports
+        - packages/web3
+      forbidden:
+        - services/*
+        - packages/**/adapters/**
 
-  # ==========================================================================
-  # BFF LAYER — 前后端聚合
-  # ==========================================================================
-  - name: "bff"
-    path: "apps/bff"
-    allowed_dependencies:
-      - "services/* (via trait)"
-      - "packages/contracts"
-    forbidden_dependencies:
-      - "apps/*"
-    allowed_external_crates:
-      - "axum"
-      - "serde"
-      - "tokio"
-      - "utoipa"
-    patterns:
-      - "Each BFF = independent crate, independently buildable"
-      - "No domain logic, only view-model assembly"
-      - "Must have OpenAPI spec"
+  servers:
+    web-bff:
+      path: servers/web-bff
+      kind: server
+      owns:
+        - Web 端视图聚合
+        - HTTP 协议适配
+      may_depend_on:
+        - services/user
+        - services/tenant
+        - services/settings
+        - services/counter
+        - packages/*
+      forbidden:
+        - infra/**
 
-  # ==========================================================================
-  # APPS — 纯展示层
-  # ==========================================================================
-  - name: "apps"
-    path: "apps"
-    allowed_dependencies:
-      - "packages/contracts/sdk"
-      - "packages/ui"
-    forbidden_dependencies:
-      - "services/*"
-      - "packages/adapters/*"
-    allowed_external_crates:
-      - "svelte"
-      - "sveltekit"
-      - "tauri"
-    patterns:
-      - "No business logic, only rendering + user interaction"
-      - "Use generated SDK only"
-      - "SvelteKit manages UI composition and transient state"
+    admin-bff:
+      path: servers/admin-bff
+      kind: server
+      owns:
+        - 管理端视图聚合
+        - 平台/租户管理 API 出口
+      may_depend_on:
+        - services/admin
+        - services/tenant
+        - services/user
+        - packages/*
+      forbidden:
+        - infra/**
+
+    edge-gateway:
+      path: servers/edge-gateway
+      kind: server
+      owns:
+        - 应用级入口路由与限流
+        - 应用级鉴权接入
+      may_depend_on:
+        - packages/*
+        - services/*
+      forbidden:
+        - infra/**
+
+    internal-rpc:
+      path: servers/internal-rpc
+      kind: server
+      owns:
+        - 内部 RPC 入口
+      may_depend_on:
+        - services/*
+        - packages/*
+      forbidden:
+        - infra/**
+
+  workers:
+    indexer:
+      path: workers/indexer
+      kind: worker
+      owns:
+        - 协议源抓取
+        - 标准化转换
+        - 写入与 checkpoint
+      may_depend_on:
+        - services/indexing
+        - packages/*
+      must_have:
+        - checkpoint
+        - dedupe_or_resume_strategy
+
+    outbox-relay:
+      path: workers/outbox-relay
+      kind: worker
+      owns:
+        - outbox 轮询
+        - 事件投递
+        - 去重与重试
+      may_depend_on:
+        - packages/data
+        - packages/messaging
+        - packages/runtime
+      must_have:
+        - idempotency
+        - retry_policy
+
+    projector:
+      path: workers/projector
+      kind: worker
+      owns:
+        - 读模型构建
+        - 事件消费到 projection
+      may_depend_on:
+        - services/*
+        - packages/*
+      must_have:
+        - replay_strategy
+
+    scheduler:
+      path: workers/scheduler
+      kind: worker
+      owns:
+        - 定时作业调度与分发
+      may_depend_on:
+        - services/*
+        - packages/*
+      must_have:
+        - dedupe
+
+    sync-reconciler:
+      path: workers/sync-reconciler
+      kind: worker
+      owns:
+        - 同步计划执行
+        - 冲突检测与修复
+      may_depend_on:
+        - services/*
+        - packages/*
+      must_have:
+        - conflict_strategy
+        - checkpoint
+
+    workflow-runner:
+      path: workers/workflow-runner
+      kind: worker
+      owns:
+        - 业务工作流/Saga 执行
+      may_depend_on:
+        - services/*
+        - packages/runtime
+      must_have:
+        - compensation_strategy
+
+  apps:
+    web:
+      path: apps/web
+      kind: client-app
+      depends_on:
+        - packages/sdk/typescript
+        - packages/ui
+        - packages/authn
+      forbidden:
+        - services/*
+        - workers/*
+        - infra/**
+
+    desktop:
+      path: apps/desktop
+      kind: client-app
+      depends_on:
+        - packages/sdk/typescript
+        - packages/ui
+        - packages/authn
+      forbidden:
+        - services/*
+        - workers/*
+        - infra/**
+
+    mobile:
+      path: apps/mobile
+      kind: client-app
+      depends_on:
+        - packages/sdk/typescript
+        - packages/ui
+      forbidden:
+        - services/*
+        - workers/*
+        - infra/**
+
+ownership:
+  generated_readonly:
+    - packages/sdk/**
+    - infra/kubernetes/rendered/**
+    - docs/generated/**
+    - platform/catalog/**
+
+  human_authored:
+    - agent/**
+    - platform/model/**
+    - packages/contracts/**
+    - services/**
+    - servers/**
+    - workers/**
+    - docs/adr/**
+    - docs/platform-model/**
+
+write_boundaries:
+  - area: agent
+    may_modify:
+      - agent/**
+      - docs/**
+    must_not_modify:
+      - packages/sdk/**
+      - infra/kubernetes/rendered/**
+
+  - area: platform-model
+    may_modify:
+      - platform/schema/**
+      - platform/model/**
+      - platform/generators/**
+      - platform/validators/**
+    must_not_modify:
+      - services/**
+      - apps/**
+    notes: 模型层不直接承载业务实现
+
+  - area: services
+    may_modify:
+      - services/**
+      - packages/contracts/**
+      - fixtures/**
+      - verification/**
+    must_not_modify:
+      - infra/**
+      - platform/catalog/**
+    notes: 新增业务能力时，若涉及协议变更，必须先或同时修改 contracts
+
+  - area: servers
+    may_modify:
+      - servers/**
+      - packages/contracts/**
+      - verification/contract/**
+    must_not_modify:
+      - services/*/domain/**
+      - infra/**
+    notes: server 只能做协议适配与聚合
+
+  - area: workers
+    may_modify:
+      - workers/**
+      - verification/resilience/**
+      - verification/topology/**
+    must_not_modify:
+      - apps/**
+    notes: worker 变更必须声明幂等、重试或 checkpoint 策略
+
+  - area: infra
+    may_modify:
+      - infra/local/**
+      - infra/kubernetes/base/**
+      - infra/kubernetes/addons/**
+      - infra/gitops/**
+      - infra/security/**
+      - infra/images/**
+    must_not_modify:
+      - infra/kubernetes/rendered/**
+    notes: rendered 为生成目录，只能通过生成器刷新
+
+  - area: docs
+    may_modify:
+      - docs/**
+    must_not_modify:
+      - packages/sdk/**
+    notes: ADR 与 repo-layout 必须随重大结构变更同步更新
+
+rules:
+  imports:
+    - name: apps-cannot-import-services
+      from: apps/**
+      disallow:
+        - services/**
+
+    - name: apps-cannot-import-workers
+      from: apps/**
+      disallow:
+        - workers/**
+
+    - name: services-cannot-import-other-services
+      from: services/**
+      disallow:
+        - services/**
+      except_same_module: true
+
+    - name: services-cannot-import-concrete-adapters
+      from: services/**
+      disallow:
+        - packages/**/adapters/**
+        - infra/**
+        - ops/**
+
+    - name: servers-can-import-services-and-packages
+      from: servers/**
+      allow:
+        - services/**
+        - packages/**
+
+    - name: workers-can-import-services-and-packages
+      from: workers/**
+      allow:
+        - services/**
+        - packages/**
+
+    - name: platform-cannot-import-runtime-business
+      from: platform/**
+      disallow:
+        - services/**
+        - servers/**
+        - workers/**
+        - apps/**
+
+    - name: docs-are-not-runtime-deps
+      from:
+        - services/**
+        - servers/**
+        - workers/**
+        - apps/**
+      disallow:
+        - docs/**
+
+  readonly:
+    - path: packages/sdk/**
+      reason: generated
+    - path: infra/kubernetes/rendered/**
+      reason: generated
+    - path: docs/generated/**
+      reason: generated
+    - path: platform/catalog/**
+      reason: generated
+
+  required_files:
+    service:
+      - Cargo.toml
+      - src/lib.rs
+      - src/domain/
+      - src/application/
+      - src/policies/
+      - src/ports/
+      - src/events/
+      - src/contracts/
+      - tests/
+      - migrations/
+      - README.md
+
+    server:
+      - Cargo.toml
+      - openapi.yaml
+      - src/main.rs
+      - src/handlers/
+      - src/middleware/
+      - src/routes/
+      - README.md
+
+    worker:
+      - Cargo.toml
+      - src/main.rs
+      - README.md
+
+    topology:
+      - platform/model/topologies/<name>.yaml
+      - verification/topology/<name>/
+      - docs/operations/<name>.md
+
+validation:
+  commands:
+    - just doctor
+    - just lint
+    - just test
+    - just gen-contracts
+    - just gen-sdk
+    - just gen-platform
+    - just validate-platform
+    - just validate-deps
+    - just validate-contracts
+    - just validate-topology
+    - just verify-generated
+    - just verify-single-vps
+    - just verify-k3s
+
+entry_rules:
+  - 先改 platform/model，再改 infra
+  - 先改 packages/contracts，再改 servers/handlers
+  - services 是库，不是进程
+  - workers 是一等公民，不是附属脚本
+  - vendor 只能进 adapters
+  - generated 目录禁止手改
+  - 拓扑变化通过 topology model 完成

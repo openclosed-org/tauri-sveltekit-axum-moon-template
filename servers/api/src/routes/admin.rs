@@ -1,6 +1,11 @@
 //! Admin REST API routes.
 
-use crate::state::AppState;
+use crate::{adapters::admin::{CounterServiceAdapter, TenantServiceAdapter}, state::AppState};
+use admin_service::{
+    application::AdminDashboardService,
+    infrastructure,
+    ports::{CounterRepository, TenantRepository},
+};
 use axum::{Json, Router, extract::State, routing::get};
 use contracts_api::AdminDashboardStats;
 use feature_admin::AdminService;
@@ -27,16 +32,22 @@ async fn get_dashboard_stats(State(state): State<AppState>) -> Json<serde_json::
         None => return Json(serde_json::json!({ "error": "Embedded database not initialized" })),
     };
 
-    // Build tenant service via new service location
+    // Build tenant service
     let tenant_repo = tenant_service::infrastructure::LibSqlTenantRepository::new(db.clone());
     let tenant_svc = tenant_service::application::TenantService::new(tenant_repo);
+
+    // Wrap in admin adapter
+    let tenant_adapter = TenantServiceAdapter::new(tenant_svc);
 
     // Build counter service
     let counter_repo = counter_service::infrastructure::LibSqlCounterRepository::new(db.clone());
     let counter_svc = counter_service::application::RepositoryBackedCounterService::new(counter_repo);
 
-    // Build admin service
-    let admin_svc = admin_service::application::AdminDashboardService::new(tenant_svc, counter_svc);
+    // Wrap in admin adapter
+    let counter_adapter = CounterServiceAdapter::new(counter_svc);
+
+    // Build admin service with adapted ports
+    let admin_svc = AdminDashboardService::new(tenant_adapter, counter_adapter);
 
     match admin_svc.get_dashboard_stats().await {
         Ok(stats) => Json(serde_json::json!(stats)),

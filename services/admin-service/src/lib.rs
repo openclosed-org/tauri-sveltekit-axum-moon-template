@@ -5,10 +5,13 @@
 //!
 //! ## Architecture
 //! ```text
-//! domain/          → Admin domain errors
-//! application/     → AdminDashboardService (composes tenant + counter services)
-//! infrastructure/  → Adapters that bridge concrete service impls to admin traits
+//! domain/          → Admin domain errors and types
+//! application/     → AdminDashboardService (orchestrates use cases)
+//! ports/           → Abstract interfaces for external dependencies
+//! infrastructure/  → Adapters that implement ports using concrete services
 //! ```
 
 pub mod application;
 pub mod domain;
+pub mod infrastructure;
+pub mod ports;

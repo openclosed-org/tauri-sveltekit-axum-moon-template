@@ -166,12 +166,10 @@ name = "admin-service"
 version = "0.1.0"
 dependencies = [
  "async-trait",
- "counter-service",
  "feature-admin",
  "kernel",
  "serde",
  "serde_json",
- "tenant-service",
  "thiserror 2.0.18",
  "tokio",
  "tracing",
@@ -11265,7 +11263,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
- "axum 0.8.8",
  "chrono",
  "domain",
  "http-body-util",

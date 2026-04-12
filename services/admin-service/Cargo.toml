@@ -10,9 +10,7 @@ rust-version.workspace = true
 # Feature traits
 feature-admin = { workspace = true }
 
-# Downstream services (for trait impls)
-tenant-service = { workspace = true }
-counter-service = { workspace = true }
+# Core types
 kernel = { workspace = true }
 
 # Minimal runtime
