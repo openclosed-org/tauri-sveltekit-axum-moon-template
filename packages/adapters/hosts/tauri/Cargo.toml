@@ -7,6 +7,7 @@ rust-version.workspace = true
 
 [dependencies]
 domain = { workspace = true }
+kernel = { workspace = true }
 counter-service = { workspace = true }
 tenant-service = { workspace = true }
 agent-service = { workspace = true }

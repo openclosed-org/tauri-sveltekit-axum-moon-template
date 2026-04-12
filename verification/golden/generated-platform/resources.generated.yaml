@@ -1,0 +1,41 @@
+- name: cache
+  type: cache
+  description: |
+    In-memory cache layer for frequently accessed data. Supports multiple backends (Moka for in-process, Valkey/Dragonfly for distributed). Used for settings, session data, and hot paths.
+  technology: moka/valkey
+  required_by:
+  - settings
+  - web-bff
+  - admin-bff
+- name: nats
+  type: message_broker
+  description: |
+    NATS JetStream message broker. Provides event streaming, pub/sub messaging, and durable event sourcing for production deployments. Local development may use in-memory event bus.
+  technology: nats
+  required_by:
+  - event-bus
+  - outbox-relay-worker
+  - indexer-worker
+  - projector-worker
+- name: observability
+  type: observability
+  description: |
+    Telemetry stack for logging, metrics, tracing, and distributed tracing. Uses OpenTelemetry SDK with vector for log aggregation and OpenObserve for storage and visualization.
+  technology: otel/vector/openobserve
+  required_by:
+  - api-server
+  - web-bff
+  - admin-bff
+  - edge-gateway
+- name: turso
+  type: database
+  description: |
+    SQLite-compatible distributed database (libSQL). Primary data store for all services with multi-tenant isolation via row-level security. Local development uses embedded SQLite.
+  technology: turso/libsql
+  required_by:
+  - counter
+  - user
+  - tenant
+  - settings
+  - agent
+  - chat

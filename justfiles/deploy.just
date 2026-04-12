@@ -1,49 +1,49 @@
 # Deploy — Infrastructure deployment (Podman Compose + k3s)
 #
-# Dev:   just deploy dev            (starts podman compose)
-# Prod:  just deploy prod           (deploys to k3s)
+# Dev:   just deploy-dev            (starts podman compose)
+# Prod:  just deploy-prod           (deploys to k3s)
 # Legacy: just deploy-api           (systemd-based, kept for backward compat)
 
 # ── Podman Compose (Development) ──────────────────────────────
 
 # Start all dev services (API + SurrealDB + Gateway + Web)
-deploy dev:
+deploy-dev:
     @echo "Starting dev infrastructure (Podman Compose)..."
     podman compose -f infra/docker/compose/app.yaml up -d
     @echo "Dev services started. Check health: podman compose -f infra/docker/compose/app.yaml ps"
 
 # Start dev services with observability stack
-deploy dev-full:
+deploy-dev-full:
     @echo "Starting dev infrastructure + observability..."
     podman compose -f infra/docker/compose/app.yaml up -d
     podman compose -f infra/docker/compose/observability.yaml up -d
     @echo "OpenObserve UI: http://localhost:5080 (admin@localhost / admin)"
 
 # Stop all dev services
-stop dev:
+stop-dev:
     @echo "Stopping dev infrastructure..."
     podman compose -f infra/docker/compose/app.yaml down
     podman compose -f infra/docker/compose/observability.yaml down 2>/dev/null || true
     @echo "Dev services stopped"
 
 # View dev service logs
-logs dev SERVICE='api':
+logs-dev SERVICE='api':
     podman compose -f infra/docker/compose/app.yaml logs -f {{SERVICE}}
 
 # ── k3s (Production) ─────────────────────────────────────────
 
 # Deploy to k3s cluster
-deploy prod ENV='dev':
+deploy-prod ENV='dev':
     @echo "Deploying to k3s environment: {{ENV}}..."
     bash infra/k3s/scripts/deploy.sh {{ENV}}
 
 # Deploy to k3s (dry run — preview changes)
-deploy prod-dry-run ENV='dev':
+deploy-prod-dry-run ENV='dev':
     @echo "Dry run: deploying to k3s environment: {{ENV}}..."
     bash infra/k3s/scripts/deploy.sh {{ENV}} --dry-run=client
 
 # Bootstrap a fresh k3s cluster on a VPS
-deploy bootstrap-k3s:
+deploy-bootstrap-k3s:
     @echo "Bootstrapping k3s on the current machine..."
     @echo "WARNING: This requires root access and will install system packages."
     sudo bash infra/k3s/scripts/bootstrap-k3s.sh

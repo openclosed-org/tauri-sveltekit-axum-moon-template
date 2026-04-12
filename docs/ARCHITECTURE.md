@@ -1327,10 +1327,3 @@ just perf-smoke
 **模型是完整的，依赖方向没坏，生成物没漂移，单 VPS 路径仍然成立。**
 
 ---
-
-这份内容下一步最适合直接落成两个文件：
-
-- `docs/architecture/repo-layout.md`
-- `agent/codemap.yml`
-
-这样你的本地 Agent 接下来做任何改造，都有统一边界可依。

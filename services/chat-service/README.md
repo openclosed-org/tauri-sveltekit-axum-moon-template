@@ -1,6 +1,39 @@
-# Chat — 聊天域
+# Chat Service
 
-> 消息、会话、实时流。
+Chat domain service implementing Clean Architecture four-layer pattern.
 
-当前状态：待实现。Tauri 端已有 chat commands（`packages/adapters/hosts/tauri/src/commands/chat.rs`），服务端待补全。
-架构说明见 [services/README.md](../README.md)。
+## Architecture
+
+```
+domain/          → Conversation, Message, Participant entities + ChatError
+application/     → ChatService (create conversation, send message, list, etc.)
+ports/           → ConversationRepository, MessageRepository, ParticipantRepository, ChatEventPublisher
+infrastructure/  → LibSQL implementations
+events/          → In-memory event publisher (production: event bus)
+contracts/       → API DTOs (CreateConversationRequest, MessageDto, etc.)
+```
+
+## Use Cases
+
+| Use Case | Method | Description |
+|----------|--------|-------------|
+| Create conversation | `create_conversation()` | New chat with creator as participant |
+| List conversations | `list_conversations()` | All conversations for a tenant |
+| Get conversation | `get_conversation()` | Single conversation by ID |
+| Send message | `send_message()` | Add message to conversation |
+| Get messages | `get_messages()` | Paginated message list |
+| Get participants | `get_participants()` | List conversation participants |
+| Update title | `update_title()` | Rename conversation |
+
+## Testing
+
+```bash
+cargo test -p chat-service
+```
+
+## Migrations
+
+```bash
+# Migration: 001_create_chat_tables.sql
+# Creates: conversations, messages, participants tables
+```

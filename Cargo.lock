@@ -162,6 +162,41 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "320119579fcad9c21884f5c4861d16174d0e06250625266f50fe6898340abefa"
 
 [[package]]
+name = "admin-bff"
+version = "0.1.0"
+dependencies = [
+ "admin-service",
+ "agent-service",
+ "axum 0.8.8",
+ "axum-extra",
+ "base64 0.22.1",
+ "contracts_api",
+ "contracts_errors",
+ "counter-service",
+ "feature-admin",
+ "feature-agent",
+ "feature-counter",
+ "feature-settings",
+ "figment",
+ "hyper",
+ "kernel",
+ "reqwest 0.13.2",
+ "serde",
+ "serde_json",
+ "settings-service",
+ "tenant-service",
+ "thiserror 2.0.18",
+ "tokio",
+ "tower 0.5.3",
+ "tower-http",
+ "tracing",
+ "tracing-subscriber",
+ "user-service",
+ "utoipa",
+ "uuid",
+]
+
+[[package]]
 name = "admin-service"
 version = "0.1.0"
 dependencies = [
@@ -1541,11 +1576,19 @@ dependencies = [
 name = "chat-service"
 version = "0.1.0"
 dependencies = [
- "axum 0.8.8",
+ "async-trait",
+ "chrono",
+ "contracts_api",
+ "domain",
+ "feature-chat",
  "futures-util",
+ "kernel",
  "serde",
  "serde_json",
+ "thiserror 2.0.18",
  "tokio",
+ "tracing",
+ "uuid",
 ]
 
 [[package]]
@@ -1740,6 +1783,21 @@ name = "constant_time_eq"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3d52eff69cd5e647efe296129160853a42795992097e8af39800e1060caeea9b"
+
+[[package]]
+name = "contract-drift-detector"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "glob",
+ "regex",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "tracing",
+ "tracing-subscriber",
+]
 
 [[package]]
 name = "contracts_api"
@@ -2269,6 +2327,21 @@ dependencies = [
  "libc",
  "libdbus-sys",
  "windows-sys 0.59.0",
+]
+
+[[package]]
+name = "dependency-validator"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "glob",
+ "petgraph",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -8250,6 +8323,7 @@ dependencies = [
  "feature-counter",
  "feature-settings",
  "futures-util",
+ "kernel",
  "rand 0.8.5",
  "reqwest 0.13.2",
  "serde",

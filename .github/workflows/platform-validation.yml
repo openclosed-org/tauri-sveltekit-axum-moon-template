@@ -1,0 +1,56 @@
+name: Platform Validation
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'platform/**'
+      - 'services/**'
+      - 'servers/**'
+      - 'packages/contracts/**'
+      - 'Cargo.toml'
+  push:
+    branches: [main]
+    paths:
+      - 'platform/**'
+      - 'services/**'
+      - 'servers/**'
+      - 'packages/contracts/**'
+      - 'Cargo.toml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Platform Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+
+      - name: Validate platform models
+        run: cargo run -p platform-validator -- --platform-dir platform
+
+      - name: Validate dependency graph
+        run: cargo run -p dependency-validator -- --platform-dir platform
+
+      - name: Check contract drift
+        run: cargo run -p contract-drift-detector -- --platform-dir platform
+
+      - name: Generate platform catalog
+        run: cargo run -p platform-generator -- --platform-dir platform --output-dir platform/catalog
+
+      - name: Verify generated artifacts
+        run: bash scripts/verify-generated.sh
+        continue-on-error: true

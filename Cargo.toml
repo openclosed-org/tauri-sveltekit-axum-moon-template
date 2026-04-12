@@ -72,6 +72,7 @@ members = [
     "servers/gateway",
     "servers/indexer",
     "servers/bff/web-bff",
+    "servers/bff/admin-bff",
     # Workers
     "workers/outbox-relay",
     "workers/indexer",
@@ -80,6 +81,8 @@ members = [
     "workers/sync-reconciler",
     # Platform
     "platform/validators/model-lint",
+    "platform/validators/dependency-graph",
+    "platform/validators/contract-drift",
     "platform/generators",
 ]
 resolver = "3"

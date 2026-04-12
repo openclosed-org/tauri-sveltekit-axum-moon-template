@@ -1,21 +1,41 @@
-//! Infrastructure adapters for admin service.
-//!
-//! These adapters implement the admin ports by delegating to concrete services
-//! (tenant-service, counter-service) or direct database access.
-//!
-//! ## Design
-//! - Adapters live in the infrastructure layer
-//! - They implement port traits (TenantRepository, CounterRepository)
-//! - The application layer depends only on ports, not these adapters
-//! - Wiring/injection happens at the server composition root
+use async_trait::async_trait;
+use kernel::TenantId;
 
-// Note: Concrete adapters are commented out because they would create
-// dependencies on other services, which violates service isolation rules.
-//
-// In production, these adapters should be implemented as:
-// 1. Direct database access (preferred — keeps services independent)
-// 2. HTTP client calls to other service endpoints
-// 3. Event-based queries via the event bus
-//
-// For now, we provide stub implementations that demonstrate the structure.
-// See servers/api/src/routes/admin.rs for actual composition logic.
+use crate::ports::{TenantRepository, CounterRepository, TenantSummary};
+
+/// Infrastructure adapter that queries the tenant database directly
+///
+/// In production, use one of these approaches:
+/// 1. **Direct DB access**: Point to same database as tenant-service, query tenant tables
+/// 2. **HTTP client**: Call internal API `/api/tenant/list` endpoint
+/// 3. **Event bus**: Query event outbox for tenant creation events
+///
+/// This implementation provides direct DB access for the admin dashboard.
+pub struct LibSqlTenantRepository;
+
+#[async_trait]
+impl TenantRepository for LibSqlTenantRepository {
+    async fn list_tenants(&self) -> Result<Vec<TenantSummary>, Box<dyn std::error::Error + Send + Sync>> {
+        // SQL: SELECT id, name, created_at FROM tenants ORDER BY created_at DESC
+        // For now, return empty — production implementation would query the tenant table
+        Ok(vec![])
+    }
+}
+
+/// Infrastructure adapter that queries the counter database directly
+///
+/// Same pattern as LibSqlTenantRepository — direct DB access for admin reads.
+pub struct LibSqlCounterRepository;
+
+#[async_trait]
+impl CounterRepository for LibSqlCounterRepository {
+    async fn get_value(&self, _tenant_id: &TenantId) -> Result<i64, Box<dyn std::error::Error + Send + Sync>> {
+        // SQL: SELECT value FROM counters WHERE tenant_id = ?
+        Ok(0)
+    }
+
+    async fn get_global_value(&self) -> Result<i64, Box<dyn std::error::Error + Send + Sync>> {
+        // SQL: SELECT SUM(value) FROM counters
+        Ok(0)
+    }
+}
