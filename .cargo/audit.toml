@@ -1,0 +1,17 @@
+# Cargo Audit configuration
+# Docs: https://github.com/rustsec/rustsec/tree/main/cargo-audit
+
+[advisories]
+# Ignore specific advisories (if needed)
+# ignore = ["RUSTSEC-2023-0001"]
+
+[output]
+# Output format: terminal, json
+format = "terminal"
+# Show information about advisories
+show_tree = true
+quiet = false
+
+[yanked]
+# Check for yanked crates
+enabled = true

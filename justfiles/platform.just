@@ -42,6 +42,27 @@ validate-contracts:
     @echo "Checking contract drift..."
     cargo run -p contract-drift-detector -- --platform-dir platform
 
+# ── Topology Validation ──────────────────────────────────────
+
+# Validate deployment topology completeness
+validate-topology:
+    @echo "Checking deployment topology..."
+    cargo run -p topology-validator -- --platform-dir platform
+
+# ── Security Validation ──────────────────────────────────────
+
+# Validate security configuration
+validate-security:
+    @echo "Checking security configuration..."
+    cargo run -p security-validator -- --platform-dir platform
+
+# ── Observability Validation ─────────────────────────────────
+
+# Validate observability configuration
+validate-observability:
+    @echo "Checking observability configuration..."
+    cargo run -p observability-validator -- --platform-dir platform
+
 # ── Golden Baseline Verification ──────────────────────────────
 
 # Verify generated artifacts match golden baseline
@@ -67,10 +88,19 @@ platform-doctor:
     @echo "3. Checking contract drift..."
     just validate-contracts || true
     @echo ""
-    @echo "4. Generating catalog..."
+    @echo "4. Checking topology..."
+    just validate-topology || (echo "Topology check failed"; exit 1)
+    @echo ""
+    @echo "5. Checking security..."
+    just validate-security || (echo "Security check failed"; exit 1)
+    @echo ""
+    @echo "6. Checking observability..."
+    just validate-observability || (echo "Observability check failed"; exit 1)
+    @echo ""
+    @echo "7. Generating catalog..."
     just gen-platform || (echo "Catalog generation failed"; exit 1)
     @echo ""
-    @echo "5. Verifying golden baseline..."
+    @echo "8. Verifying golden baseline..."
     just verify-generated || true
     @echo ""
     @echo "Platform health check passed"

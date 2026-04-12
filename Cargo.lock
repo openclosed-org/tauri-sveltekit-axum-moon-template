@@ -6090,6 +6090,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "observability-validator"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "glob",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "thiserror 2.0.18",
+ "tracing",
+ "tracing-subscriber",
+ "walkdir",
+]
+
+[[package]]
 name = "once_cell"
 version = "1.21.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8754,6 +8770,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "security-validator"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "glob",
+ "regex",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "thiserror 2.0.18",
+ "tracing",
+ "tracing-subscriber",
+ "walkdir",
+]
+
+[[package]]
 name = "seize"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -10896,6 +10929,22 @@ dependencies = [
  "bytes",
  "prost 0.14.3",
  "tonic 0.14.5",
+]
+
+[[package]]
+name = "topology-validator"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "glob",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "thiserror 2.0.18",
+ "tracing",
+ "tracing-subscriber",
+ "walkdir",
 ]
 
 [[package]]

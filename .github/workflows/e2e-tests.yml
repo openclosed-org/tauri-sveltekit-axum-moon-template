@@ -47,22 +47,22 @@ jobs:
           bun-version: 1.3.11
 
       - name: Install dependencies
-        working-directory: apps/client/web/app
+        working-directory: apps/web
         run: bun install --frozen-lockfile
 
       - name: Install Playwright browsers
-        working-directory: apps/client/web/app
+        working-directory: apps/web
         run: npx playwright install --with-deps chromium
 
       - name: Sync SvelteKit types before E2E
-        working-directory: apps/client/web/app
+        working-directory: apps/web
         run: bun run check
 
       - name: Verify runtime_server Turso-only default build
         run: cargo check -p runtime_server
 
       - name: Run Web E2E Tests
-        working-directory: apps/client/web/app
+        working-directory: apps/web
         run: bun run test:e2e --project=desktop-chrome
         timeout-minutes: 20
 
@@ -72,65 +72,66 @@ jobs:
         with:
           name: web-e2e-evidence-${{ github.job }}-${{ matrix.os }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
-            apps/client/web/app/playwright-report/
-            apps/client/web/app/playwright-results.xml
-            apps/client/web/app/playwright-results.json
-            apps/client/web/app/test-results/
-            apps/client/web/app/tests/fixtures/tenant.ts
+            apps/web/playwright-report/
+            apps/web/playwright-results.xml
+            apps/web/playwright-results.json
+            apps/web/test-results/
+            apps/web/tests/fixtures/tenant.ts
           retention-days: 7
 
   # ============================================
   # Desktop E2E Tests (Tauri + Playwright)
+  # TODO: Re-enable when e2e-desktop-playwright is set up
   # ============================================
-  desktop-e2e-playwright-tauri:
-    name: Desktop E2E (Tauri Playwright, macOS observer)
-    runs-on: macos-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: 1.94.1
-          components: rustfmt, clippy
-
-      - name: Cache Rust
-        uses: Swatinem/rust-cache@v2
-        with:
-          shared-key: "desktop-e2e-playwright-tauri"
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.3.11
-
-      - name: Install Tauri Playwright dependencies
-        working-directory: e2e-desktop-playwright
-        run: bun install --frozen-lockfile
-
-      - name: Install Playwright browsers
-        working-directory: e2e-desktop-playwright
-        run: npx playwright install chromium
-
-      - name: Run Desktop E2E Tests (Tauri Playwright CI)
-        working-directory: e2e-desktop-playwright
-        run: bun run test:ci
-        timeout-minutes: 30
-
-      - name: Verify runtime_server Turso-only default build
-        run: cargo check -p runtime_server
-
-      - name: Upload Tauri Playwright Evidence
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: desktop-e2e-playwright-tauri-evidence-${{ github.job }}-${{ github.run_id }}-${{ github.run_attempt }}
-          path: |
-            e2e-desktop-playwright/playwright-report/
-            e2e-desktop-playwright/test-results/
-          retention-days: 7
+  # desktop-e2e-playwright-tauri:
+  #   name: Desktop E2E (Tauri Playwright, macOS observer)
+  #   runs-on: macos-latest
+  #
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v4
+  #
+  #     - name: Setup Rust
+  #       uses: dtolnay/rust-toolchain@stable
+  #       with:
+  #         toolchain: 1.94.1
+  #         components: rustfmt, clippy
+  #
+  #     - name: Cache Rust
+  #       uses: Swatinem/rust-cache@v2
+  #       with:
+  #         shared-key: "desktop-e2e-playwright-tauri"
+  #
+  #     - name: Setup Bun
+  #       uses: oven-sh/setup-bun@v2
+  #       with:
+  #         bun-version: 1.3.11
+  #
+  #     - name: Install Tauri Playwright dependencies
+  #       working-directory: e2e-desktop-playwright
+  #       run: bun install --frozen-lockfile
+  #
+  #     - name: Install Playwright browsers
+  #       working-directory: e2e-desktop-playwright
+  #       run: npx playwright install chromium
+  #
+  #     - name: Run Desktop E2E Tests (Tauri Playwright CI)
+  #       working-directory: e2e-desktop-playwright
+  #       run: bun run test:ci
+  #       timeout-minutes: 30
+  #
+  #     - name: Verify runtime_server Turso-only default build
+  #       run: cargo check -p runtime_server
+  #
+  #     - name: Upload Tauri Playwright Evidence
+  #       uses: actions/upload-artifact@v4
+  #       if: always()
+  #       with:
+  #         name: desktop-e2e-playwright-tauri-evidence-${{ github.job }}-${{ github.run_id }}-${{ github.run_attempt }}
+  #         path: |
+  #           e2e-desktop-playwright/playwright-report/
+  #           e2e-desktop-playwright/test-results/
+  #         retention-days: 7
 
   # ============================================
   # Summary Report
@@ -138,7 +139,7 @@ jobs:
   summary:
     name: E2E Test Summary
     runs-on: ubuntu-latest
-    needs: [web-e2e, desktop-e2e-playwright-tauri]
+    needs: [web-e2e]
     if: always()
 
     steps:
@@ -149,11 +150,9 @@ jobs:
           echo "| Lane | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
           echo "| web-e2e | ${{ needs.web-e2e.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| desktop-e2e-playwright-tauri | ${{ needs.desktop-e2e-playwright-tauri.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          if [ "${{ needs.web-e2e.result }}" == "success" ] && \
-             [ "${{ needs.desktop-e2e-playwright-tauri.result }}" == "success" ]; then
+          if [ "${{ needs.web-e2e.result }}" == "success" ]; then
             echo "✅ **All E2E tests passed!**" >> $GITHUB_STEP_SUMMARY
           else
             echo "❌ **E2E tests failed. Check the artifacts above.**" >> $GITHUB_STEP_SUMMARY

@@ -64,32 +64,32 @@ jobs:
         run: cargo test --workspace --exclude native-tauri
 
       - name: Install frontend deps
-        working-directory: apps/client/web/app
+        working-directory: apps/web
         run: bun install --frozen-lockfile
 
       - name: Frontend check
-        working-directory: apps/client/web/app
+        working-directory: apps/web
         run: bun run check
 
       - name: Frontend lint
-        working-directory: apps/client/web/app
+        working-directory: apps/web
         run: bun run lint
 
       - name: Frontend unit tests
-        working-directory: apps/client/web/app
+        working-directory: apps/web
         run: bun run test:unit
 
       - name: Install Playwright browsers
-        working-directory: apps/client/web/app
+        working-directory: apps/web
         run: npx playwright install --with-deps chromium
 
       - name: Frontend E2E tests
-        working-directory: apps/client/web/app
+        working-directory: apps/web
         run: bun run test:e2e --project=desktop
 
       - name: Frontend build
-        working-directory: apps/client/web/app
+        working-directory: apps/web
         run: bun run build
 
       - name: Tauri crate build verification
-        run: cargo build --manifest-path apps/client/native/src-tauri/Cargo.toml
+        run: cargo build --manifest-path apps/desktop/src-tauri/Cargo.toml

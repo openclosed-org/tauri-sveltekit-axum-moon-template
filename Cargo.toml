@@ -83,6 +83,9 @@ members = [
     "platform/validators/model-lint",
     "platform/validators/dependency-graph",
     "platform/validators/contract-drift",
+    "platform/validators/topology-check",
+    "platform/validators/security-check",
+    "platform/validators/observability-check",
     "platform/generators",
 ]
 resolver = "3"

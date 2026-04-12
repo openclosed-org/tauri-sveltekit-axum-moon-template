@@ -1,0 +1,54 @@
+# EditorConfig — maintain consistent coding styles across IDEs
+# https://editorconfig.org
+
+root = true
+
+# Default settings
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+# Rust files
+[*.{rs,toml}]
+indent_size = 4
+
+# YAML files
+[*.yml]
+indent_size = 2
+
+# Markdown files
+[*.md]
+trim_trailing_whitespace = false
+
+# Shell scripts
+[*.sh]
+indent_style = space
+indent_size = 2
+
+# JSON files
+[*.json]
+indent_size = 2
+
+# TypeScript/JavaScript files
+[*.{ts,js,mts,mjs}]
+indent_size = 2
+
+# Svelte files
+[*.svelte]
+indent_size = 2
+
+# SQL files
+[*.sql]
+indent_size = 2
+
+# Makefiles
+[Makefile]
+indent_style = tab
+
+# Justfile
+[Justfile]
+indent_style = tab

@@ -1,0 +1,32 @@
+# Typos configuration — spell checking for CI and editors
+# Docs: https://github.com/crate-ci/typos
+
+[default]
+extend-ignore-re = [
+    # Ignore hex strings and hashes
+    "\\b[0-9a-fA-F]{40,}\\b",
+    # Ignore base64 strings
+    "\\b[A-Za-z0-9+/]{40,}={0,2}\\b",
+]
+
+[default.extend-words]
+# Common technical terms that typos might flag
+strat = "strat"
+ba = "ba"
+flate = "flate"
+
+[files]
+extend-exclude = [
+    # Build artifacts
+    "target/",
+    "node_modules/",
+    ".cocoindex_code/",
+    # Generated files
+    "platform/catalog/",
+    "packages/sdk/",
+    "docs/generated/",
+    # Lock files
+    "*.lock",
+    # Test fixtures with generated data
+    "fixtures/**/*.json",
+]

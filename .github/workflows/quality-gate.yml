@@ -190,19 +190,23 @@ jobs:
           cache: 'bun'
 
       - name: Install dependencies
-        run: cd apps/client/web/app && bun install
+        working-directory: apps/web
+        run: bun install
 
       # Type check
       - name: Type check
-        run: cd apps/client/web/app && bun run check
+        working-directory: apps/web
+        run: bun run check
 
       # Lint
       - name: Lint
-        run: cd apps/client/web/app && bun run lint
+        working-directory: apps/web
+        run: bun run lint
 
       # Unit tests
       - name: Unit tests
-        run: cd apps/client/web/app && bun run test:unit
+        working-directory: apps/web
+        run: bun run test:unit
 
   # ============================================
   # Phase 6: E2E Tests (Optional - Manual Trigger)
@@ -222,11 +226,13 @@ jobs:
           cache: 'bun'
 
       - name: Install Playwright
-        run: cd apps/client/web/app && bun add -D @playwright/test && npx playwright install --with-deps
+        working-directory: apps/web
+        run: bun add -D @playwright/test && npx playwright install --with-deps
 
       # Run E2E tests
       - name: Run E2E tests
-        run: cd apps/client/web/app && bun run test:e2e
+        working-directory: apps/web
+        run: bun run test:e2e
         continue-on-error: true
 
       # Upload test results
@@ -235,7 +241,7 @@ jobs:
         if: always()
         with:
           name: playwright-report
-          path: apps/client/web/app/playwright-report/
+          path: apps/web/playwright-report/
 
   # ============================================
   # Phase 7: Build Binary
