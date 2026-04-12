@@ -1,0 +1,136 @@
+# MinIO — S3-compatible object storage
+#
+# Provides: File uploads, backups, blob storage
+# Ports: 9000 (API), 9001 (Console)
+#
+# Usage in application:
+#   S3_ENDPOINT=http://minio.app.svc.cluster.local:9000
+#   S3_ACCESS_KEY=minioadmin
+#   S3_SECRET_KEY=minioadmin
+#   S3_BUCKET=uploads
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio
+  namespace: app
+  labels:
+    app: minio
+    component: storage
+spec:
+  selector:
+    app: minio
+  ports:
+    - name: api
+      port: 9000
+      targetPort: 9000
+      protocol: TCP
+    - name: console
+      port: 9001
+      targetPort: 9001
+      protocol: TCP
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: minio
+  namespace: app
+  labels:
+    app: minio
+    component: storage
+spec:
+  serviceName: minio
+  replicas: 1
+  selector:
+    matchLabels:
+      app: minio
+  template:
+    metadata:
+      labels:
+        app: minio
+        component: storage
+    spec:
+      containers:
+        - name: minio
+          image: minio/minio:latest
+          ports:
+            - containerPort: 9000
+              name: api
+            - containerPort: 9001
+              name: console
+          args:
+            - server
+            - /data
+            - "--console-address"
+            - ":9001"
+          env:
+            - name: MINIO_ROOT_USER
+              value: minioadmin
+            - name: MINIO_ROOT_PASSWORD
+              value: minioadmin
+            - name: MINIO_BROWSER
+              value: "on"
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "200m"
+            limits:
+              memory: "1Gi"
+              cpu: "1"
+          volumeMounts:
+            - name: minio-data
+              mountPath: /data
+          livenessProbe:
+            exec:
+              command:
+                - mc
+                - ready
+                - local
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            exec:
+              command:
+                - mc
+                - ready
+                - local
+            initialDelaySeconds: 15
+            periodSeconds: 10
+  volumeClaimTemplates:
+    - metadata:
+        name: minio-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 10Gi
+---
+# MinIO bucket initialization job
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: minio-init
+  namespace: app
+  labels:
+    app: minio-init
+    component: storage
+spec:
+  template:
+    metadata:
+      labels:
+        app: minio-init
+    spec:
+      containers:
+        - name: minio-init
+          image: minio/mc:latest
+          command:
+            - /bin/sh
+            - -c
+            - |
+              mc alias set myminio http://minio:9000 minioadmin minioadmin
+              mc mb -p myminio/uploads 2>/dev/null || true
+              mc mb -p myminio/backups 2>/dev/null || true
+              mc mb -p myminio/temp 2>/dev/null || true
+              echo "Buckets created successfully"
+      restartPolicy: OnFailure

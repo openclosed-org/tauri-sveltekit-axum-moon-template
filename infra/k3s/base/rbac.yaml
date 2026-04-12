@@ -1,0 +1,111 @@
+# RBAC — Role-Based Access Control for application service accounts
+#
+# Defines service accounts, roles, and role bindings for the application.
+
+# Service account for API service
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: api-sa
+  namespace: app
+  labels:
+    app: api
+---
+# Service account for web service
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: web-sa
+  namespace: app
+  labels:
+    app: web
+---
+# Service account for gateway
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: gateway-sa
+  namespace: app
+  labels:
+    app: gateway
+---
+# Role for API service - access to configmaps, secrets, and persistent volumes
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: api-role
+  namespace: app
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps", "secrets"]
+    verbs: ["get", "watch", "list"]
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+# Role for web service - access to configmaps
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: web-role
+  namespace: app
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "watch", "list"]
+---
+# Role for gateway - access to configmaps and services
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: gateway-role
+  namespace: app
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps", "services"]
+    verbs: ["get", "watch", "list"]
+---
+# Bind API role to API service account
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: api-role-binding
+  namespace: app
+subjects:
+  - kind: ServiceAccount
+    name: api-sa
+    namespace: app
+roleRef:
+  kind: Role
+  name: api-role
+  apiGroup: rbac.authorization.k8s.io
+---
+# Bind web role to web service account
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: web-role-binding
+  namespace: app
+subjects:
+  - kind: ServiceAccount
+    name: web-sa
+    namespace: app
+roleRef:
+  kind: Role
+  name: web-role
+  apiGroup: rbac.authorization.k8s.io
+---
+# Bind gateway role to gateway service account
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: gateway-role-binding
+  namespace: app
+subjects:
+  - kind: ServiceAccount
+    name: gateway-sa
+    namespace: app
+roleRef:
+  kind: Role
+  name: gateway-role
+  apiGroup: rbac.authorization.k8s.io

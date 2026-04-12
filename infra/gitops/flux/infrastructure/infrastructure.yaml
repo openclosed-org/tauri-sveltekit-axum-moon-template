@@ -1,0 +1,39 @@
+# Flux Infrastructure Definition
+#
+# This Kustomization manages all infrastructure components (NATS, Valkey, MinIO).
+# Applied before applications to ensure dependencies exist.
+
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: infrastructure
+  namespace: flux-system
+spec:
+  interval: 10m0s
+  path: ./infra/kubernetes/addons
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  timeout: 10m0s
+  wait: true
+  retryInterval: 2m0s
+  maxRetries: 3
+  
+  # Health checks for infrastructure components
+  healthChecks:
+    - apiVersion: apps/v1
+      kind: StatefulSet
+      name: nats
+      namespace: app
+    - apiVersion: apps/v1
+      kind: StatefulSet
+      name: valkey
+      namespace: app
+    - apiVersion: apps/v1
+      kind: StatefulSet
+      name: minio
+      namespace: app
+  
+  # Target namespace
+  targetNamespace: app

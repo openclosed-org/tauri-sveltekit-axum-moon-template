@@ -4,6 +4,8 @@ kind: Kustomization
 
 resources:
   - namespace.yaml
+  - rbac.yaml
+  - network-policy.yaml
   - configmap.yaml
   - deployment-api.yaml
   - deployment-web.yaml

@@ -1,8 +1,9 @@
-//! Event publisher — publishes outbox entries to the event bus.
+//! Event publisher — publishes outbox entries to the event bus and runtime pubsub.
 
 use async_trait::async_trait;
 use contracts_events::AppEvent;
 use event_bus::ports::{EventBus, EventEnvelope};
+use runtime::ports::{PubSub, MessageEnvelope as RuntimeMessageEnvelope};
 use tracing::{debug, warn};
 
 use crate::polling::PendingOutboxEntry;
@@ -15,19 +16,23 @@ pub enum PublishError {
 
     #[error("Failed to publish to event bus: {0}")]
     BusError(String),
+
+    #[error("Failed to publish to pubsub: {0}")]
+    PubSubError(String),
 }
 
-/// Publishes outbox entries to the event bus.
-pub struct OutboxPublisher<E: EventBus> {
+/// Publishes outbox entries to both event bus and runtime pubsub.
+pub struct OutboxPublisher<E: EventBus, P: PubSub> {
     event_bus: E,
+    pubsub: P,
 }
 
-impl<E: EventBus> OutboxPublisher<E> {
-    pub fn new(event_bus: E) -> Self {
-        Self { event_bus }
+impl<E: EventBus, P: PubSub> OutboxPublisher<E, P> {
+    pub fn new(event_bus: E, pubsub: P) -> Self {
+        Self { event_bus, pubsub }
     }
 
-    /// Publish a single outbox entry to the event bus.
+    /// Publish a single outbox entry to both event bus and pubsub.
     pub async fn publish(
         &self,
         entry: &PendingOutboxEntry,
@@ -35,14 +40,27 @@ impl<E: EventBus> OutboxPublisher<E> {
         let event: AppEvent = serde_json::from_str(&entry.payload)
             .map_err(|e| PublishError::DeserializeError(e.to_string()))?;
 
-        let envelope = EventEnvelope::new(event, &entry.source_service);
+        // Publish to event bus (for service-to-service communication)
+        let envelope = EventEnvelope::new(event.clone(), &entry.source_service);
 
         self.event_bus
             .publish(envelope)
             .await
             .map_err(|e| PublishError::BusError(e.to_string()))?;
 
-        debug!(entry_id = %entry.id, "published outbox entry to event bus");
+        // Publish to runtime pubsub (for workers and external consumers)
+        let runtime_envelope = RuntimeMessageEnvelope::new(
+            event,
+            format!("outbox.{}", entry.event_type),
+            &entry.source_service,
+        );
+        
+        self.pubsub
+            .publish(&format!("outbox.{}", entry.event_type), runtime_envelope)
+            .await
+            .map_err(|e| PublishError::PubSubError(e.to_string()))?;
+
+        debug!(entry_id = %entry.id, "published outbox entry to event bus and pubsub");
         Ok(())
     }
 

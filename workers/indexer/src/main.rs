@@ -7,6 +7,9 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 
 use axum::{routing::get, Router};
+use runtime::ports::{PubSub, MessageEnvelope, State};
+use runtime::ports::state::StateEntry;
+use runtime::adapters::memory::{MemoryPubSub, MemoryState};
 use tokio::sync::RwLock;
 use tracing::{info, warn};
 
@@ -31,6 +34,9 @@ pub enum IndexerError {
 
     #[error("Sink error: {0}")]
     Sink(String),
+
+    #[error("Runtime error: {0}")]
+    RuntimeError(String),
 
     #[error("Internal error: {0}")]
     Internal(String),
@@ -91,16 +97,20 @@ pub struct Indexer {
     sources: Vec<Box<dyn EventSource>>,
     transformers: Vec<Box<dyn EventTransform>>,
     sinks: Vec<Box<dyn EventSink>>,
-    checkpoint: SourceCheckpoint,
+    checkpoint: Arc<SourceCheckpoint>,
+    state: MemoryState,
+    pubsub: MemoryPubSub,
 }
 
 impl Indexer {
-    pub fn new() -> Self {
+    pub fn new(state: MemoryState, pubsub: MemoryPubSub) -> Self {
         Self {
             sources: Vec::new(),
             transformers: Vec::new(),
             sinks: Vec::new(),
-            checkpoint: SourceCheckpoint::new(),
+            checkpoint: Arc::new(SourceCheckpoint::new()),
+            state,
+            pubsub,
         }
     }
 
@@ -174,11 +184,36 @@ impl Indexer {
             }
         }
 
-        // 4. Update checkpoints
+        // 4. Publish indexed event to pubsub for downstream consumers
+        for event in &indexed_events {
+            if let Ok(app_event) = serde_json::from_str::<contracts_events::AppEvent>(&event.payload) {
+                let envelope = MessageEnvelope::new(
+                    app_event,
+                    format!("indexer.{}", event.event_type),
+                    "indexer-worker",
+                );
+                
+                if let Err(e) = self.pubsub.publish(&format!("indexer.{}", event.event_type), envelope).await {
+                    warn!(error = %e, "failed to publish indexed event");
+                }
+            }
+        }
+
+        // 5. Update checkpoints
         for source in &self.sources {
             // In a real implementation, the source would return a cursor
             // For now, we use a placeholder
             self.checkpoint.update(source.name(), "latest".to_string());
+        }
+
+        // 6. Persist checkpoint to state storage
+        let checkpoint_data = self.checkpoint.list();
+        let checkpoint_json = serde_json::to_string(&checkpoint_data)
+            .map_err(|e| IndexerError::RuntimeError(format!("checkpoint serialize: {e}")))?;
+        
+        let checkpoint_entry = StateEntry::new("indexer:checkpoints", checkpoint_json, None);
+        if let Err(e) = self.state.set(checkpoint_entry).await {
+            warn!(error = %e, "failed to persist checkpoint");
         }
 
         info!(count = total_indexed, "indexing cycle complete");
@@ -188,7 +223,11 @@ impl Indexer {
 
 impl Default for Indexer {
     fn default() -> Self {
-        Self::new()
+        // Default uses memory adapters
+        Self::new(
+            MemoryState::new(),
+            MemoryPubSub::new(),
+        )
     }
 }
 
@@ -214,13 +253,13 @@ async fn main() -> anyhow::Result<()> {
         }
     });
 
-    // Build indexer with stub sources/sinks
-    let mut indexer = Indexer::new();
+    // Build indexer with runtime ports (memory adapters for now)
+    let mut indexer = Indexer::default();
     indexer.add_source(Box::new(sources::MemoryEventSource::new(Vec::new())));
     indexer.add_transformer(Box::new(transforms::PassthroughTransform));
-    indexer.add_sink(Box::new(sinks::MemoryEventSink::new()));
+    indexer.add_sink(Box::new(MemoryEventSink::new()));
 
-    info!("Indexer worker running (stub mode)");
+    info!("Indexer worker running (memory adapter mode)");
 
     // Main loop
     let mut interval = tokio::time::interval(std::time::Duration::from_secs(30));

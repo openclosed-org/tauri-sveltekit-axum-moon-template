@@ -10,6 +10,7 @@ path = "src/main.rs"
 
 [dependencies]
 # Internal
+runtime = { path = "../../packages/runtime" }
 event-bus = { path = "../../services/event-bus" }
 contracts_events = { path = "../../packages/contracts/events" }
 

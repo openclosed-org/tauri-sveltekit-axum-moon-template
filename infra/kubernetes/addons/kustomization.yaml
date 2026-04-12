@@ -1,0 +1,19 @@
+# Kustomization — Addon resources for infrastructure dependencies
+#
+# These are optional addons that provide external infrastructure services.
+# Use these when you need real infrastructure instead of in-memory adapters.
+#
+# Usage:
+#   kubectl apply -k infra/kubernetes/addons/
+#
+# Or include in your environment overlay:
+#   resources:
+#     - ../addons/
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - nats.yaml
+  - valkey.yaml
+  - minio.yaml

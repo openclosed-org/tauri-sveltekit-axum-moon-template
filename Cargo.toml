@@ -8,6 +8,7 @@ members = [
     # Packages (flat structure per ARCHITECTURE.md)
     "packages/kernel",
     "packages/platform",
+    "packages/runtime",
     # Contracts
     "packages/contracts/api",
     "packages/contracts/auth",
@@ -62,6 +63,7 @@ members = [
     # Services (Clean Architecture — incremental implementation)
     "services/user-service",
     "services/tenant-service",
+    "services/auth-service",
     "services/counter-service",
     "services/chat-service",
     "services/agent-service",
@@ -118,6 +120,7 @@ rust-version = "1.94"
 domain = { path = "packages/core/domain" }
 kernel = { path = "packages/kernel" }
 platform = { path = "packages/platform" }
+runtime = { path = "packages/runtime" }
 contracts_api = { path = "packages/contracts/api" }
 contracts_auth = { path = "packages/contracts/auth" }
 contracts_events = { path = "packages/contracts/events" }
@@ -139,6 +142,7 @@ feature-settings = { path = "packages/features/settings" }
 counter-service = { path = "services/counter-service" }
 tenant-service = { path = "services/tenant-service" }
 user-service = { path = "services/user-service" }
+auth-service = { path = "services/auth-service" }
 agent-service = { path = "services/agent-service" }
 admin-service = { path = "services/admin-service" }
 settings-service = { path = "services/settings-service" }
@@ -223,6 +227,7 @@ jsonwebtoken = { version = "10.3.0", features = ["aws_lc_rs"] }
 sha2 = "0.10"
 base64 = "0.22"
 rand = "0.8"
+urlencoding = "2.1"
 
 # Async trait
 async-trait = "0.1"

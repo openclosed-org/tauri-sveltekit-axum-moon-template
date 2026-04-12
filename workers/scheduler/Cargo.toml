@@ -9,6 +9,9 @@ name = "scheduler-worker"
 path = "src/main.rs"
 
 [dependencies]
+# Internal
+runtime = { path = "../../packages/runtime" }
+
 # Core
 serde = { workspace = true }
 serde_json = { workspace = true }

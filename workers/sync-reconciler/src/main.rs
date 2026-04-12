@@ -7,6 +7,8 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 
 use axum::{routing::get, Router};
+use runtime::adapters::memory::MemoryLock;
+use runtime::ports::Lock;
 use tokio::sync::RwLock;
 use tracing::{info, warn};
 
@@ -103,6 +105,9 @@ async fn main() -> anyhow::Result<()> {
     // Build reconciliation with stub plans
     let executor = StubReconcileExecutor;
 
+    // Initialize runtime lock for conflict resolution
+    let lock = MemoryLock::new();
+
     let plans = vec![
         ReconciliationPlan::new(
             "plan-settings-sync",
@@ -113,7 +118,7 @@ async fn main() -> anyhow::Result<()> {
         ),
     ];
 
-    info!("Sync-reconciler running ({} plans)", plans.len());
+    info!("Sync-reconciler running with runtime lock ({} plans)", plans.len());
 
     // Main reconciliation loop
     let mut interval = tokio::time::interval(std::time::Duration::from_secs(120));

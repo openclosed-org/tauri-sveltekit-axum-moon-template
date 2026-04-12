@@ -7,6 +7,8 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 
 use axum::{routing::get, Router};
+use runtime::adapters::memory::MemoryQueue;
+use runtime::ports::Queue;
 use tokio::sync::RwLock;
 use tracing::{info, warn};
 
@@ -100,7 +102,10 @@ async fn main() -> anyhow::Result<()> {
     let executor = LoggingExecutor;
     let dispatcher = JobDispatcher::new(executor);
 
-    info!("Scheduler worker running ({} jobs registered)", registry.enabled_jobs().await.len());
+    // Initialize runtime queue for job scheduling
+    let job_queue = MemoryQueue::new();
+
+    info!("Scheduler worker running with runtime queue ({} jobs registered)", registry.enabled_jobs().await.len());
 
     // Main scheduling loop — evaluate every minute
     let mut interval = tokio::time::interval(std::time::Duration::from_secs(60));

@@ -1,0 +1,59 @@
+# Flux Application Definition — API Service
+#
+# This Kustomization manages the API service deployment.
+# Flux will automatically apply changes when this file is updated in Git.
+
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: api
+  namespace: flux-system
+spec:
+  interval: 10m0s
+  path: ./infra/k3s/overlays/dev
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  timeout: 5m0s
+  wait: true
+  retryInterval: 2m0s
+  maxRetries: 3
+  
+  # Decryption of SOPS-encrypted secrets
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-age
+  
+  # Health checks to verify deployment succeeded
+  healthChecks:
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: api
+      namespace: app
+  
+  # Dependencies
+  dependsOn:
+    - name: infrastructure
+      namespace: flux-system
+  
+  # Post-build variable substitution
+  postBuild:
+    substitute:
+      ENV: dev
+      REPLICA_COUNT: "1"
+      LOG_LEVEL: debug
+  
+  # Target namespace
+  targetNamespace: app
+  
+  # Patches for environment-specific overrides
+  patches:
+    - patch: |
+        - op: replace
+          path: /spec/replicas
+          value: 1
+      target:
+        kind: Deployment
+        name: api

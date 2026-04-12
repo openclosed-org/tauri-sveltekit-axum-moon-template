@@ -1,0 +1,135 @@
+# Podman/Docker Compose — Core Infrastructure for Local Development
+#
+# Usage:
+#   docker compose -f infra/docker/compose/core.yaml up -d
+#   docker compose -f infra/docker/compose/core.yaml down
+#
+# This starts all core infrastructure services needed for development:
+#   - Turso (libSQL) database
+#   - NATS message broker (with JetStream)
+#   - Valkey/Dragonfly cache (Redis-compatible)
+#   - MinIO object storage (S3-compatible)
+#
+# Stack:
+#   - turso:8080          — Turso/libSQL embedded database with HTTP gateway
+#   - nats:4222           — NATS message broker (JetStream enabled)
+#   - nats:8222           — NATS monitoring HTTP
+#   - valkey:6379         — Valkey cache (Redis-compatible)
+#   - minio:9000          — MinIO object storage API
+#   - minio:9001          — MinIO Console UI
+
+services:
+  # ── Turso/libSQL Database ──────────────────────────────────
+  # Note: Turso is embedded in the application (no separate server).
+  # This service is a placeholder for future Turso edge/sync server.
+  # For now, databases are created via application code.
+  #
+  # If you need a standalone libSQL server for testing:
+  # Use sqld (libSQL server) instead of embedded mode.
+  sqld:
+    image: ghcr.io/tursodatabase/sqld:latest
+    ports:
+      - "8080:8080"  # HTTP API
+      - "5001:5001"  # gRPC
+    environment:
+      - SQLD_NODE=primary
+      - SQLD_DB_PATH=/var/lib/sqld
+      - SQLD_HTTP_LISTEN_ADDR=0.0.0.0:8080
+      - SQLD_GRPC_LISTEN_ADDR=0.0.0.0:5001
+    volumes:
+      - turso-data:/var/lib/sqld
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    profiles:
+      - full  # Only start with `--profile full`
+
+  # ── NATS Message Broker ────────────────────────────────────
+  # Used for: Event bus, pub/sub messaging, worker communication
+  nats:
+    image: nats:2.10-alpine
+    ports:
+      - "4222:4222"  # Client port
+      - "8222:8222"  # Monitoring HTTP
+      - "6222:6222"  # Cluster port
+    command:
+      - "-js"  # Enable JetStream (persistent messaging)
+      - "-m"
+      - "8222"
+      - "--store_dir=/data/jetstream"
+    volumes:
+      - nats-data:/data
+    environment:
+      - NATS_LOG_LEVEL=warn
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8222/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # ── Valkey Cache (Redis-compatible) ────────────────────────
+  # Used for: Caching, session storage, rate limiting
+  valkey:
+    image: valkey/valkey:7-alpine
+    ports:
+      - "6379:6379"
+    command: valkey-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - valkey-data:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+  # ── MinIO Object Storage ───────────────────────────────────
+  # Used for: File uploads, backups, blob storage
+  minio:
+    image: minio/minio:latest
+    ports:
+      - "9000:9000"  # API
+      - "9001:9001"  # Console UI
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+      - MINIO_BROWSER=on
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  # ── MinIO Bucket Initialization ────────────────────────────
+  # Creates default buckets after MinIO starts
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+        mc alias set myminio http://minio:9000 minioadmin minioadmin;
+        mc mb -p myminio/uploads 2>/dev/null || true;
+        mc mb -p myminio/backups 2>/dev/null || true;
+        mc mb -p myminio/temp 2>/dev/null || true;
+        echo 'Buckets created successfully';
+      "
+
+volumes:
+  turso-data:
+    driver: local
+  nats-data:
+    driver: local
+  valkey-data:
+    driver: local
+  minio-data:
+    driver: local

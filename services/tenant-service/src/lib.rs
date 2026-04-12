@@ -7,12 +7,14 @@
 //! application/     → TenantService (orchestrates via ports)
 //! infrastructure/  → LibSqlTenantRepository, SurrealDbTenantRepository
 //! contracts/       → DTO re-exports from packages/contracts/
+//! events/          → Domain events
 //! sync/            → OfflineFirst sync strategies
 //! ```
 
 pub mod application;
 pub mod contracts;
 pub mod domain;
+pub mod events;
 pub mod infrastructure;
 pub mod ports;
 pub mod sync;

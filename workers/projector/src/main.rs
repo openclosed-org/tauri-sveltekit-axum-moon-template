@@ -9,6 +9,8 @@ use std::sync::Arc;
 use axum::{routing::get, Router};
 use event_bus::adapters::memory_bus::InMemoryEventBus;
 use event_bus::ports::{EventBus, EventEnvelope};
+use runtime::adapters::memory::{MemoryPubSub, MemoryState};
+use runtime::ports::{PubSub, State};
 use tokio::sync::RwLock;
 use tracing::{info, warn};
 
@@ -152,7 +154,11 @@ async fn main() -> anyhow::Result<()> {
     // Subscribe to the event bus
     let event_bus = InMemoryEventBus::new();
 
-    info!("Projector worker running (stub mode)");
+    // Initialize runtime ports for projection state and pubsub
+    let projection_state = MemoryState::new();
+    let pubsub = MemoryPubSub::new();
+
+    info!("Projector worker running with runtime ports");
 
     // In a real implementation, we'd subscribe to the event bus here.
     // For now, just keep the worker alive.

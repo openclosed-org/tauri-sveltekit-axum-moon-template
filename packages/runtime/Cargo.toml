@@ -1,0 +1,29 @@
+[package]
+name = "runtime"
+version = "0.1.0"
+edition = "2024"
+publish = false
+description = "Runtime abstraction ports and adapters for distributed systems"
+
+[dependencies]
+# Internal
+kernel = { workspace = true }
+contracts_events = { path = "../contracts/events" }
+
+# Core
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+async-trait = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+
+# Tracing
+tracing = { workspace = true }
+
+[dev-dependencies]
+
+[lints]
+workspace = true

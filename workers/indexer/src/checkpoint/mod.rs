@@ -27,6 +27,11 @@ impl SourceCheckpoint {
     pub fn update(&self, source: &str, cursor: String) {
         self.cursors.write().unwrap().insert(source.to_string(), cursor);
     }
+
+    /// List all checkpoints.
+    pub fn list(&self) -> std::collections::HashMap<String, String> {
+        self.cursors.read().unwrap().clone()
+    }
 }
 
 impl Default for SourceCheckpoint {

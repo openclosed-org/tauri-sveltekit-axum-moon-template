@@ -1,0 +1,92 @@
+# Valkey — Redis-compatible cache for session storage and rate limiting
+#
+# Provides: Caching, session storage, rate limiting
+# Port: 6379
+#
+# Usage in application:
+#   REDIS_URL=redis://valkey.app.svc.cluster.local:6379
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: valkey
+  namespace: app
+  labels:
+    app: valkey
+    component: cache
+spec:
+  selector:
+    app: valkey
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: 6379
+      protocol: TCP
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: valkey
+  namespace: app
+  labels:
+    app: valkey
+    component: cache
+spec:
+  serviceName: valkey
+  replicas: 1
+  selector:
+    matchLabels:
+      app: valkey
+  template:
+    metadata:
+      labels:
+        app: valkey
+        component: cache
+    spec:
+      containers:
+        - name: valkey
+          image: valkey/valkey:7-alpine
+          ports:
+            - containerPort: 6379
+              name: redis
+          args:
+            - "valkey-server"
+            - "--appendonly"
+            - "yes"
+            - "--maxmemory"
+            - "256mb"
+            - "--maxmemory-policy"
+            - "allkeys-lru"
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          volumeMounts:
+            - name: valkey-data
+              mountPath: /data
+          livenessProbe:
+            exec:
+              command:
+                - valkey-cli
+                - ping
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            exec:
+              command:
+                - valkey-cli
+                - ping
+            initialDelaySeconds: 5
+            periodSeconds: 5
+  volumeClaimTemplates:
+    - metadata:
+        name: valkey-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 500Mi

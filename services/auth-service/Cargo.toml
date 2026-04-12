@@ -1,0 +1,53 @@
+[package]
+name = "auth-service"
+version = "0.1.0"
+edition = "2024"
+description = "Auth service — OAuth flow, session management, token handling"
+license = "MIT"
+rust-version.workspace = true
+
+[dependencies]
+# Core abstractions
+kernel = { workspace = true }
+
+# Contracts
+contracts_api = { workspace = true }
+
+# Serialization & validation
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Error handling
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+
+# Async trait
+async-trait = { workspace = true }
+
+# Utilities
+chrono = { workspace = true }
+uuid = { workspace = true, features = ["v4"] }
+rand = { workspace = true }
+tracing = { workspace = true }
+
+# JWT handling
+jsonwebtoken = { workspace = true }
+sha2 = { workspace = true }
+base64 = { workspace = true }
+urlencoding = { workspace = true }
+
+# LibSQL/Turso
+turso = { version = "0.6.0-pre.15", features = ["sync"] }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt"] }
+
+[features]
+default = []
+
+[[test]]
+name = "unit_tests"
+path = "tests/unit/auth_tests.rs"
+
+[lints]
+workspace = true

@@ -10,6 +10,9 @@ use std::sync::Arc;
 use axum::{routing::get, Router};
 use event_bus::adapters::memory_bus::InMemoryEventBus;
 use event_bus::ports::EventBus;
+use runtime::ports::{PubSub, MessageEnvelope, State};
+use runtime::ports::state::StateEntry;
+use runtime::adapters::memory::{MemoryPubSub, MemoryState};
 use tokio::sync::RwLock;
 use tracing::{info, warn};
 
@@ -110,8 +113,11 @@ async fn main() -> anyhow::Result<()> {
     // Create event bus (in-memory for now; would be NATS in production)
     let event_bus = InMemoryEventBus::new();
 
-    // Create outbox publisher
-    let publisher = OutboxPublisher::new(event_bus);
+    // Create runtime pubsub (in-memory for now; would be NATS in production)
+    let pubsub = MemoryPubSub::new();
+
+    // Create outbox publisher with both event bus and pubsub
+    let publisher = OutboxPublisher::new(event_bus, pubsub);
 
     // Create outbox reader (stub for now; would be Turso/SQLite in production)
     let reader = MemoryOutboxReader::new(Vec::new());

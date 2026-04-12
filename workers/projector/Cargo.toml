@@ -12,6 +12,7 @@ path = "src/main.rs"
 # Internal
 contracts_events = { path = "../../packages/contracts/events" }
 event-bus = { path = "../../services/event-bus" }
+runtime = { path = "../../packages/runtime" }
 
 # Core
 serde = { workspace = true }
