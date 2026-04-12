@@ -1,0 +1,43 @@
+name: local-dev
+version: 1.0.0
+description: >
+  Local development topology. All deployables run on localhost
+  with embedded or dockerized resources. Single-node, no replication.
+
+deployables:
+  - name: api-server
+    replicas: 1
+    enabled: true
+
+  - name: web-bff
+    replicas: 1
+    enabled: true
+
+  - name: edge-gateway
+    replicas: 1
+    enabled: true
+
+  - name: outbox-relay-worker
+    replicas: 1
+    enabled: false
+
+resources:
+  - name: turso
+    enabled: true
+    config:
+      mode: "embedded"
+
+  - name: cache
+    enabled: true
+    config:
+      backend: "moka"
+
+  - name: observability
+    enabled: false
+
+network:
+  gateway: "localhost:8080"
+  exposed_ports:
+    - 3001
+    - 3010
+    - 8080

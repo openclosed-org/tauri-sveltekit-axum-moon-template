@@ -1,0 +1,101 @@
+- name: admin-bff
+  type: bff
+  version: 0.1.0
+  description: |
+    Backend-for-Frontend for the admin dashboard. Aggregates multi-service views (tenants, counters, agents, metrics) into admin-optimized responses. Handles admin-specific authentication and authorization with elevated privilege checks.
+  services:
+  - admin
+  resources:
+  - cache
+  ports:
+  - 3020
+- name: api-server
+  type: server
+  version: 1.0.0
+  description: |
+    Main Axum API server aggregating all service routes. Provides REST/JSON API for all services. Internal-facing, behind edge-gateway in production topologies.
+  services:
+  - counter
+  - user
+  - tenant
+  - settings
+  - agent
+  - chat
+  resources:
+  - turso
+  - cache
+  ports:
+  - 3001
+- name: edge-gateway
+  type: gateway
+  version: 1.0.0
+  description: |
+    Reverse proxy and edge gateway (Pingora-based). Handles TLS termination, routing, rate limiting, authentication passthrough, and load balancing across backend services. Single ingress point for external traffic.
+  services: []
+  resources: []
+  ports:
+  - 80
+  - 443
+- name: indexer-worker
+  type: worker
+  version: 0.1.0
+  description: |
+    Full-text search indexer. Consumes events from the message broker, transforms domain entities into search documents, and writes to the search index. Supports incremental indexing with source-level checkpoint tracking.
+  services: []
+  resources:
+  - nats
+  ports:
+  - 3040
+- name: outbox-relay-worker
+  type: worker
+  version: 1.0.0
+  description: |
+    Outbox pattern consumer. Polls the outbox table for pending events, publishes them to the external message broker (NATS), and marks them as delivered. Provides reliable event delivery with deduplication and checkpoint tracking.
+  services:
+  - event-bus
+  resources:
+  - turso
+  - nats
+  ports:
+  - 3030
+- name: projector-worker
+  type: worker
+  version: 0.1.0
+  description: |
+    Event-driven read model projector. Consumes domain events and builds denormalized read models optimized for query patterns. Maintains projection state with checkpoint tracking per event stream. Supports projection rebuild from arbitrary point.
+  services: []
+  resources:
+  - nats
+  - turso
+  ports:
+  - 3050
+- name: scheduler-worker
+  type: worker
+  version: 0.1.0
+  description: |
+    Time-based job scheduler and dispatcher. Manages cron-like jobs, delayed job execution, and recurring task scheduling. Maintains job registry with scheduling metadata and execution history.
+  services: []
+  resources:
+  - turso
+  ports:
+  - 3060
+- name: sync-reconciler-worker
+  type: worker
+  version: 0.1.0
+  description: |
+    Sync conflict resolution and reconciliation worker. Handles offline-first sync scenarios, detects conflicts between client and server state, applies conflict resolution strategies, and reconciles divergent state. Supports CRDT-based and last-write-wins resolution strategies.
+  services: []
+  resources:
+  - turso
+  ports:
+  - 3070
+- name: web-bff
+  type: bff
+  version: 1.0.0
+  description: |
+    Backend-for-Frontend for the web application (SvelteKit). Aggregates service APIs into view-optimized endpoints, handles server-side rendering data fetching, and manages web-specific auth/session concerns.
+  services: []
+  resources:
+  - cache
+  ports:
+  - 3010

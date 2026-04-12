@@ -1,0 +1,65 @@
+name: k3s-staging
+version: 1.0.0
+description: >
+  K3s Kubernetes staging environment. Mirrors production topology
+  with reduced replicas. Uses Flux for GitOps deployment.
+
+deployables:
+  - name: api-server
+    replicas: 2
+    enabled: true
+
+  - name: web-bff
+    replicas: 1
+    enabled: true
+
+  - name: admin-bff
+    replicas: 1
+    enabled: true
+
+  - name: edge-gateway
+    replicas: 1
+    enabled: true
+
+  - name: outbox-relay-worker
+    replicas: 1
+    enabled: true
+
+  - name: indexer-worker
+    replicas: 1
+    enabled: true
+
+  - name: projector-worker
+    replicas: 1
+    enabled: true
+
+  - name: scheduler-worker
+    replicas: 1
+    enabled: true
+
+  - name: sync-reconciler-worker
+    replicas: 1
+    enabled: true
+
+resources:
+  - name: turso
+    enabled: true
+    config:
+      mode: "external"
+
+  - name: nats
+    enabled: true
+
+  - name: cache
+    enabled: true
+    config:
+      backend: "dragonfly"
+
+  - name: observability
+    enabled: true
+
+network:
+  gateway: "cilium-gateway"
+  exposed_ports:
+    - 80
+    - 443

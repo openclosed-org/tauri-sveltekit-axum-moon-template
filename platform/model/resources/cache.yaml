@@ -1,0 +1,22 @@
+name: cache
+type: cache
+description: >
+  In-memory cache layer for frequently accessed data.
+  Supports multiple backends (Moka for in-process, Valkey/Dragonfly
+  for distributed). Used for settings, session data, and hot paths.
+
+technology: moka/valkey
+version: "0.12"
+
+adapters:
+  - packages/adapters/cache
+
+local_dev:
+  env_vars:
+    CACHE_BACKEND: "moka"
+    CACHE_TTL_SECONDS: "300"
+
+required_by:
+  - settings
+  - web-bff
+  - admin-bff

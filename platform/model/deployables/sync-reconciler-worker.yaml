@@ -1,0 +1,25 @@
+name: sync-reconciler-worker
+type: worker
+version: 0.1.0
+description: >
+  Sync conflict resolution and reconciliation worker. Handles
+  offline-first sync scenarios, detects conflicts between client
+  and server state, applies conflict resolution strategies, and
+  reconciles divergent state. Supports CRDT-based and last-write-wins
+  resolution strategies.
+
+services: []
+
+resources:
+  - turso
+
+entry_point: workers/sync-reconciler/src/main.rs
+package: sync-reconciler-worker
+
+health_check:
+  path: /healthz
+  port: 3070
+  interval_seconds: 10
+
+ports:
+  - 3070

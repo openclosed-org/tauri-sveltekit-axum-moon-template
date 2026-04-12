@@ -1,0 +1,58 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Deployable",
+  "description": "A deployable is a runnable process (server, worker, BFF). It may include one or more services.",
+  "type": "object",
+  "required": ["name", "type", "version"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "description": "Deployable identifier (kebab-case)"
+    },
+    "type": {
+      "type": "string",
+      "enum": ["server", "worker", "bff", "gateway"],
+      "description": "Deployable process type"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Semantic version"
+    },
+    "description": {
+      "type": "string"
+    },
+    "services": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Services included in this deployable"
+    },
+    "resources": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "External resources required by this deployable"
+    },
+    "entry_point": {
+      "type": "string",
+      "description": "Path to main entry file"
+    },
+    "package": {
+      "type": "string",
+      "description": "Cargo package name (for Rust) or npm package name (for TS)"
+    },
+    "health_check": {
+      "type": "object",
+      "properties": {
+        "path": { "type": "string" },
+        "port": { "type": "integer" },
+        "interval_seconds": { "type": "integer" }
+      }
+    },
+    "ports": {
+      "type": "array",
+      "items": { "type": "integer" },
+      "description": "Network ports exposed by this deployable"
+    }
+  }
+}

@@ -1,0 +1,24 @@
+name: indexer-worker
+type: worker
+version: 0.1.0
+description: >
+  Full-text search indexer. Consumes events from the message broker,
+  transforms domain entities into search documents, and writes to
+  the search index. Supports incremental indexing with source-level
+  checkpoint tracking.
+
+services: []
+
+resources:
+  - nats
+
+entry_point: workers/indexer/src/main.rs
+package: indexer-worker
+
+health_check:
+  path: /healthz
+  port: 3040
+  interval_seconds: 10
+
+ports:
+  - 3040

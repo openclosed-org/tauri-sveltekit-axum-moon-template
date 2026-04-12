@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Policy",
+  "description": "A platform-wide policy definition (timeout, retry, idempotency, tenancy, etc.)",
+  "type": "object",
+  "required": ["name", "type"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "type": {
+      "type": "string",
+      "enum": ["timeout", "retry", "idempotency", "tenancy", "authz", "telemetry", "release", "outbox"]
+    },
+    "description": {
+      "type": "string"
+    },
+    "rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "condition": { "type": "string" },
+          "action": { "type": "string" },
+          "parameters": { "type": "object" }
+        }
+      }
+    },
+    "applies_to": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Deployables or services this policy applies to"
+    }
+  }
+}

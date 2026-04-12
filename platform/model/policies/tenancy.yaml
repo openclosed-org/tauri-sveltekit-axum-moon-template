@@ -1,0 +1,22 @@
+name: default
+type: tenancy
+description: >
+  Multi-tenancy isolation policy. Ensures all operations are
+  scoped to a specific tenant and prevents cross-tenant data
+  access.
+
+rules:
+  - condition: "request.has_tenant_id"
+    action: "scope"
+    parameters:
+      header: "X-Tenant-ID"
+      enforce_row_level_security: true
+      reject_missing_tenant: true
+
+  - condition: "request.cross_tenant_access"
+    action: "deny"
+
+applies_to:
+  - api-server
+  - web-bff
+  - admin-bff

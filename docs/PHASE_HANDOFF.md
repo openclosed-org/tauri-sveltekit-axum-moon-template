@@ -51,7 +51,7 @@ Update this table as phases complete:
 | Phase | Status | Completion Report | Git Commit | Notes |
 |-------|--------|-------------------|------------|-------|
 | Phase 1: Fix deps | ✅ COMPLETE | `docs/refactoring/phase-1-completion.md` | `d25ce49` | Zero violations! |
-| Phase 2: platform/ | ⬜ Not Started | - | - | Blocks most parallel work |
+| Phase 2: platform/ | ✅ COMPLETE | `docs/refactoring/phase-2-completion.md` | _pending_ | 32 models validated, catalog generated |
 | Phase 3: workers/ | ⬜ Not Started | - | - | After Phase 2 |
 | Phase 4: verification/ | ⬜ Not Started | - | - | After Phase 2 |
 | Phase 5: servers/ | ⬜ Not Started | - | - | After Phase 2 |

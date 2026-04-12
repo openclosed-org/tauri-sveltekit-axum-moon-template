@@ -1,0 +1,31 @@
+name: event-bus
+domain: infrastructure
+version: 1.0.0
+description: >
+  Shared event bus providing in-memory event distribution and Outbox pattern
+  implementation. Handles event publishing, subscription, and reliable
+  delivery with deduplication and checkpoint tracking.
+
+ports:
+  - name: event_publisher
+    type: publisher
+    description: Publish events to the bus
+  - name: event_subscriber
+    type: publisher
+    description: Subscribe to events by type
+  - name: outbox_repository
+    type: repository
+    description: Outbox message persistence
+  - name: checkpoint_store
+    type: repository
+    description: Consumer checkpoint storage
+
+events: []
+
+dependencies:
+  - packages/core/kernel
+  - packages/contracts/events
+
+deployable: outbox-relay-worker
+tests: services/event-bus/tests/
+status: active

@@ -1,0 +1,31 @@
+name: admin
+domain: admin
+version: 1.0.0
+description: >
+  Admin dashboard and platform management service.
+  Provides system-wide analytics, tenant overview, platform health metrics,
+  and administrative operations. Composition layer for multi-service views.
+
+ports:
+  - name: dashboard_repository
+    type: repository
+    description: Dashboard state and cached metrics
+  - name: analytics_publisher
+    type: publisher
+    description: Publish admin analytics events
+
+events:
+  - name: DashboardRefreshed
+    schema: packages/contracts/events/dashboard_refreshed.json
+  - name: AdminActionLogged
+    schema: packages/contracts/events/admin_action_logged.json
+
+dependencies:
+  - packages/core/kernel
+  - packages/contracts/api
+  - packages/features/admin
+  - services/event-bus
+
+deployable: admin-bff
+tests: services/admin-service/tests/
+status: active

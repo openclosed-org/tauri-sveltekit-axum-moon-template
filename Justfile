@@ -15,6 +15,7 @@ import? 'justfiles/deploy.just'
 import? 'justfiles/processes.just'
 import? 'justfiles/skills.just'
 import? 'justfiles/llm-infiniloom.just'
+import? 'justfiles/platform.just'
 
 # ── 默认行为 ────────────────────────────────────────────────
 

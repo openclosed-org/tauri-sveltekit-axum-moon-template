@@ -1,0 +1,44 @@
+name: agent
+domain: agent
+version: 1.0.0
+description: >
+  AI agent orchestration service. Manages AI agent lifecycles,
+  tool calling, conversation management, and LLM provider integration.
+  Handles prompt templates, agent configuration, and session state.
+
+ports:
+  - name: agent_repository
+    type: repository
+    description: Agent configuration and state persistence
+  - name: conversation_repository
+    type: repository
+    description: Conversation history storage
+  - name: llm_client
+    type: external_api
+    description: LLM provider integration (OpenAI, Anthropic, etc.)
+  - name: tool_registry
+    type: external_api
+    description: External tool calling interface
+  - name: event_publisher
+    type: publisher
+    description: Publish agent-related events
+
+events:
+  - name: AgentCreated
+    schema: packages/contracts/events/agent_created.json
+  - name: ConversationStarted
+    schema: packages/contracts/events/conversation_started.json
+  - name: ToolCalled
+    schema: packages/contracts/events/tool_called.json
+
+dependencies:
+  - packages/core/kernel
+  - packages/core/domain
+  - packages/contracts/api
+  - packages/features/agent
+  - services/event-bus
+
+deployable: api-server
+tests: services/agent-service/tests/
+migrations: services/agent-service/migrations/
+status: active

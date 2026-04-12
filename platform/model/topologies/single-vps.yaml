@@ -1,0 +1,64 @@
+name: single-vps
+version: 1.0.0
+description: >
+  Single VPS deployment topology. All services run on a single
+  machine with Docker Compose. Suitable for small-scale production
+  or staging. Includes all workers and observability stack.
+
+deployables:
+  - name: api-server
+    replicas: 1
+    enabled: true
+
+  - name: web-bff
+    replicas: 1
+    enabled: true
+
+  - name: admin-bff
+    replicas: 1
+    enabled: true
+
+  - name: edge-gateway
+    replicas: 1
+    enabled: true
+
+  - name: outbox-relay-worker
+    replicas: 1
+    enabled: true
+
+  - name: indexer-worker
+    replicas: 1
+    enabled: true
+
+  - name: projector-worker
+    replicas: 1
+    enabled: false
+
+  - name: scheduler-worker
+    replicas: 1
+    enabled: true
+
+  - name: sync-reconciler-worker
+    replicas: 1
+    enabled: false
+
+resources:
+  - name: turso
+    enabled: true
+
+  - name: nats
+    enabled: true
+
+  - name: cache
+    enabled: true
+    config:
+      backend: "valkey"
+
+  - name: observability
+    enabled: true
+
+network:
+  gateway: "0.0.0.0"
+  exposed_ports:
+    - 80
+    - 443

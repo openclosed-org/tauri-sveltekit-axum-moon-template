@@ -1,0 +1,17 @@
+name: dev
+version: 1.0.0
+description: >
+  Development environment configuration. Minimal resources,
+  debug logging, no observability. Fast startup for local
+  development iterations.
+
+features:
+  - hot_reload: true
+  - debug_mode: true
+  - seed_data: true
+
+variables:
+  LOG_LEVEL: "debug"
+  DATABASE_URL: "file:dev.db"
+  CACHE_TTL_SECONDS: "60"
+  CORS_ORIGINS: "http://localhost:5173,http://localhost:1420"

@@ -1,0 +1,26 @@
+name: outbox-relay-worker
+type: worker
+version: 1.0.0
+description: >
+  Outbox pattern consumer. Polls the outbox table for pending events,
+  publishes them to the external message broker (NATS), and marks them
+  as delivered. Provides reliable event delivery with deduplication
+  and checkpoint tracking.
+
+services:
+  - event-bus
+
+resources:
+  - turso
+  - nats
+
+entry_point: workers/outbox-relay/src/main.rs
+package: outbox-relay-worker
+
+health_check:
+  path: /healthz
+  port: 3030
+  interval_seconds: 10
+
+ports:
+  - 3030

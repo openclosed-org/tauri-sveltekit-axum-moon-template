@@ -1,0 +1,30 @@
+name: invite-member
+version: 1.0.0
+description: >
+  Workflow for inviting a new member to a tenant. Validates permissions,
+  creates invitation record, sends invitation email, and handles
+  acceptance flow.
+
+trigger:
+  type: http_request
+  source: POST /api/tenants/{tenant_id}/members/invite
+
+steps:
+  - name: validate_permissions
+    action: tenant-service/validate_invite_permission
+    next:
+      - create_invitation
+
+  - name: create_invitation
+    action: tenant-service/create_member_invitation
+    next:
+      - send_invitation_email
+
+  - name: send_invitation_email
+    action: event-bus/publish
+    parameters:
+      event: MemberInvited
+    next: []
+
+timeout: PT15S
+retry_policy: retry.default

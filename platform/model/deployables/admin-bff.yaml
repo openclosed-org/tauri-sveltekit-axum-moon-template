@@ -1,0 +1,25 @@
+name: admin-bff
+type: bff
+version: 0.1.0
+description: >
+  Backend-for-Frontend for the admin dashboard.
+  Aggregates multi-service views (tenants, counters, agents, metrics)
+  into admin-optimized responses. Handles admin-specific authentication
+  and authorization with elevated privilege checks.
+
+services:
+  - admin
+
+resources:
+  - cache
+
+entry_point: servers/bff/admin-bff/src/main.rs
+package: admin-bff
+
+health_check:
+  path: /healthz
+  port: 3020
+  interval_seconds: 10
+
+ports:
+  - 3020

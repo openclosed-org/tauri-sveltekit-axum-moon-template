@@ -1,0 +1,23 @@
+name: scheduler-worker
+type: worker
+version: 0.1.0
+description: >
+  Time-based job scheduler and dispatcher. Manages cron-like jobs,
+  delayed job execution, and recurring task scheduling. Maintains
+  job registry with scheduling metadata and execution history.
+
+services: []
+
+resources:
+  - turso
+
+entry_point: workers/scheduler/src/main.rs
+package: scheduler-worker
+
+health_check:
+  path: /healthz
+  port: 3060
+  interval_seconds: 10
+
+ports:
+  - 3060

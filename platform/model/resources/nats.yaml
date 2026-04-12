@@ -1,0 +1,24 @@
+name: nats
+type: message_broker
+description: >
+  NATS JetStream message broker. Provides event streaming,
+  pub/sub messaging, and durable event sourcing for production
+  deployments. Local development may use in-memory event bus.
+
+technology: nats
+version: "2.10"
+
+adapters:
+  - packages/messaging/nats
+
+local_dev:
+  compose_file: infra/local/compose/core.yaml
+  port: 4222
+  env_vars:
+    NATS_URL: "nats://localhost:4222"
+
+required_by:
+  - event-bus
+  - outbox-relay-worker
+  - indexer-worker
+  - projector-worker

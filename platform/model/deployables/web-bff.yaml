@@ -1,0 +1,24 @@
+name: web-bff
+type: bff
+version: 1.0.0
+description: >
+  Backend-for-Frontend for the web application (SvelteKit).
+  Aggregates service APIs into view-optimized endpoints,
+  handles server-side rendering data fetching, and manages
+  web-specific auth/session concerns.
+
+services: []
+
+resources:
+  - cache
+
+entry_point: servers/bff/web-bff/src/main.rs
+package: web-bff
+
+health_check:
+  path: /healthz
+  port: 3010
+  interval_seconds: 10
+
+ports:
+  - 3010

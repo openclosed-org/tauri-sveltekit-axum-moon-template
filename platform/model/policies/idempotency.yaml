@@ -1,0 +1,18 @@
+name: default
+type: idempotency
+description: >
+  Idempotency policy ensuring duplicate requests don't cause
+  duplicate side effects. Uses idempotency key deduplication
+  with configurable TTL.
+
+rules:
+  - condition: "request.has_idempotency_key"
+    action: "deduplicate"
+    parameters:
+      key_header: "Idempotency-Key"
+      ttl_seconds: 3600
+      scope: "tenant"
+
+applies_to:
+  - api-server
+  - web-bff

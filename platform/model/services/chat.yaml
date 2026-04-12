@@ -1,0 +1,44 @@
+name: chat
+domain: chat
+version: 0.1.0
+description: >
+  Real-time messaging service. Manages chat sessions, message delivery,
+  read receipts, and real-time push notifications. Supports both
+  direct messages and group conversations.
+
+ports:
+  - name: message_repository
+    type: repository
+    description: Message persistence
+  - name: session_repository
+    type: repository
+    description: Chat session/conversation state
+  - name: participant_repository
+    type: repository
+    description: Session participant management
+  - name: push_publisher
+    type: publisher
+    description: Real-time message push via WebSocket/SSE
+  - name: event_publisher
+    type: publisher
+    description: Publish chat-related events
+
+events:
+  - name: MessageSent
+    schema: packages/contracts/events/message_sent.json
+  - name: SessionCreated
+    schema: packages/contracts/events/session_created.json
+  - name: MessageRead
+    schema: packages/contracts/events/message_read.json
+
+dependencies:
+  - packages/core/kernel
+  - packages/core/domain
+  - packages/contracts/api
+  - packages/features/chat
+  - services/event-bus
+
+deployable: api-server
+tests: services/chat-service/tests/
+migrations: services/chat-service/migrations/
+status: stub

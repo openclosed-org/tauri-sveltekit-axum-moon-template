@@ -1,0 +1,25 @@
+name: projector-worker
+type: worker
+version: 0.1.0
+description: >
+  Event-driven read model projector. Consumes domain events and
+  builds denormalized read models optimized for query patterns.
+  Maintains projection state with checkpoint tracking per event
+  stream. Supports projection rebuild from arbitrary point.
+
+services: []
+
+resources:
+  - nats
+  - turso
+
+entry_point: workers/projector/src/main.rs
+package: projector-worker
+
+health_check:
+  path: /healthz
+  port: 3050
+  interval_seconds: 10
+
+ports:
+  - 3050

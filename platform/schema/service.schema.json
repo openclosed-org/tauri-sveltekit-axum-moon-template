@@ -1,0 +1,93 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Service",
+  "description": "A service is a business capability library, not a process. It provides domain logic that can be consumed by servers and workers.",
+  "type": "object",
+  "required": ["name", "domain", "version", "ports", "events"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "description": "Service identifier (kebab-case)"
+    },
+    "domain": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "description": "Bounded context this service belongs to"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Semantic version"
+    },
+    "description": {
+      "type": "string",
+      "description": "Human-readable description of service responsibilities"
+    },
+    "ports": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/port" },
+      "description": "External dependency abstractions"
+    },
+    "events": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/event" },
+      "description": "Events published by this service"
+    },
+    "dependencies": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Platform-level dependencies (packages only, no cross-service deps)"
+    },
+    "deployable": {
+      "type": "string",
+      "description": "Reference to deployable that includes this service"
+    },
+    "tests": {
+      "type": "string",
+      "description": "Path to test directory"
+    },
+    "migrations": {
+      "type": "string",
+      "description": "Path to migration directory"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["active", "stub", "pending"],
+      "description": "Implementation status"
+    }
+  },
+  "definitions": {
+    "port": {
+      "type": "object",
+      "required": ["name", "type"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["repository", "cache", "publisher", "clock", "external_api", "storage", "workflow"]
+        },
+        "description": {
+          "type": "string"
+        }
+      }
+    },
+    "event": {
+      "type": "object",
+      "required": ["name", "schema"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Z][a-zA-Z0-9]*$"
+        },
+        "schema": {
+          "type": "string",
+          "description": "Path to event schema (relative to workspace root)"
+        }
+      }
+    }
+  }
+}

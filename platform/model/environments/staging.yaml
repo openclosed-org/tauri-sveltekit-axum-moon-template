@@ -1,0 +1,16 @@
+name: staging
+version: 1.0.0
+description: >
+  Staging environment configuration. Mirrors production with
+  reduced capacity. Used for pre-release validation and QA.
+
+features:
+  - hot_reload: false
+  - debug_mode: false
+  - seed_data: false
+  - observability: true
+
+variables:
+  LOG_LEVEL: "info"
+  CACHE_TTL_SECONDS: "300"
+  OTEL_ENABLED: "true"

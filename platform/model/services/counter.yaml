@@ -1,0 +1,35 @@
+name: counter
+domain: counter
+version: 1.0.0
+description: >
+  Tenant-scoped counter management service.
+  Provides counter CRUD, increment/decrement operations, and analytics.
+  Golden example of Clean Architecture service structure.
+
+ports:
+  - name: counter_repository
+    type: repository
+    description: Counter state persistence (SQLite/Turso)
+  - name: event_publisher
+    type: publisher
+    description: Publish counter events to event bus
+
+events:
+  - name: CounterIncremented
+    schema: packages/contracts/events/counter_incremented.json
+  - name: CounterDecremented
+    schema: packages/contracts/events/counter_decremented.json
+  - name: CounterReset
+    schema: packages/contracts/events/counter_reset.json
+
+dependencies:
+  - packages/core/kernel
+  - packages/core/domain
+  - packages/contracts/api
+  - packages/features/counter
+  - services/event-bus
+
+deployable: api-server
+tests: services/counter-service/tests/
+migrations: services/counter-service/migrations/
+status: active

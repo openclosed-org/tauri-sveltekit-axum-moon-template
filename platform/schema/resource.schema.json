@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Resource",
+  "description": "An external resource or infrastructure component (DB, cache, message broker, auth provider, etc.)",
+  "type": "object",
+  "required": ["name", "type"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "description": "Resource identifier (kebab-case)"
+    },
+    "type": {
+      "type": "string",
+      "enum": ["database", "cache", "message_broker", "object_storage", "auth_provider", "observability", "secrets", "wasm_runtime"],
+      "description": "Resource category"
+    },
+    "description": {
+      "type": "string"
+    },
+    "technology": {
+      "type": "string",
+      "description": "Specific technology used (e.g., turso, valkey, nats)"
+    },
+    "version": {
+      "type": "string",
+      "description": "Required version"
+    },
+    "adapters": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Package paths for adapters that connect to this resource"
+    },
+    "local_dev": {
+      "type": "object",
+      "properties": {
+        "compose_file": { "type": "string" },
+        "port": { "type": "integer" },
+        "env_vars": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      },
+      "description": "Local development configuration"
+    },
+    "required_by": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Services that depend on this resource"
+    }
+  }
+}

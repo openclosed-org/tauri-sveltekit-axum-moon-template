@@ -1,0 +1,36 @@
+[package]
+name = "platform-generator"
+version = "0.1.0"
+edition = "2024"
+description = "Platform catalog generator — reads models and generates catalog/ output"
+license = "MIT"
+rust-version.workspace = true
+
+[dependencies]
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = "0.9"
+
+# Error handling
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+
+# File system
+glob = "0.3"
+walkdir = "2"
+
+# CLI
+clap = { version = "4", features = ["derive"] }
+
+# Utilities
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+chrono = { workspace = true }
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "platform-generator"
+path = "src/main.rs"

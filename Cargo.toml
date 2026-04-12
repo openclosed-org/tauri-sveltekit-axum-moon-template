@@ -72,6 +72,9 @@ members = [
     "servers/gateway",
     "servers/indexer",
     "servers/bff/web-bff",
+    # Platform
+    "platform/validators/model-lint",
+    "platform/generators",
 ]
 resolver = "3"
 

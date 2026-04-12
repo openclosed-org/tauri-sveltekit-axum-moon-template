@@ -1,0 +1,62 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Topology",
+  "description": "A deployment topology defining which deployables run where and how they connect",
+  "type": "object",
+  "required": ["name", "version", "deployables", "resources"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "description": {
+      "type": "string"
+    },
+    "deployables": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "replicas"],
+        "properties": {
+          "name": { "type": "string", "description": "Deployable name" },
+          "replicas": { "type": "integer", "minimum": 1 },
+          "enabled": { "type": "boolean", "default": true },
+          "config": {
+            "type": "object",
+            "description": "Deployable-specific configuration"
+          }
+        }
+      }
+    },
+    "resources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string" },
+          "enabled": { "type": "boolean", "default": true },
+          "config": {
+            "type": "object",
+            "description": "Resource-specific configuration"
+          }
+        }
+      }
+    },
+    "network": {
+      "type": "object",
+      "properties": {
+        "gateway": { "type": "string" },
+        "internal_dns": { "type": "string" },
+        "exposed_ports": {
+          "type": "array",
+          "items": { "type": "integer" }
+        }
+      }
+    }
+  }
+}

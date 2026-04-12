@@ -1,0 +1,19 @@
+name: prod
+version: 1.0.0
+description: >
+  Production environment configuration. Full observability,
+  security hardening, and scaled resources.
+
+features:
+  - hot_reload: false
+  - debug_mode: false
+  - seed_data: false
+  - observability: true
+  - security_hardened: true
+  - auto_scaling: true
+
+variables:
+  LOG_LEVEL: "warn"
+  CACHE_TTL_SECONDS: "900"
+  OTEL_ENABLED: "true"
+  RATE_LIMIT_ENABLED: "true"

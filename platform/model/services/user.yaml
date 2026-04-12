@@ -1,0 +1,38 @@
+name: user
+domain: user
+version: 1.0.0
+description: >
+  User domain service — user lifecycle management, OAuth integration,
+  and tenant binding. Handles user registration, profile management,
+  and authentication logic.
+
+ports:
+  - name: user_repository
+    type: repository
+    description: User state persistence
+  - name: oauth_client
+    type: external_api
+    description: OAuth provider integration (Google, etc.)
+  - name: event_publisher
+    type: publisher
+    description: Publish user lifecycle events
+
+events:
+  - name: UserCreated
+    schema: packages/contracts/events/user_created.json
+  - name: UserUpdated
+    schema: packages/contracts/events/user_updated.json
+  - name: UserDeleted
+    schema: packages/contracts/events/user_deleted.json
+
+dependencies:
+  - packages/core/kernel
+  - packages/core/domain
+  - packages/contracts/api
+  - packages/contracts/auth
+  - services/event-bus
+
+deployable: api-server
+tests: services/user-service/tests/
+migrations: services/user-service/migrations/
+status: active

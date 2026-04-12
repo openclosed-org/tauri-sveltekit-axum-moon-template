@@ -1,0 +1,24 @@
+name: edge-gateway
+type: gateway
+version: 1.0.0
+description: >
+  Reverse proxy and edge gateway (Pingora-based).
+  Handles TLS termination, routing, rate limiting,
+  authentication passthrough, and load balancing across
+  backend services. Single ingress point for external traffic.
+
+services: []
+
+resources: []
+
+entry_point: servers/gateway/src/main.rs
+package: edge-gateway
+
+health_check:
+  path: /healthz
+  port: 8080
+  interval_seconds: 10
+
+ports:
+  - 80
+  - 443

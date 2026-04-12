@@ -1,0 +1,31 @@
+name: settings
+domain: settings
+version: 1.0.0
+description: >
+  User-level preferences and configuration service.
+  Manages API keys, base URLs, model configurations, and other
+  user-scoped settings with tenant isolation.
+
+ports:
+  - name: settings_repository
+    type: repository
+    description: Settings persistence
+  - name: cache
+    type: cache
+    description: Settings cache for fast reads
+
+events:
+  - name: SettingsUpdated
+    schema: packages/contracts/events/settings_updated.json
+
+dependencies:
+  - packages/core/kernel
+  - packages/core/domain
+  - packages/contracts/api
+  - packages/features/settings
+  - services/event-bus
+
+deployable: api-server
+tests: services/settings-service/tests/
+migrations: services/settings-service/migrations/
+status: active

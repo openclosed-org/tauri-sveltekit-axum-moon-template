@@ -1,0 +1,36 @@
+name: tenant-onboarding
+version: 1.0.0
+description: >
+  Workflow for onboarding a new tenant. Creates tenant record,
+  initializes default settings, provisions tenant-scoped resources,
+  and sends welcome notification.
+
+trigger:
+  type: http_request
+  source: POST /api/tenants
+
+steps:
+  - name: create_tenant
+    action: tenant-service/create_tenant
+    next:
+      - initialize_settings
+      - provision_resources
+
+  - name: initialize_settings
+    action: settings-service/initialize_defaults
+    next:
+      - send_welcome
+
+  - name: provision_resources
+    action: tenant-service/provision_tenant_resources
+    next:
+      - send_welcome
+
+  - name: send_welcome
+    action: event-bus/publish
+    parameters:
+      event: TenantCreated
+    next: []
+
+timeout: PT30S
+retry_policy: retry.default

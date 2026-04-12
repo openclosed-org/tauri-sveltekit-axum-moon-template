@@ -1,0 +1,18 @@
+name: default
+type: retry
+description: >
+  Default retry policy for most operations.
+  Uses exponential backoff with jitter.
+
+rules:
+  - condition: "error.is_retryable"
+    action: "retry"
+    parameters:
+      max_attempts: 3
+      initial_delay_ms: 100
+      max_delay_ms: 5000
+      backoff_multiplier: 2.0
+      jitter: true
+
+applies_to:
+  - "*"

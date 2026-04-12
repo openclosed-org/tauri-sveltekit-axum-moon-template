@@ -1,0 +1,39 @@
+name: tenant
+domain: tenant
+version: 1.0.0
+description: >
+  Multi-tenant isolation and member management service.
+  Handles tenant lifecycle, member invitations, tenant-scoped
+  resource isolation, and tenant-level configuration.
+
+ports:
+  - name: tenant_repository
+    type: repository
+    description: Tenant state persistence
+  - name: member_repository
+    type: repository
+    description: Tenant member management
+  - name: event_publisher
+    type: publisher
+    description: Publish tenant lifecycle events
+
+events:
+  - name: TenantCreated
+    schema: packages/contracts/events/tenant_created.json
+  - name: TenantUpdated
+    schema: packages/contracts/events/tenant_updated.json
+  - name: TenantDeleted
+    schema: packages/contracts/events/tenant_deleted.json
+  - name: MemberInvited
+    schema: packages/contracts/events/member_invited.json
+
+dependencies:
+  - packages/core/kernel
+  - packages/core/domain
+  - packages/contracts/api
+  - services/event-bus
+
+deployable: api-server
+tests: services/tenant-service/tests/
+migrations: services/tenant-service/migrations/
+status: active

@@ -1,0 +1,30 @@
+name: api-server
+type: server
+version: 1.0.0
+description: >
+  Main Axum API server aggregating all service routes.
+  Provides REST/JSON API for all services. Internal-facing,
+  behind edge-gateway in production topologies.
+
+services:
+  - counter
+  - user
+  - tenant
+  - settings
+  - agent
+  - chat
+
+resources:
+  - turso
+  - cache
+
+entry_point: servers/api/src/main.rs
+package: runtime_server
+
+health_check:
+  path: /healthz
+  port: 3001
+  interval_seconds: 10
+
+ports:
+  - 3001
