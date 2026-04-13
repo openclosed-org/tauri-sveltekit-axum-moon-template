@@ -63,7 +63,7 @@ futures-util = "0.3"
 
 # API documentation
 utoipa = { version = "5", features = ["axum_extras"] }
-utoipa-swagger-ui = { version = "9", features = ["axum"] }
+utoipa-scalar = { version = "0.2", features = ["axum"] }
 
 [dev-dependencies]
 http-body-util = "0.1"

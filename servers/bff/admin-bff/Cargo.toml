@@ -37,6 +37,7 @@ hyper = { workspace = true }
 
 # OpenAPI
 utoipa = { workspace = true }
+utoipa-scalar = { version = "0.2", features = ["axum"] }
 
 # Serialization
 serde = { workspace = true }

@@ -62,3 +62,43 @@ jobs:
           cargo build --workspace
           --exclude native-tauri
           --release
+
+      - name: Test web-bff /scalar endpoint
+        run: |
+          # Start web-bff in background
+          ./target/release/web-bff &
+          WEB_BFF_PID=$!
+          
+          # Wait for startup
+          sleep 2
+          
+          # Test /scalar endpoint
+          curl -f http://localhost:3010/scalar || exit 1
+          echo "✅ web-bff /scalar endpoint accessible"
+          
+          # Test /healthz endpoint
+          curl -f http://localhost:3010/healthz || exit 1
+          echo "✅ web-bff /healthz endpoint accessible"
+          
+          # Cleanup
+          kill $WEB_BFF_PID || true
+
+      - name: Test admin-bff /scalar endpoint
+        run: |
+          # Start admin-bff in background
+          ./target/release/admin-bff &
+          ADMIN_BFF_PID=$!
+          
+          # Wait for startup
+          sleep 2
+          
+          # Test /scalar endpoint
+          curl -f http://localhost:3020/scalar || exit 1
+          echo "✅ admin-bff /scalar endpoint accessible"
+          
+          # Test /healthz endpoint
+          curl -f http://localhost:3020/healthz || exit 1
+          echo "✅ admin-bff /healthz endpoint accessible"
+          
+          # Cleanup
+          kill $ADMIN_BFF_PID || true

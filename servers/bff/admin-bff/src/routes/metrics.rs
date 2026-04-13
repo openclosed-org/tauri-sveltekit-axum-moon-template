@@ -6,7 +6,6 @@
 
 use axum::{extract::State, routing::get, Json, Router};
 use serde::Serialize;
-use utoipa::OpenApi;
 
 use crate::error::AdminBffResult;
 use crate::state::AdminBffState;
@@ -18,10 +17,6 @@ pub struct MetricsView {
     pub requests_per_minute: f64,
     pub error_rate: f64,
 }
-
-#[derive(OpenApi)]
-#[openapi(paths(get_system_metrics), components(schemas(MetricsView)))]
-pub struct MetricsOpenApi;
 
 /// GET /api/admin/metrics — System metrics for admin monitoring.
 ///

@@ -6,6 +6,8 @@ use tower_http::{
     timeout::TimeoutLayer,
     trace::TraceLayer,
 };
+use utoipa::OpenApi;
+use utoipa_scalar::{Scalar, Servable};
 
 pub mod config;
 pub mod error;
@@ -15,6 +17,26 @@ pub mod routes;
 pub mod state;
 
 use crate::state::AdminBffState;
+
+/// Unified OpenAPI documentation for admin-bff.
+#[derive(OpenApi)]
+#[openapi(
+    paths(
+        routes::admin::get_dashboard_stats,
+        routes::tenant::list_tenants,
+        routes::metrics::get_system_metrics,
+        routes::health::healthz,
+    ),
+    components(
+        schemas(
+            routes::admin::DashboardView,
+            routes::tenant::TenantListView,
+            routes::tenant::TenantItemView,
+            routes::metrics::MetricsView,
+        )
+    )
+)]
+pub struct ApiDoc;
 
 /// Generate UUID v7 request IDs
 #[derive(Clone)]
@@ -43,9 +65,18 @@ pub fn create_router(state: AdminBffState) -> Router {
             middleware::tenant::admin_tenant_middleware,
         ));
 
+    let scalar_html: String = Scalar::new(ApiDoc::openapi()).to_html();
+
     Router::new()
         .merge(public_routes)
         .merge(admin_api_routes)
+        .route(
+            "/scalar",
+            axum::routing::get(move || {
+                let html = scalar_html.clone();
+                async move { axum::response::Html(html) }
+            }),
+        )
         .layer(cors)
         .layer(TraceLayer::new_for_http())
         .layer(SetRequestIdLayer::new(

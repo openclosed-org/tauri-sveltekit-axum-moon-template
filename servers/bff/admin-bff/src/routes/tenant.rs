@@ -4,7 +4,6 @@ use axum::{extract::State, routing::get, Json, Router};
 use serde::Serialize;
 use tenant_service::infrastructure::libsql_adapter::LibSqlTenantRepository;
 use tenant_service::ports::TenantRepository;
-use utoipa::OpenApi;
 
 use crate::error::AdminBffResult;
 use crate::state::AdminBffState;
@@ -22,13 +21,6 @@ pub struct TenantItemView {
     pub created_at: String,
     pub member_count: usize,
 }
-
-#[derive(OpenApi)]
-#[openapi(
-    paths(list_tenants),
-    components(schemas(TenantListView, TenantItemView))
-)]
-pub struct TenantOpenApi;
 
 /// GET /api/admin/tenants — List all tenants for admin review
 #[utoipa::path(

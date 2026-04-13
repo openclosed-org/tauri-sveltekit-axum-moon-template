@@ -1,12 +1,9 @@
 use crate::error::AdminBffResult;
-use crate::handlers::dashboard::{fetch_dashboard, DashboardView};
+use crate::handlers::dashboard::fetch_dashboard;
 use crate::state::AdminBffState;
 use axum::{extract::State, routing::get, Json, Router};
-use utoipa::OpenApi;
 
-#[derive(OpenApi)]
-#[openapi(paths(get_dashboard_stats), components(schemas(DashboardView)))]
-pub struct AdminOpenApi;
+pub use crate::handlers::dashboard::DashboardView;
 
 /// GET /api/admin/dashboard — Aggregated admin dashboard view
 #[utoipa::path(
