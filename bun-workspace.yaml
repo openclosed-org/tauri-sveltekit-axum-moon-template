@@ -1,4 +1,6 @@
 packages:
   - "apps/web"
+  - "apps/desktop"
+  - "apps/desktop/tests/e2e"
   - "apps/browser-extension"
   - "packages/ui"

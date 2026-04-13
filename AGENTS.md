@@ -29,6 +29,35 @@
 
 ---
 
+## 1.1 真相源优先级（防止读取过时文档）
+
+**Agent 必须按以下优先级读取文档，不得跳过**：
+
+| 优先级 | 文档 | 用途 |
+|-------|------|------|
+| **P0** | `docs/CURRENT-STATE.md` | 当前仓库实际状态的单一真相源。Agent 开发前**必须**先读此文件。 |
+| **P1** | `docs/architecture-gap-priority-plan.md` | 当前状态与目标架构的差距分析 |
+| **P2** | `docs/ARCHITECTURE.md` | 目标最终态架构（不等于当前现状） |
+| **P3** | `docs/architecture/repo-layout.md` | 目录布局设计说明 |
+| **P4** | 各目录 `README.md` | 局部说明，可能与实际代码不符，需交叉验证 |
+
+**硬性规则**：
+- 读取任何 README 中的状态标记（✅⚠️❌）后，必须用 `list_directory` 或 `read_file` 验证实际代码
+- 不得仅凭 `.refactoring-state.yaml` 的进度百分比推断完成情况
+- 不得仅凭 `ARCHITECTURE.md` 的目录树推断"文件应该存在"
+- 遇到文档与代码冲突，**以代码为准**，并在 commit 中注明
+
+---
+
+## 1.2 索引与缓存规则
+
+- **禁止依赖 CCC 索引**（`.cocoindex_code/`）作为文件存在性判断依据。该索引已被删除且不再使用。
+- **Agent 必须使用 `list_directory`、`glob`、`read_file` 直接读取文件系统**。
+- 如果需要搜索代码内容，使用 `grep_search`（ripgrep）直接搜索文件内容，而非依赖索引。
+- 本项目架构结构已稳定，**固定的项目结构本身即为 Agent 的最佳索引标准**。
+
+---
+
 ## 2. 工程偏置
 
 ### 2.1 技术决策优先级

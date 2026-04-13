@@ -6,13 +6,15 @@
 
 ```
 services/
-├── counter-service/   ✅ 黄金示例（完整实现）
-├── user-service/      ✅ 用户域（用户实体、OAuth、租户绑定）
-├── tenant-service/    ⚠️ 租户域（待从 usecases 迁移）
-├── agent-service/     ⚠️ Agent 域（待从 usecases 迁移）
-├── chat-service/      ❌ 聊天域（待实现）
+├── counter-service/   ✅ 黄金示例（完整实现：domain/application/contracts/ports/infrastructure）
+├── user-service/      ✅ 用户域（完整实现 + events + tests）
+├── tenant-service/    ✅ 租户域（已迁移完成，含 events/ports/infrastructure/tests）
+├── agent-service/     ✅ Agent 域（已迁移完成，含 interfaces/ports/infrastructure/tests）
+├── chat-service/      ✅ 聊天域（已实现 domain/application/contracts/events/ports/infrastructure）
 ├── event-bus/         ✅ 事件总线（内存实现 + Outbox）
-└── admin-service/     ❌ 管理域（待从 usecases 迁移，目录待创建）
+├── admin-service/     ✅ 管理域（已实现 domain/application/ports/infrastructure）
+├── auth-service/      ✅ 认证域（已实现 domain/application/contracts/ports/infrastructure/tests）
+└── settings-service/  ✅ 设置域（已实现 domain/application/contracts/ports/infrastructure/sync/tests）
 ```
 
 ## 标准工作流：新增业务模块
@@ -53,6 +55,8 @@ apps/                ←  纯展示层，通过 HTTP API 或 SDK 消费
 - ❌ service 之间不得直接依赖（必须通过 contracts/events 通信）
 - ❌ servers/ 不得包含业务逻辑
 - ❌ 不得在 `packages/core/usecases/` 中新增业务逻辑（历史遗留，待清空）
+- ⚠️ counter-service 缺少 `policies/` 和 `events/` 目录，待补齐
+- ⚠️ tenant-service 有 `surrealdb_adapter.rs` 冗余实现，需确认是否保留
 
 ## 验证
 

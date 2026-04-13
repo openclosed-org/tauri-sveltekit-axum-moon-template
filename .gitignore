@@ -57,5 +57,3 @@ apps/client/native/src-tauri/gen/
 
 # ts-rs intermediate output
 packages/contracts/*/bindings/
-# CocoIndex Code (ccc)
-/.cocoindex_code/

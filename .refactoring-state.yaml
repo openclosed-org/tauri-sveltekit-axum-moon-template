@@ -85,11 +85,17 @@ last_verified:
   manual_review_needed: []
 
 quick_state:
-  overall_progress: "100% complete — All 6 phases done"
-  critical_path: "Phase 1 → Phase 2 → Phase 3 → Phase 4 → Phase 5 → Phase 6 ✅ COMPLETE"
+  overall_progress: "~70% — 6 个规划阶段已完成，但实际收敛仍在进行中"
+  critical_path: "Phase 1-6 规划执行完毕，架构骨架已建立，但以下关键项仍需收敛"
   parallel_tracks:
-    - "Track A (Structure): Phase 2 COMPLETE"
-    - "Track B (Implementation): Phase 5 COMPLETE"
-    - "Track C (Docs): Phase 6 COMPLETE"
-  estimated_completion: "6 phases total — ALL COMPLETE"
-  next_action: "Refactoring complete. Repository aligned with ARCHITECTURE.md. Ready for feature development."
+    - "Track A (Structure): 包分层已调整，但 core/features/shared 过渡层待清理"
+    - "Track B (Implementation): services 核心模块已建立，但 tenant/agent/README 状态失真"
+    - "Track C (Docs): ADR/架构图已完整，但根 README 曾被误删、CURRENT-STATE.md 需建立"
+  known_gaps:
+    - "packages/sdk/ 仍为空占位符，前端未以其为消费入口"
+    - "servers/indexer 与 workers/indexer 职责冲突"
+    - "bun-workspace.yaml 与实际工作区不一致"
+    - "services/README.md 状态标记 (✅⚠️❌) 与实际代码不符"
+    - "根 README.md 在 cee4ee5 中被误删，需重建"
+  estimated_completion: "需额外 1-2 轮收敛才能让文档与代码完全对齐"
+  next_action: "重建根 README、修正失真文档、清理 CCC 索引、建立 CURRENT-STATE.md 为单一真相源"
