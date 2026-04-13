@@ -19,7 +19,7 @@
 //! Services define their own internal error enums (via `thiserror`) and
 //! convert to [`ApiError`] at the boundary (Axum handler / Tauri command).
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, ser::SerializeStruct};
 use ts_rs::TS;
 use utoipa::ToSchema;
 
@@ -30,7 +30,7 @@ use utoipa::ToSchema;
 /// Every error returned by the API conforms to this shape.
 /// Frontend code depends on this type (generated via `ts-rs`),
 /// not on individual service error enums.
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, TS)]
+#[derive(Debug, Clone, Deserialize, ToSchema, TS)]
 #[ts(export, export_to = "errors/")]
 pub struct ErrorResponse {
     /// Machine-readable error code (e.g., `validation_error`, `not_found`).
@@ -39,8 +39,27 @@ pub struct ErrorResponse {
     pub message: String,
     /// Optional additional details for debugging.
     /// Never sent in production responses.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub details: Option<serde_json::Value>,
+}
+
+impl Serialize for ErrorResponse {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut field_count = 2;
+        if self.details.is_some() {
+            field_count += 1;
+        }
+
+        let mut state = serializer.serialize_struct("ErrorResponse", field_count)?;
+        state.serialize_field("code", &self.code)?;
+        state.serialize_field("message", &self.message)?;
+        if let Some(details) = &self.details {
+            state.serialize_field("details", details)?;
+        }
+        state.end()
+    }
 }
 
 impl ErrorResponse {

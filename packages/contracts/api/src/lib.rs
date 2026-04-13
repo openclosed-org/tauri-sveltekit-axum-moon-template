@@ -1,7 +1,7 @@
 //! contracts/api — Route-level shared DTOs.
 //! All types derive TS for automatic TypeScript generation.
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, ser::SerializeStruct};
 use std::fmt;
 use ts_rs::TS;
 use utoipa::ToSchema;
@@ -64,14 +64,26 @@ pub struct ToolCall {
 }
 
 /// Agent configuration (user-provided API key + endpoint).
-#[derive(Clone, Serialize, Deserialize, ToSchema, TS)]
+#[derive(Clone, Deserialize, ToSchema, TS)]
 #[ts(export, export_to = "api/")]
 pub struct AgentConfig {
-    /// API key — skipped during serialization to prevent accidental exposure.
-    #[serde(skip_serializing)]
+    /// API key — omitted from serialized payloads to prevent accidental exposure.
+    #[ts(skip)]
     pub api_key: String,
     pub base_url: String,
     pub model: String,
+}
+
+impl Serialize for AgentConfig {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut state = serializer.serialize_struct("AgentConfig", 2)?;
+        state.serialize_field("base_url", &self.base_url)?;
+        state.serialize_field("model", &self.model)?;
+        state.end()
+    }
 }
 
 impl fmt::Debug for AgentConfig {
