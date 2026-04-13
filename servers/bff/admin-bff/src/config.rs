@@ -1,4 +1,4 @@
-use figment::{Figment, providers::Env};
+use figment::{providers::Env, Figment};
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize, Clone)]
