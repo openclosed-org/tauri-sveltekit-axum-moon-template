@@ -211,19 +211,20 @@ fn generate_topology_doc(platform_dir: &Path, output_dir: &Path) -> Result<()> {
         let topo_file = topologies_dir.join(format!("{}.yaml", topology.name));
         if let Ok(content) = fs::read_to_string(&topo_file)
             && let Ok(yaml) = serde_yaml::from_str::<serde_json::Value>(&content)
-                && let Some(deployables) = yaml.get("deployables").and_then(|v| v.as_array()) {
-                    doc.push_str("\n### Deployables\n\n");
-                    for dep in deployables {
-                        let name = dep
-                            .get("name")
-                            .and_then(|v| v.as_str())
-                            .unwrap_or("unknown");
-                        let replicas = dep.get("replicas").and_then(|v| v.as_u64()).unwrap_or(1);
-                        let enabled = dep.get("enabled").and_then(|v| v.as_bool()).unwrap_or(true);
-                        let status = if enabled { "✅" } else { "⏸️" };
-                        doc.push_str(&format!("- {} {} (×{})\n", status, name, replicas));
-                    }
-                }
+            && let Some(deployables) = yaml.get("deployables").and_then(|v| v.as_array())
+        {
+            doc.push_str("\n### Deployables\n\n");
+            for dep in deployables {
+                let name = dep
+                    .get("name")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("unknown");
+                let replicas = dep.get("replicas").and_then(|v| v.as_u64()).unwrap_or(1);
+                let enabled = dep.get("enabled").and_then(|v| v.as_bool()).unwrap_or(true);
+                let status = if enabled { "✅" } else { "⏸️" };
+                doc.push_str(&format!("- {} {} (×{})\n", status, name, replicas));
+            }
+        }
 
         doc.push_str("\n---\n\n");
     }
@@ -269,36 +270,37 @@ fn generate_architecture_doc(platform_dir: &Path, output_dir: &Path) -> Result<(
         for entry in entries.flatten() {
             if entry.path().extension().and_then(|e| e.to_str()) == Some("yaml")
                 && let Ok(content) = fs::read_to_string(entry.path())
-                    && let Ok(yaml) = serde_yaml::from_str::<serde_json::Value>(&content) {
-                        let name = yaml
-                            .get("name")
-                            .and_then(|v| v.as_str())
-                            .unwrap_or("unknown");
-                        let domain = yaml
-                            .get("domain")
-                            .and_then(|v| v.as_str())
-                            .unwrap_or("unknown");
-                        let version = yaml
-                            .get("version")
-                            .and_then(|v| v.as_str())
-                            .unwrap_or("0.0.0");
-                        let status = yaml
-                            .get("status")
-                            .and_then(|v| v.as_str())
-                            .unwrap_or("unknown");
+                && let Ok(yaml) = serde_yaml::from_str::<serde_json::Value>(&content)
+            {
+                let name = yaml
+                    .get("name")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("unknown");
+                let domain = yaml
+                    .get("domain")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("unknown");
+                let version = yaml
+                    .get("version")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("0.0.0");
+                let status = yaml
+                    .get("status")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("unknown");
 
-                        let status_icon = match status {
-                            "active" => "✅",
-                            "stub" => "⚠️",
-                            "pending" => "❌",
-                            _ => "❓",
-                        };
+                let status_icon = match status {
+                    "active" => "✅",
+                    "stub" => "⚠️",
+                    "pending" => "❌",
+                    _ => "❓",
+                };
 
-                        doc.push_str(&format!(
-                            "- {} **{}** ({}/{})\n",
-                            status_icon, name, domain, version
-                        ));
-                    }
+                doc.push_str(&format!(
+                    "- {} **{}** ({}/{})\n",
+                    status_icon, name, domain, version
+                ));
+            }
         }
     }
 

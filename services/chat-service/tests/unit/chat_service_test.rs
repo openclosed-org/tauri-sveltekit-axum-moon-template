@@ -13,12 +13,10 @@ use chat_service::ports::{
 
 // ── Mock Repositories ─────────────────────────────────────────
 
-#[derive(Clone)]
-#[derive(Default)]
+#[derive(Clone, Default)]
 struct MockConversationRepository {
     conversations: Arc<Mutex<Vec<Conversation>>>,
 }
-
 
 #[async_trait]
 impl ConversationRepository for MockConversationRepository {

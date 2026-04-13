@@ -39,6 +39,7 @@ ignore = [
     # Fix: no safe upgrade available yet; workaround is to avoid RSA in 
     #       network-observable settings (our usage is JWT signing, lower risk)
     "RUSTSEC-2023-0071",
+
 ]
 
 # ══════════════════════════════════════════════════════════════

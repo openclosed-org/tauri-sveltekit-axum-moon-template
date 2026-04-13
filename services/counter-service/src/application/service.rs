@@ -40,11 +40,7 @@ impl<R: CounterRepository> RepositoryBackedCounterService<R> {
 impl<R: CounterRepository> CounterService for RepositoryBackedCounterService<R> {
     async fn get_value(&self) -> Result<i64, CounterError> {
         let id = CounterId::new("default");
-        let counter = self
-            .repo
-            .load(&id)
-            .await
-            .map_err(CounterError::Database)?;
+        let counter = self.repo.load(&id).await.map_err(CounterError::Database)?;
 
         let value = counter.map(|c| c.value).unwrap_or(0);
         debug!(counter_id = %id, value, "counter.get_value");
@@ -106,11 +102,7 @@ impl<R: CounterRepository> TenantScopedCounterService<R> {
     /// Get counter value for a specific tenant.
     pub async fn get_value(&self, tenant_id: &kernel::TenantId) -> Result<i64, CounterError> {
         let id = CounterId::new(tenant_id.as_str());
-        let counter = self
-            .repo
-            .load(&id)
-            .await
-            .map_err(CounterError::Database)?;
+        let counter = self.repo.load(&id).await.map_err(CounterError::Database)?;
 
         let value = counter.map(|c| c.value).unwrap_or(0);
         debug!(tenant_id = %tenant_id, value, "counter.get_value_for_tenant");

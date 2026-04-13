@@ -236,6 +236,8 @@ panic = "abort"
 panic = "unwind"
 incremental = true
 codegen-units = 256
+debug = 1                  # line tables only — reduces .o size significantly
+strip = "debuginfo"        # strip debug info from rlibs/binaries in deps
 
 # ── Coverage Profile ─────────────────────────────────────────
 # Third-party dependencies don't need full debug info for coverage

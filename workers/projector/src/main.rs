@@ -103,12 +103,13 @@ impl Projector {
 
         for consumer in &self.consumers {
             if consumer.is_interested(&envelope.event)
-                && let Some(update) = consumer.consume(envelope).await? {
-                    for model in &self.read_models {
-                        model.apply_update(&update).await?;
-                        projected += 1;
-                    }
+                && let Some(update) = consumer.consume(envelope).await?
+            {
+                for model in &self.read_models {
+                    model.apply_update(&update).await?;
+                    projected += 1;
                 }
+            }
         }
 
         Ok(projected)

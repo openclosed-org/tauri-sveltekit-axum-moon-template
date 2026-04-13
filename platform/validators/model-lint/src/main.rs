@@ -196,10 +196,11 @@ fn check_service_deployable_refs(
         for entry in entries.flatten() {
             if entry.path().extension().and_then(|e| e.to_str()) == Some("yaml")
                 && let Ok(content) = fs::read_to_string(entry.path())
-                    && let Ok(yaml) = serde_yaml::from_str::<serde_json::Value>(&content)
-                        && let Some(name) = yaml.get("name").and_then(|v| v.as_str()) {
-                            deployable_names.push(name.to_string());
-                        }
+                && let Ok(yaml) = serde_yaml::from_str::<serde_json::Value>(&content)
+                && let Some(name) = yaml.get("name").and_then(|v| v.as_str())
+            {
+                deployable_names.push(name.to_string());
+            }
         }
     }
 
@@ -208,16 +209,17 @@ fn check_service_deployable_refs(
         for entry in entries.flatten() {
             if entry.path().extension().and_then(|e| e.to_str()) == Some("yaml")
                 && let Ok(content) = fs::read_to_string(entry.path())
-                    && let Ok(yaml) = serde_yaml::from_str::<serde_json::Value>(&content)
-                        && let Some(deployable) = yaml.get("deployable").and_then(|v| v.as_str())
-                            && !deployable_names.contains(&deployable.to_string()) {
-                                warnings += 1;
-                                warn!(
-                                    "Service {} references non-existent deployable: {}",
-                                    entry.path().display(),
-                                    deployable
-                                );
-                            }
+                && let Ok(yaml) = serde_yaml::from_str::<serde_json::Value>(&content)
+                && let Some(deployable) = yaml.get("deployable").and_then(|v| v.as_str())
+                && !deployable_names.contains(&deployable.to_string())
+            {
+                warnings += 1;
+                warn!(
+                    "Service {} references non-existent deployable: {}",
+                    entry.path().display(),
+                    deployable
+                );
+            }
         }
     }
 
@@ -238,10 +240,11 @@ fn check_resource_refs(platform_dir: &Path, results: &mut Vec<ValidationResult>)
         for entry in entries.flatten() {
             if entry.path().extension().and_then(|e| e.to_str()) == Some("yaml")
                 && let Ok(content) = fs::read_to_string(entry.path())
-                    && let Ok(yaml) = serde_yaml::from_str::<serde_json::Value>(&content)
-                        && let Some(name) = yaml.get("name").and_then(|v| v.as_str()) {
-                            resource_names.push(name.to_string());
-                        }
+                && let Ok(yaml) = serde_yaml::from_str::<serde_json::Value>(&content)
+                && let Some(name) = yaml.get("name").and_then(|v| v.as_str())
+            {
+                resource_names.push(name.to_string());
+            }
         }
     }
 
@@ -255,20 +258,22 @@ fn check_resource_refs(platform_dir: &Path, results: &mut Vec<ValidationResult>)
         for entry in entries.flatten() {
             if entry.path().extension().and_then(|e| e.to_str()) == Some("yaml")
                 && let Ok(content) = fs::read_to_string(entry.path())
-                    && let Ok(yaml) = serde_yaml::from_str::<serde_json::Value>(&content)
-                        && let Some(resources) = yaml.get("resources").and_then(|v| v.as_array()) {
-                            for resource in resources {
-                                if let Some(res_name) = resource.as_str()
-                                    && !resource_names.contains(&res_name.to_string()) {
-                                        warnings += 1;
-                                        warn!(
-                                            "Deployable {} references non-existent resource: {}",
-                                            entry.path().display(),
-                                            res_name
-                                        );
-                                    }
-                            }
-                        }
+                && let Ok(yaml) = serde_yaml::from_str::<serde_json::Value>(&content)
+                && let Some(resources) = yaml.get("resources").and_then(|v| v.as_array())
+            {
+                for resource in resources {
+                    if let Some(res_name) = resource.as_str()
+                        && !resource_names.contains(&res_name.to_string())
+                    {
+                        warnings += 1;
+                        warn!(
+                            "Deployable {} references non-existent resource: {}",
+                            entry.path().display(),
+                            res_name
+                        );
+                    }
+                }
+            }
         }
     }
 

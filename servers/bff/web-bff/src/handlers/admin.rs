@@ -42,9 +42,8 @@ impl admin_service::ports::TenantRepository for TenantServiceAdapter {
         let tenants = TenantServiceTrait::list_tenants(&self.tenant_svc)
             .await
             .map_err(|e| {
-                Box::new(std::io::Error::other(
-                    e.to_string(),
-                )) as Box<dyn std::error::Error + Send + Sync>
+                Box::new(std::io::Error::other(e.to_string()))
+                    as Box<dyn std::error::Error + Send + Sync>
             })?;
         Ok(tenants
             .into_iter()
@@ -83,9 +82,8 @@ impl admin_service::ports::CounterRepository for CounterServiceAdapter {
         CounterService::get_value(&self.counter_svc)
             .await
             .map_err(|e| {
-                Box::new(std::io::Error::other(
-                    e.to_string(),
-                )) as Box<dyn std::error::Error + Send + Sync>
+                Box::new(std::io::Error::other(e.to_string()))
+                    as Box<dyn std::error::Error + Send + Sync>
             })
     }
 
@@ -93,9 +91,8 @@ impl admin_service::ports::CounterRepository for CounterServiceAdapter {
         CounterService::get_value(&self.counter_svc)
             .await
             .map_err(|e| {
-                Box::new(std::io::Error::other(
-                    e.to_string(),
-                )) as Box<dyn std::error::Error + Send + Sync>
+                Box::new(std::io::Error::other(e.to_string()))
+                    as Box<dyn std::error::Error + Send + Sync>
             })
     }
 }

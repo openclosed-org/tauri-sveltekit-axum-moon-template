@@ -73,9 +73,10 @@ impl SecretEntry {
     /// Check if the secret has expired.
     pub fn is_expired(&self) -> bool {
         if let Some(expires_at) = &self.expires_at
-            && let Ok(expiry) = chrono::DateTime::parse_from_rfc3339(expires_at) {
-                return chrono::Utc::now() > expiry;
-            }
+            && let Ok(expiry) = chrono::DateTime::parse_from_rfc3339(expires_at)
+        {
+            return chrono::Utc::now() > expiry;
+        }
         false
     }
 }

@@ -3,10 +3,78 @@ name: Coverage
 on:
   push:
     branches: [main]
+    paths:
+      - '.github/workflows/ci.yml'
+      - '.github/workflows/quality-gate.yml'
+      - '.github/workflows/coverage.yml'
+      - '.cargo/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'rust-toolchain.toml'
+      - 'deny.toml'
+      - 'servers/**'
+      - 'services/**'
+      - 'workers/**'
+      - 'platform/**'
+      - 'packages/core/**'
+      - 'packages/kernel/**'
+      - 'packages/platform/**'
+      - 'packages/runtime/**'
+      - 'packages/contracts/**'
+      - 'packages/shared/**'
+      - 'packages/features/**'
+      - 'packages/adapters/storage/**'
+      - 'packages/adapters/telemetry/**'
+      - 'packages/adapters/auth/google-backend/**'
   workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
+  BACKEND_PACKAGES: >-
+    -p domain
+    -p kernel
+    -p platform
+    -p runtime
+    -p contracts_api
+    -p contracts_auth
+    -p contracts_events
+    -p contracts_errors
+    -p shared-utils
+    -p adapter-telemetry-otel
+    -p adapter-telemetry-tracing
+    -p storage_surrealdb
+    -p storage_turso
+    -p adapter-google-backend
+    -p feature-auth
+    -p feature-counter
+    -p feature-admin
+    -p feature-agent
+    -p feature-chat
+    -p feature-settings
+    -p user-service
+    -p tenant-service
+    -p auth-service
+    -p counter-service
+    -p chat-service
+    -p agent-service
+    -p event-bus
+    -p admin-service
+    -p settings-service
+    -p pingora-gateway
+    -p web-bff
+    -p admin-bff
+    -p outbox-relay-worker
+    -p indexer-worker
+    -p projector-worker
+    -p scheduler-worker
+    -p sync-reconciler-worker
+    -p platform-validator
+    -p dependency-validator
+    -p contract-drift-detector
+    -p topology-validator
+    -p security-validator
+    -p observability-validator
+    -p platform-generator
 
 permissions:
   contents: read
@@ -35,10 +103,7 @@ jobs:
 
       - name: Generate coverage (backend only)
         run: >
-          cargo llvm-cov --workspace
-          --exclude native-tauri
-          --exclude runtime_tauri
-          --exclude adapter-google
+          cargo llvm-cov ${BACKEND_PACKAGES}
           --lcov --output-path lcov.info
 
       - name: Upload coverage to Codecov

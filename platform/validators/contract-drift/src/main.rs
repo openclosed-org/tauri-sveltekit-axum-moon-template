@@ -119,12 +119,13 @@ fn check_event_drift(platform_dir: &Path, root_dir: &Path) -> Result<Vec<String>
         for line in content.lines() {
             let line = line.trim();
             if (line.ends_with("Payload),") || line.ends_with("Payload),"))
-                && let Some(name) = line.split('(').next() {
-                    let name = name.trim();
-                    if !name.is_empty() && !name.starts_with("//") {
-                        contract_event_names.insert(name.to_string());
-                    }
+                && let Some(name) = line.split('(').next()
+            {
+                let name = name.trim();
+                if !name.is_empty() && !name.starts_with("//") {
+                    contract_event_names.insert(name.to_string());
                 }
+            }
         }
     }
 
@@ -201,12 +202,13 @@ fn check_port_contract_drift(platform_dir: &Path, root_dir: &Path) -> Result<Vec
                     contract_type_names.insert(name.to_string());
                 }
             } else if line.starts_with("pub use ")
-                && let Some(name) = line.split("::").last() {
-                    let name = name.trim_end_matches(';').trim();
-                    if !name.is_empty() {
-                        contract_type_names.insert(name.to_string());
-                    }
+                && let Some(name) = line.split("::").last()
+            {
+                let name = name.trim_end_matches(';').trim();
+                if !name.is_empty() {
+                    contract_type_names.insert(name.to_string());
                 }
+            }
         }
     }
 
@@ -299,11 +301,12 @@ fn check_service_crate_drift(platform_dir: &Path, root_dir: &Path) -> Result<Vec
 
             // Check if it has a Cargo.toml (is a Rust crate)
             if path.join("Cargo.toml").exists()
-                && let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                    // Strip -service suffix for comparison
-                    let clean_name = name.strip_suffix("-service").unwrap_or(name);
-                    crate_service_names.insert(clean_name.to_string());
-                }
+                && let Some(name) = path.file_name().and_then(|n| n.to_str())
+            {
+                // Strip -service suffix for comparison
+                let clean_name = name.strip_suffix("-service").unwrap_or(name);
+                crate_service_names.insert(clean_name.to_string());
+            }
         }
     }
 
