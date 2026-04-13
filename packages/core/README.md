@@ -1,15 +1,14 @@
 # Core
 
-Pure Rust business logic — domain ports and usecase implementations.
+Pure Rust business logic — domain ports and supporting infrastructure.
 
 ## Structure
 
 ```
 core/
-├── domain/         # Port trait definitions (StoragePort, LibSQLPort, etc.)
-├── usecases/       # Business logic implementations (CounterService, AgentService, etc.)
+├── domain/         # Port trait definitions (LibSQLPort, SurrealDBPort, etc.)
 ├── workspace-hack/ # cargo-hakari unified dependency crate (build time optimization)
-└── state/          # ⚠️ Shared state machine / cache strategy (stub)
+└── state/          # ⚠️ 占位：Shared state machine / cache strategy（待实现）
 ```
 
 ## Design
@@ -25,23 +24,11 @@ pub trait LibSqlPort: Send + Sync {
 }
 ```
 
-### Usecases Layer
-
-Implements **how** by composing domain ports:
-
-```rust
-pub struct LibSqlCounterService<P: LibSqlPort> {
-    port: P,
-}
-
-impl<P: LibSqlPort> CounterService for LibSqlCounterService<P> {
-    async fn increment(&self) -> Result<i64, CounterError> { ... }
-}
-```
-
 ### Key Rule
 
-**Usecases depend on traits, not concrete implementations.** This means:
+**Ports depend on traits, not concrete implementations.** This means:
 - Swap Turso → SurrealDB → Postgres by changing the adapter
-- UseCase code is unchanged
+- Service code is unchanged
 - Full unit test coverage without a real database
+
+> ⚠️ `core/usecases/` 已删除。业务逻辑应实现在 `services/*/application/` 中。

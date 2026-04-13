@@ -10,19 +10,20 @@
 
 **当前阶段**：平台模型骨架已完成，业务层迁移接近尾声，但文档与代码仍有不一致。
 
-**完成度估算**：~70%
+**完成度估算**：~85%（从 ~70% 提升）
 
 | 层级 | 完成度 | 一句话说明 |
 |-----|-------|-----------|
 | `platform/` | ✅ ~95% | schema/model/generators/validators/catalog 已完整落地 |
 | `workers/` | ✅ ~90% | 5 个 worker 已建立并集成 runtime ports |
-| `services/` | ⚠️ ~80% | 9 个 service 代码已就位，但部分 README 状态失真、结构未完全统一 |
-| `servers/` | ⚠️ ~70% | api + web-bff + admin-bff 有真实实现；gateway/realtime/mobile-bff 仍占位；indexer 职责冲突 |
-| `packages/` | ⚠️ ~65% | kernel/platform/runtime/contracts 已就位；core/features/shared 为过渡层；sdk/ 为空 |
-| `apps/` | ⚠️ ~60% | web/desktop/extension 骨架已建；前端消费 app-local generated client 而非 packages/sdk |
+| `services/` | ✅ ~90% | 9 个 service 代码已就位，counter 补齐 policies/events，README 已更新 |
+| `servers/` | ✅ ~85% | servers/indexer 已清理（与 workers 冲突消除），api + bff 完整 |
+| `packages/` | ⚠️ ~75% | 分层文档已建立，sdk 策略已明确，过渡层待逐步收敛 |
+| `apps/` | ⚠️ ~60% | web/desktop/extension 骨架已建；前端消费 app-local generated client |
 | `infra/` | ⚠️ ~60% | docker compose/k3s base/gitops/sops 已建立；rendered 产物待生成 |
-| `verification/` | ⚠️ ~50% | contract/resilience/golden 有基础；e2e/performance/topology 覆盖不足 |
-| `docs/` | ✅ ~85% | 8 ADR + C4 架构图 + 运维文档已完整；但部分 README 未及时更新 |
+| `verification/` | ⚠️ ~55% | README 说明完善，e2e/performance 待实现具体测试代码 |
+| `docs/` | ✅ ~90% | 8 ADR + C4 架构图 + 运维文档 + 当前状态文档已完整 |
+| `fixtures/` | ⚠️ ~40% | 各域 README 已补齐，实际种子数据待填充 |
 
 ---
 
@@ -30,14 +31,21 @@
 
 以下文档/文件的内容与实际代码不符，Agent 不得以其为依据推断现状：
 
-| 文件 | 问题 | 实际状态 |
+| 文件 | 问题 | 当前状态 |
 |-----|------|---------|
-| `.refactoring-state.yaml` | 声称 "100% complete" | 实际 ~70%，多项已知 gap 未收敛 |
-| `services/README.md` | tenant/agent 标记为 ⚠️ 待迁移；chat/admin 标记为 ❌ 待实现 | 均已实现并有测试 |
-| `servers/README.md` | gateway 描述为 stub，未提及 bff/* | 已重写（见本 commit） |
-| `packages/README.md` | 描述旧结构 (core/features/shared/adapters) | 仍部分有效，但需明确过渡层 |
-| `bun-workspace.yaml` | 仅列 3 个包 | 已修复为 5 个包 |
-| `README.md`（根） | 在 cee4ee5 中被删除 | 已重建为当前状态总览 |
+| `services/README.md` | tenant/agent 标记为 ⚠️ 待迁移；chat/admin 标记为 ❌ 待实现 | ✅ 已修正为实际完成状态 |
+| `servers/README.md` | gateway 描述为 stub，未提及 bff/* | ✅ 已重写 |
+| `packages/core/README.md` | 引用已删除的 usecases/ | ✅ 已更新 |
+| `packages/core/state/README.md` | 引用已删除的 usecases/ | ✅ 已更新 |
+| `services/tenant-service/README.md` | 引用不存在的 usecases/tenant_service.rs | ✅ 已更新 |
+| `services/agent-service/README.md` | 引用不存在的 usecases/agent_service.rs | ✅ 已更新 |
+
+**已完全修复的失真项**：
+- ~~`.refactoring-state.yaml` "100% complete"~~ → 已修正为 ~85%
+- ~~`bun-workspace.yaml` 仅 3 个包~~ → 已修正为 5 个
+- ~~`README.md` 被删除~~ → 已重建
+- ~~`servers/indexer` 与 `workers/indexer` 冲突~~ → servers/indexer 已删除
+- ~~`packages/core/usecases/` 文档引用~~ → 所有引用已清理
 
 ---
 
@@ -71,7 +79,7 @@ workers/
 
 ```
 services/
-├── counter-service/   ✅ domain/application/contracts/ports/infrastructure/interfaces/sync + tests + migrations
+├── counter-service/   ✅ domain/application/contracts/ports/infrastructure/interfaces/sync/policies/events + tests + migrations
 ├── user-service/      ✅ domain/application/ports/infrastructure + events + tests
 ├── tenant-service/    ✅ domain/application/contracts/ports/infrastructure/events/sync/tests/migrations（已迁移完成）
 ├── agent-service/     ✅ domain/application/contracts/ports/infrastructure/interfaces/sync/tests/migrations（已迁移完成）
@@ -82,10 +90,8 @@ services/
 └── settings-service/  ✅ domain/application/contracts/ports/infrastructure/interfaces/sync/tests/migrations（已实现）
 ```
 
-**已知问题**：
-- counter-service 缺少 `policies/` 和 `events/`
-- tenant-service 存在 `surrealdb_adapter.rs` 冗余实现
-- services/README.md 的状态标记已在本 commit 中修正
+**剩余已知问题**：
+- tenant-service 存在 `surrealdb_adapter.rs` 冗余实现（暂保留，待确认是否保留）
 
 ### 3.4 `servers/` — ⚠️ 部分占位，职责冲突
 
@@ -94,16 +100,15 @@ servers/
 ├── api/              ✅ routes(admin/agent/counter/settings/user) + adapters + state + openapi.yaml + tests
 ├── bff/
 │   ├── web-bff/      ✅ handlers(user/agent/admin/settings) + middleware(tenant/auth) + routes
-│   ├── admin-bff/    ✅ handlers(dashboard) + middleware(tenant) + routes(tenant/health/metrics)
-│   └── mobile-bff/   ⚠️ 空目录
-├── gateway/          ⚠️ .gitkeep + Cargo.toml（占位）
-├── indexer/          ⚠️ lib.rs + sources/transformers/sinks（与 workers/indexer 冲突）
-└── realtime/         ⚠️ 空目录（占位）
+│   └── admin-bff/    ✅ handlers(dashboard) + middleware(tenant) + routes(tenant/health/metrics)
+└── gateway/          ⚠️ .gitkeep + Cargo.toml（占位）
 ```
 
-**已知问题**：
-- servers/indexer vs workers/indexer 职责冲突，需清理
-- BFF 缺少独立 openapi.yaml
+**已清理**：
+- ~~servers/indexer~~ → 已删除，职责由 workers/indexer 承担
+- ~~servers/realtime~~ → 已删除（空占位）
+- ~~servers/bff/mobile-bff~~ → 已删除（空占位）
+- BFF OpenAPI 策略已定义在 `servers/bff/OPENAPI-STRATEGY.md`
 
 ### 3.5 `packages/` — ⚠️ 过渡层与最终层并存
 
@@ -122,8 +127,9 @@ packages/
 ```
 
 **关键冲突**：
-- `packages/core/usecases/` 仍被部分 service 的 README 引用为"待迁移源"，实际大部分已迁出
-- `packages/sdk/` 为空，前端实际使用 `apps/web/src/lib/generated/api/*`
+- `packages/core/usecases/` 已删除，文档引用已清理
+- `packages/sdk/` 策略已明确：当前前端使用 app-local generated types，SDK 统一方案保留待迁移条件触发
+- `packages/LAYERING.md` 已建立，明确各目录职责和去向
 
 ### 3.6 `apps/` — ⚠️ 骨架已建，消费路径未统一
 
@@ -196,23 +202,25 @@ docs/
 
 按 `docs/architecture-gap-priority-plan.md` 排序：
 
-### P0（必须优先）
-1. ✅ 修正根 README（本 commit 已完成）
-2. ✅ 修正 bun-workspace.yaml（本 commit 已完成）
-3. 冻结 `packages/core/usecases/*` 新增业务逻辑
-4. 清理 `servers/indexer` 职责冲突
-5. 建立本文档为 Agent 必读真相源
+### P0（已全部完成 ✅）
+1. ✅ 修正根 README
+2. ✅ 修正 bun-workspace.yaml
+3. ✅ 清理 packages/core/usecases 文档引用
+4. ✅ 清理 servers/indexer 职责冲突
+5. ✅ 建立 CURRENT-STATE.md 为 Agent 必读真相源
 
-### P1（下一阶段）
-1. 统一 services/ 目录结构（补齐 policies/events）
-2. 收敛 packages/ 过渡层（core/features/shared）
-3. 决定 packages/sdk 与 app-local generated 的最终方案
-4. 补齐 BFF OpenAPI 策略
+### P1（大部分完成）
+1. ✅ 统一 services/ 目录结构（counter 补齐 policies/events）
+2. ✅ 建立 packages/ 分层文档（LAYERING.md）
+3. ✅ 决定 packages/sdk 与 app-local generated 策略（SDK/README.md）
+4. ✅ BFF OpenAPI 策略（servers/bff/OPENAPI-STRATEGY.md）
+5. ⚠️ packages/ 过渡层（core/domain, features, shared）待逐步收敛（不阻塞开发）
 
-### P2（后续补齐）
-1. fixtures/ 领域覆盖（users/settings/counter/authz-tuples）
-2. verification/ 覆盖（e2e/performance/topology）
-3. infra/ rendered 产物生成
+### P2（已建立骨架）
+1. ✅ fixtures/ 各域 README 已补齐（users/settings/counter/authz-tuples）
+2. ✅ verification/ README 说明完善（e2e/performance/topology）
+3. ⚠️ infra/ rendered 产物待生成（由 platform/generators 执行）
+4. ⚠️ verification e2e 具体测试代码待实现
 
 ---
 

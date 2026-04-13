@@ -5,7 +5,7 @@
 
 ```bash
 cargo build -p tenant-service
+cargo test -p tenant-service
 ```
 
-当前状态：业务实现在 `packages/core/usecases/tenant_service.rs`，待迁移至本目录。
-架构说明见 [services/README.md](../README.md)。
+当前状态：✅ 已迁移完成。业务逻辑完整实现在本目录的 domain/application/infrastructure/ports 中。

@@ -54,7 +54,7 @@ apps/                ←  纯展示层，通过 HTTP API 或 SDK 消费
 **硬规则**：
 - ❌ service 之间不得直接依赖（必须通过 contracts/events 通信）
 - ❌ servers/ 不得包含业务逻辑
-- ❌ 不得在 `packages/core/usecases/` 中新增业务逻辑（历史遗留，待清空）
+- ✅ `packages/core/usecases/` 已清理，业务逻辑统一在 `services/*/application/`
 - ⚠️ counter-service 缺少 `policies/` 和 `events/` 目录，待补齐
 - ⚠️ tenant-service 有 `surrealdb_adapter.rs` 冗余实现，需确认是否保留
 

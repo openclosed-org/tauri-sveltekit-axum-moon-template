@@ -1,26 +1,22 @@
-# Demo Counter E2E Tests
+# E2E: Demo Counter
 
-End-to-end tests for the counter demo flow. These tests verify the full-stack counter functionality including tenant isolation.
+> Playwright E2E 测试：计数器完整链路。
 
-## Test Scenarios
+## 测试场景
 
-1. Counter increment flow (single tenant)
-2. Counter decrement flow
-3. Counter reset flow
-4. Multi-tenant counter isolation
-5. Counter persistence across page reloads
+1. 用户打开 counter 页面
+2. 点击 "Increment" 按钮
+3. 计数值从 0 → 1
+4. 刷新页面后值保持（持久化验证）
+5. 点击 "Reset" 按钮
+6. 计数值回到 0
 
-## Running
+## 实现状态
 
-```bash
-# Via Justfile
-just test-e2e-full
+⚠️ 待实现。当前仅有 README 说明。
 
-# Direct Playwright
-npx playwright test verification/e2e/demo-counter/
-```
+## 技术选型
 
-## Architecture
-
-These tests wrap the existing `apps/web/tests/e2e/counter.test.ts` and add orchestration
-for full-stack validation (HTTP API → BFF → Service → Database).
+- 框架：Playwright (已有 playwright.config.ts)
+- 运行：`just e2e` 或 `npx playwright test`
+- 目标 URL：`http://localhost:5173/app/counter`

@@ -1,16 +1,14 @@
-# Settings E2E Tests
+# E2E: Settings
 
-End-to-end tests for settings functionality (user-scoped settings).
+> Playwright E2E 测试：设置页面。
 
-## Test Scenarios
+## 测试场景
 
-1. Settings CRUD flow (GET default → PUT update → GET updated)
-2. User isolation (User A settings != User B settings)
-3. Settings persistence across sessions
-4. API key display with masking
+1. 用户打开 settings 页面
+2. 修改主题设置（light → dark）
+3. 保存后刷新页面
+4. 验证设置持久化生效
 
-## Running
+## 实现状态
 
-```bash
-npx playwright test verification/e2e/settings/
-```
+⚠️ 待实现。

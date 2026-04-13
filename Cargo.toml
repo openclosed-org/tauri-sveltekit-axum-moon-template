@@ -73,7 +73,6 @@ members = [
     # Servers
     "servers/api",
     "servers/gateway",
-    "servers/indexer",
     "servers/bff/web-bff",
     "servers/bff/admin-bff",
     # Workers

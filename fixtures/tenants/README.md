@@ -1,7 +1,30 @@
-# fixtures/tenants — Multi-tenant test data
+# Demo Tenants
 
-Phase 1: Tenant fixtures for multi-tenant isolation testing.
+> 多租户演示用种子数据。
 
-- Tenant A (admin, 5 members)
-- Tenant B (admin, 2 members)
-- Tenant C (suspended)
+## 需要创建的租户
+
+| 租户 ID | 名称 | 用途 |
+|--------|------|------|
+| `demo-acme` | Acme Corp | 默认演示租户 |
+| `demo-acme` 成员 | admin@acme.demo | 管理员用户 |
+| `demo-acme` 成员 | user@acme.demo | 普通用户 |
+
+## 格式
+
+```yaml
+# tenants/demo-acme.yaml
+tenant_id: demo-acme
+name: Acme Corp
+plan: demo
+features:
+  - counter
+  - agent
+  - settings
+  - chat
+members:
+  - email: admin@acme.demo
+    role: admin
+  - email: user@acme.demo
+    role: member
+```
