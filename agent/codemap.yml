@@ -3,6 +3,11 @@ repo: boilerplate
 purpose: >
   平台模型优先、契约优先、服务是库不是进程、拓扑切换不靠重构的 monorepo 约束图。
 
+notes: >
+  本文档描述的是目标态模块结构。
+  部分模块尚未实现，对应目录以 .gitkeep 占位。
+  新增模块时，必须先更新本文档，再创建目录和代码。
+
 principles:
   - id: platform-model-first
     rule: 所有服务、部署单元、资源、工作流、策略、拓扑、环境变化先修改 platform/model
@@ -118,7 +123,7 @@ layers:
 modules:
   services:
     user:
-      path: services/user
+      path: services/user-service
       kind: domain-service
       owns:
         - 用户身份资料
@@ -139,7 +144,7 @@ modules:
         - packages/**/adapters/**
 
     tenant:
-      path: services/tenant
+      path: services/tenant-service
       kind: domain-service
       owns:
         - 多租户隔离与成员关系
@@ -155,7 +160,7 @@ modules:
         - packages/**/adapters/**
 
     settings:
-      path: services/settings
+      path: services/settings-service
       kind: domain-service
       owns:
         - 用户或租户设置
@@ -170,7 +175,7 @@ modules:
         - packages/**/adapters/**
 
     counter:
-      path: services/counter
+      path: services/counter-service
       kind: demo-service
       owns:
         - 最小完整业务链路示例
@@ -185,7 +190,7 @@ modules:
         - packages/**/adapters/**
 
     admin:
-      path: services/admin
+      path: services/admin-service
       kind: domain-service
       owns:
         - 平台级管理动作
@@ -201,7 +206,7 @@ modules:
         - packages/**/adapters/**
 
     indexing:
-      path: services/indexing
+      path: services/indexing-service
       kind: domain-service
       owns:
         - 索引域规则
@@ -215,10 +220,12 @@ modules:
       forbidden:
         - services/*
         - packages/**/adapters/**
+      notes: >
+        目标态模块，尚未实现。对应目录以 .gitkeep 占位。
 
   servers:
     web-bff:
-      path: servers/web-bff
+      path: servers/bff/web-bff
       kind: server
       owns:
         - Web 端视图聚合
@@ -233,7 +240,7 @@ modules:
         - infra/**
 
     admin-bff:
-      path: servers/admin-bff
+      path: servers/bff/admin-bff
       kind: server
       owns:
         - 管理端视图聚合
@@ -247,7 +254,7 @@ modules:
         - infra/**
 
     edge-gateway:
-      path: servers/edge-gateway
+      path: servers/gateway
       kind: server
       owns:
         - 应用级入口路由与限流
@@ -257,6 +264,8 @@ modules:
         - services/*
       forbidden:
         - infra/**
+      notes: >
+        目标态模块，当前为占位目录。
 
     internal-rpc:
       path: servers/internal-rpc
@@ -268,6 +277,8 @@ modules:
         - packages/*
       forbidden:
         - infra/**
+      notes: >
+        目标态模块，尚未实现。对应目录以 .gitkeep 占位。
 
   workers:
     indexer:
@@ -345,6 +356,8 @@ modules:
         - packages/runtime
       must_have:
         - compensation_strategy
+      notes: >
+        目标态模块，尚未实现。对应目录以 .gitkeep 占位。
 
   apps:
     web:
@@ -381,6 +394,8 @@ modules:
         - services/*
         - workers/*
         - infra/**
+      notes: >
+        目标态模块，尚未实现。对应目录以 .gitkeep 占位。
 
 ownership:
   generated_readonly:

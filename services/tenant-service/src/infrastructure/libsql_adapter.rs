@@ -8,7 +8,7 @@ use domain::ports::lib_sql::LibSqlPort;
 use serde::Deserialize;
 
 use crate::domain::{CreateTenantInput, Tenant};
-use crate::ports::{RepositoryError, TenantRepository};
+use crate::ports::{RepositoryError, TenantRepository, UserTenantBinding};
 
 /// Raw row shape from the tenant table.
 #[derive(Debug, Deserialize)]
@@ -36,7 +36,16 @@ impl<P: LibSqlPort> LibSqlTenantRepository<P> {
                 name TEXT NOT NULL,\
                 created_at TEXT NOT NULL DEFAULT (datetime('now'))\
             )";
+        const USER_TENANT_MIGRATION: &str =
+            "CREATE TABLE IF NOT EXISTS user_tenant (\
+                id TEXT PRIMARY KEY,\
+                user_sub TEXT NOT NULL,\
+                tenant_id TEXT NOT NULL,\
+                role TEXT NOT NULL DEFAULT 'member',\
+                FOREIGN KEY (tenant_id) REFERENCES tenant(id)\
+            )";
         self.port.execute(TENANT_MIGRATION, vec![]).await?;
+        self.port.execute(USER_TENANT_MIGRATION, vec![]).await?;
         Ok(())
     }
 }
@@ -47,15 +56,19 @@ impl<P: LibSqlPort> TenantRepository for LibSqlTenantRepository<P> {
         &self,
         input: CreateTenantInput,
     ) -> Result<Tenant, RepositoryError> {
+        // SQLite/LibSQL doesn't support RETURNING with generated values reliably.
+        // Generate the ID upfront so we know what it is.
+        let id: String = uuid::Uuid::new_v4().to_string();
+
         self.port
             .execute(
                 "INSERT INTO tenant (id, name) VALUES (?, ?)",
-                vec![input.id.clone(), input.name.clone()],
+                vec![id.clone(), input.name.clone()],
             )
             .await?;
 
         Ok(Tenant {
-            id: input.id,
+            id,
             name: input.name,
             created_at: chrono::Utc::now().to_rfc3339(),
         })
@@ -86,6 +99,42 @@ impl<P: LibSqlPort> TenantRepository for LibSqlTenantRepository<P> {
     async fn delete_tenant(&self, id: &str) -> Result<(), RepositoryError> {
         self.port
             .execute("DELETE FROM tenant WHERE id = ?", vec![id.to_string()])
+            .await?;
+        Ok(())
+    }
+
+    async fn find_user_tenant(&self, user_sub: &str) -> Result<Option<UserTenantBinding>, RepositoryError> {
+        #[derive(Debug, Deserialize)]
+        struct BindingRow {
+            tenant_id: String,
+            role: String,
+        }
+
+        let rows: Vec<BindingRow> = self
+            .port
+            .query(
+                "SELECT tenant_id, role FROM user_tenant WHERE user_sub = ? LIMIT 1",
+                vec![user_sub.to_string()],
+            )
+            .await?;
+
+        Ok(rows.into_iter().next().map(|row| UserTenantBinding {
+            tenant_id: row.tenant_id,
+            role: row.role,
+        }))
+    }
+
+    async fn create_user_tenant_binding(
+        &self,
+        user_sub: &str,
+        tenant_id: &str,
+        role: &str,
+    ) -> Result<(), RepositoryError> {
+        self.port
+            .execute(
+                "INSERT INTO user_tenant (id, user_sub, tenant_id, role) VALUES (lower(hex(randomblob(16))), ?, ?, ?)",
+                vec![user_sub.to_string(), tenant_id.to_string(), role.to_string()],
+            )
             .await?;
         Ok(())
     }

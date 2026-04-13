@@ -41,7 +41,9 @@ members = [
     "services/admin-service",
     "services/settings-service",
     # Servers
-    "servers/api",
+    # DEPRECATED: servers/api replaced by web-bff and admin-bff
+    # TODO: Remove after all external references are updated
+    # "servers/api",
     "servers/gateway",
     "servers/bff/web-bff",
     "servers/bff/admin-bff",

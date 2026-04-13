@@ -9,11 +9,32 @@
 
 每次收到任务后，按顺序执行：
 
-### 0.1 加载索引
+### 0.1 必读文档（每次任务按顺序执行）
 
 ```
-读取 /Users/sherlocktang/projects/tauri-sveltekit-axum-moon-template/docs/architecture/repo-layout.md → 了解项目架构设计和规范
+1. 读取 AGENTS.md（本文）→ 了解协作协议
+2. 读取 docs/architecture/repo-layout.md → 了解目录布局规则
+3. 读取 agent/codemap.yml → 了解模块约束
+4. 必要时读取 agent/ 全部文档和 docs/ 全部文档
 ```
+
+### 0.2 文档优先级
+
+| 优先级 | 文档 | 用途 |
+|-------|------|------|
+| **P0** | `docs/architecture/repo-layout.md` | 目录布局规则，每个目录的职责/必须/禁止/验证 |
+| **P0** | `agent/codemap.yml` | 模块级约束：路径、依赖、禁止、文件要求 |
+| **P1** | `AGENTS.md`（本文） | AI 协作协议、工具规则、禁止目录 |
+| **P2** | `agent/constraints/` | 机器可读的依赖/模式/契约约束 |
+| **P2** | `docs/adr/` | 架构决策记录（001-008） |
+| **P2** | `docs/architecture/` | C4 架构图与 sync 流程 |
+| **P2** | `docs/contracts/` | HTTP/Event/RPC 协议文档 |
+| **P2** | `docs/operations/` | 运维指南（local-dev/single-vps/k3s/gitops/secrets） |
+
+**硬性规则**:
+- 遇到文档与代码冲突，**以代码为准**
+- 不得仅凭 codemap.yml 推断"文件应该存在"（未实现模块可能有 .gitkeep）
+- `repo-layout.md` 和 `codemap.yml` 描述的是目标态，缺失部分用 `.gitkeep` 占位
 
 ### 1. 全局硬约束
 
@@ -29,27 +50,7 @@
 
 ---
 
-## 1.1 真相源优先级（防止读取过时文档）
-
-**Agent 必须按以下优先级读取文档，不得跳过**：
-
-| 优先级 | 文档 | 用途 |
-|-------|------|------|
-| **P0** | `docs/CURRENT-STATE.md` | 当前仓库实际状态的单一真相源。Agent 开发前**必须**先读此文件。 |
-| **P1** | `docs/architecture-gap-priority-plan.md` | 当前状态与目标架构的差距分析 |
-| **P2** | `docs/ARCHITECTURE.md` | 目标最终态架构（不等于当前现状） |
-| **P3** | `docs/architecture/repo-layout.md` | 目录布局设计说明 |
-| **P4** | 各目录 `README.md` | 局部说明，可能与实际代码不符，需交叉验证 |
-
-**硬性规则**：
-- 读取任何 README 中的状态标记（✅⚠️❌）后，必须用 `list_directory` 或 `read_file` 验证实际代码
-- 不得仅凭 `.refactoring-state.yaml` 的进度百分比推断完成情况
-- 不得仅凭 `ARCHITECTURE.md` 的目录树推断"文件应该存在"
-- 遇到文档与代码冲突，**以代码为准**，并在 commit 中注明
-
----
-
-## 1.2 索引与缓存规则
+## 1. 索引与缓存规则
 
 - **禁止依赖 CCC 索引**（`.cocoindex_code/`）作为文件存在性判断依据。该索引已被删除且不再使用。
 - **Agent 必须使用 `list_directory`、`glob`、`read_file` 直接读取文件系统**。

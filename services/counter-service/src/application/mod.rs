@@ -4,7 +4,7 @@
 //! the `CounterRepository` port. It contains NO direct database calls —
 //! all storage goes through the repository abstraction.
 
-mod service;
+pub mod service;
 
 pub use service::*;
 

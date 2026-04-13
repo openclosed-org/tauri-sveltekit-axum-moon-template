@@ -48,4 +48,20 @@ impl BffState {
             http_client,
         })
     }
+
+    /// Create BffState with a pre-initialized EmbeddedTurso instance.
+    /// Used for testing with in-memory databases.
+    pub async fn new_with_db(db: EmbeddedTurso) -> Self {
+        let http_client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(30))
+            .pool_max_idle_per_host(10)
+            .build()
+            .unwrap_or_default();
+
+        Self {
+            config: Config::default(),
+            embedded_db: Some(db),
+            http_client,
+        }
+    }
 }

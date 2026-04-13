@@ -9,7 +9,7 @@ use domain::ports::surreal_db::SurrealDbPort;
 use serde::Deserialize;
 
 use crate::domain::{CreateTenantInput, Tenant};
-use crate::ports::{RepositoryError, TenantRepository};
+use crate::ports::{RepositoryError, TenantRepository, UserTenantBinding};
 
 /// Raw row shape from the tenant table.
 #[derive(Debug, Deserialize)]
@@ -84,6 +84,52 @@ impl<P: SurrealDbPort> TenantRepository for SurrealDbTenantRepository<P> {
         let _: Vec<serde_json::Value> = self
             .port
             .query("DELETE tenant WHERE id = $id", vars)
+            .await?;
+
+        Ok(())
+    }
+
+    async fn find_user_tenant(&self, user_sub: &str) -> Result<Option<UserTenantBinding>, RepositoryError> {
+        #[derive(Debug, Deserialize)]
+        struct BindingRow {
+            tenant_id: String,
+            role: String,
+        }
+
+        let mut vars = BTreeMap::new();
+        vars.insert("user_sub".into(), serde_json::json!(user_sub));
+
+        let rows: Vec<BindingRow> = self
+            .port
+            .query(
+                "SELECT tenant_id, role FROM user_tenant WHERE user_sub = $user_sub LIMIT 1",
+                vars,
+            )
+            .await?;
+
+        Ok(rows.into_iter().next().map(|row| UserTenantBinding {
+            tenant_id: row.tenant_id,
+            role: row.role,
+        }))
+    }
+
+    async fn create_user_tenant_binding(
+        &self,
+        user_sub: &str,
+        tenant_id: &str,
+        role: &str,
+    ) -> Result<(), RepositoryError> {
+        let mut vars = BTreeMap::new();
+        vars.insert("user_sub".into(), serde_json::json!(user_sub));
+        vars.insert("tenant_id".into(), serde_json::json!(tenant_id));
+        vars.insert("role".into(), serde_json::json!(role));
+
+        let _: Vec<serde_json::Value> = self
+            .port
+            .query(
+                "CREATE user_tenant CONTENT { user_sub: $user_sub, tenant_id: $tenant_id, role: $role }",
+                vars,
+            )
             .await?;
 
         Ok(())

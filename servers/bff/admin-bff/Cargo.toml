@@ -13,6 +13,7 @@ path = "src/main.rs"
 contracts_api = { workspace = true }
 contracts_errors = { workspace = true }
 kernel = { workspace = true }
+domain = { workspace = true }
 feature-admin = { workspace = true }
 feature-counter = { workspace = true }
 feature-settings = { workspace = true }
@@ -25,6 +26,7 @@ tenant-service = { workspace = true }
 user-service = { workspace = true }
 settings-service = { workspace = true }
 agent-service = { workspace = true }
+storage_turso = { workspace = true }
 
 # HTTP framework
 axum = { workspace = true }
@@ -62,4 +64,10 @@ thiserror = { workspace = true }
 # Base64 for JWT decoding
 base64 = "0.22"
 
+# Async trait
+async-trait = { workspace = true }
+
 [dev-dependencies]
+tower = { workspace = true }
+http-body-util = { workspace = true }
+serde_json = { workspace = true }

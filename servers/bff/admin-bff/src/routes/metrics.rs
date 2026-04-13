@@ -1,3 +1,9 @@
+//! Admin metrics routes — placeholder for observability integration.
+//!
+//! ⚠️ This endpoint returns placeholder data.
+//! In production, this should integrate with the observability stack
+//! (OpenObserve, Prometheus, or similar metrics backend).
+
 use axum::{
     routing::get,
     Json,
@@ -6,6 +12,7 @@ use axum::{
 };
 use serde::Serialize;
 use utoipa::OpenApi;
+
 use crate::state::AdminBffState;
 use crate::error::AdminBffResult;
 
@@ -24,7 +31,10 @@ pub struct MetricsView {
 )]
 pub struct MetricsOpenApi;
 
-/// GET /api/admin/metrics — System metrics for admin monitoring
+/// GET /api/admin/metrics — System metrics for admin monitoring.
+///
+/// ⚠️ PLACEHOLDER: Returns zero values.
+/// TODO: Integrate with observability backend (OpenObserve/Prometheus).
 #[utoipa::path(
     get,
     path = "/api/admin/metrics",
@@ -37,7 +47,7 @@ pub struct MetricsOpenApi;
 pub async fn get_system_metrics(
     State(_state): State<AdminBffState>,
 ) -> AdminBffResult<Json<MetricsView>> {
-    // Placeholder — in production, aggregate from telemetry/monitoring
+    // TODO: Replace with actual observability integration
     let metrics = MetricsView {
         active_tenants: 0,
         total_users: 0,

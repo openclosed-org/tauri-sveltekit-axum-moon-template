@@ -7,6 +7,7 @@ pub struct Config {
     pub server_port: u16,
     pub cors_allowed_origins: Vec<String>,
     pub jwt_secret: String,
+    pub database_url: Option<String>,
 }
 
 impl Config {
@@ -24,6 +25,7 @@ impl Default for Config {
             server_port: 3020,
             cors_allowed_origins: vec!["http://localhost:5173".to_string()],
             jwt_secret: "dev-secret-change-in-production".to_string(),
+            database_url: Some("file:data/admin-bff.db".to_string()),
         }
     }
 }

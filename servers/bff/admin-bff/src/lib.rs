@@ -1,16 +1,11 @@
-use axum::{
-    routing::{get, post, put},
-    Router,
-};
+use axum::Router;
 use tower_http::{
     cors::CorsLayer,
     trace::TraceLayer,
-    request_id::{MakeRequestId, MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer, RequestId},
+    request_id::{MakeRequestId, PropagateRequestIdLayer, SetRequestIdLayer, RequestId},
     timeout::TimeoutLayer,
 };
 use std::time::Duration;
-use tower::ServiceBuilder;
-use uuid::Uuid;
 
 pub mod config;
 pub mod error;
@@ -27,7 +22,7 @@ struct MakeRequestUuidV7;
 
 impl MakeRequestId for MakeRequestUuidV7 {
     fn make_request_id<B>(&mut self, _request: &axum::http::Request<B>) -> Option<RequestId> {
-        let id = Uuid::now_v7().to_string();
+        let id = uuid::Uuid::now_v7().to_string();
         Some(RequestId::new(axum::http::HeaderValue::from_str(&id).ok()?))
     }
 }
@@ -36,16 +31,19 @@ impl MakeRequestId for MakeRequestUuidV7 {
 pub fn create_router(state: AdminBffState) -> Router {
     let cors = build_cors_layer();
 
-    Router::new()
-        // Health endpoints
-        .merge(routes::health::router())
-        // Admin dashboard aggregation
+    // Public routes — no auth required
+    let public_routes = routes::health::router();
+
+    // Admin API routes — tenant-scoped, require JWT auth
+    let admin_api_routes = Router::new()
         .merge(routes::admin::router())
-        // Tenant management views
         .merge(routes::tenant::router())
-        // Metrics and monitoring
         .merge(routes::metrics::router())
-        // Apply middleware
+        .route_layer(axum::middleware::from_fn(middleware::tenant::admin_tenant_middleware));
+
+    Router::new()
+        .merge(public_routes)
+        .merge(admin_api_routes)
         .layer(cors)
         .layer(TraceLayer::new_for_http())
         .layer(SetRequestIdLayer::new(

@@ -3,7 +3,7 @@
 use async_trait::async_trait;
 
 use crate::domain::{CreateTenantInput, Tenant};
-use crate::ports::{RepositoryError, TenantRepository};
+use crate::ports::{RepositoryError, TenantRepository, UserTenantBinding};
 
 /// Application-level error type.
 #[derive(Debug, thiserror::Error)]
@@ -16,6 +16,14 @@ pub enum TenantServiceError {
     InvalidInput(String),
 }
 
+/// Result of initializing a tenant for a user.
+#[derive(Debug, Clone)]
+pub struct InitTenantResult {
+    pub tenant_id: String,
+    pub role: String,
+    pub created: bool,
+}
+
 /// Trait for tenant service operations — the application-layer contract.
 #[async_trait]
 pub trait TenantServiceTrait: Send + Sync {
@@ -23,6 +31,14 @@ pub trait TenantServiceTrait: Send + Sync {
     async fn get_tenant(&self, id: &str) -> Result<Option<Tenant>, TenantServiceError>;
     async fn list_tenants(&self) -> Result<Vec<Tenant>, TenantServiceError>;
     async fn delete_tenant(&self, id: &str) -> Result<(), TenantServiceError>;
+
+    /// Initialize a tenant for a user. Creates tenant + user_tenant binding if not exists.
+    /// Returns existing or newly created tenant_id.
+    async fn init_tenant_for_user(
+        &self,
+        user_sub: &str,
+        tenant_name: &str,
+    ) -> Result<InitTenantResult, TenantServiceError>;
 }
 
 /// Concrete service implementation backed by any TenantRepository.
@@ -74,5 +90,45 @@ impl<R: TenantRepository> TenantServiceTrait for TenantService<R> {
             .delete_tenant(id)
             .await
             .map_err(TenantServiceError::Database)
+    }
+
+    async fn init_tenant_for_user(
+        &self,
+        user_sub: &str,
+        tenant_name: &str,
+    ) -> Result<InitTenantResult, TenantServiceError> {
+        // 1. Check if user already has a tenant binding
+        if let Some(binding) = self
+            .repo
+            .find_user_tenant(user_sub)
+            .await
+            .map_err(TenantServiceError::Database)?
+        {
+            return Ok(InitTenantResult {
+                tenant_id: binding.tenant_id,
+                role: binding.role,
+                created: false,
+            });
+        }
+
+        // 2. Create tenant with generated UUID
+        let tenant_id = uuid::Uuid::new_v4().to_string();
+        let input = CreateTenantInput {
+            id: tenant_id,
+            name: tenant_name.to_string(),
+        };
+        let tenant = self.create_tenant(input).await?;
+
+        // 3. Create user_tenant binding (owner role)
+        self.repo
+            .create_user_tenant_binding(user_sub, &tenant.id, "owner")
+            .await
+            .map_err(TenantServiceError::Database)?;
+
+        Ok(InitTenantResult {
+            tenant_id: tenant.id,
+            role: "owner".to_string(),
+            created: true,
+        })
     }
 }

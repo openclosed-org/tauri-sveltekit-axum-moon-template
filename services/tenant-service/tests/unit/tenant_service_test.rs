@@ -6,7 +6,7 @@ use tokio::sync::Mutex;
 
 use tenant_service::application::{TenantService, TenantServiceTrait};
 use tenant_service::domain::{CreateTenantInput, Tenant};
-use tenant_service::ports::{RepositoryError, TenantRepository};
+use tenant_service::ports::{RepositoryError, TenantRepository, UserTenantBinding};
 
 /// In-memory mock repository for testing.
 struct MockTenantRepository {
@@ -49,6 +49,21 @@ impl TenantRepository for MockTenantRepository {
     async fn delete_tenant(&self, id: &str) -> Result<(), RepositoryError> {
         let mut tenants = self.tenants.lock().await;
         tenants.retain(|t| t.id != id);
+        Ok(())
+    }
+
+    async fn find_user_tenant(&self, _user_sub: &str) -> Result<Option<UserTenantBinding>, RepositoryError> {
+        // Mock returns None - no existing binding
+        Ok(None)
+    }
+
+    async fn create_user_tenant_binding(
+        &self,
+        _user_sub: &str,
+        _tenant_id: &str,
+        _role: &str,
+    ) -> Result<(), RepositoryError> {
+        // Mock success
         Ok(())
     }
 }

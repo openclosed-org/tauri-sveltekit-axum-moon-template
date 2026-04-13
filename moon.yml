@@ -44,7 +44,7 @@ tasks:
       - '**/*.rs'
 
   bloat:
-    command: 'cargo bloat --release --crates -p runtime_server'
+    command: 'cargo bloat --release --crates -p web-bff'
     inputs:
       - 'Cargo.toml'
 
@@ -96,15 +96,23 @@ tasks:
       - 'scripts/lib/spawn.ts'
 
   dev-api:
-    command: 'cargo run -p runtime_server'
+    command: 'cargo run -p web-bff'
     deps:
       - 'check'
     inputs:
-      - 'servers/api/**/*'
+      - 'servers/bff/web-bff/**/*'
+
+  dev-admin-bff:
+    command: 'cargo run -p admin-bff'
+    deps:
+      - 'check'
+    inputs:
+      - 'servers/bff/admin-bff/**/*'
 
   dev-fullstack:
     deps:
       - 'dev-api'
+      - 'dev-admin-bff'
       - 'dev-web'
 
   # ==========================================================================
@@ -189,7 +197,7 @@ tasks:
       - 'packages/contracts/**/*'
       - 'packages/domain/**/*'
       - 'packages/usecases/**/*'
-      - 'servers/api/**/*'
+      - 'servers/bff/web-bff/**/*'
       - 'Cargo.toml'
       - 'Cargo.lock'
     outputs:
@@ -219,11 +227,11 @@ tasks:
       - 'apps/desktop/tests/e2e/**'
 
   check-storage-turso:
-    command: 'cargo check -p runtime_server'
+    command: 'cargo check -p web-bff'
     inputs:
       - 'Cargo.toml'
       - 'Cargo.lock'
-      - 'servers/api/**/*'
+      - 'servers/bff/web-bff/**/*'
       - 'packages/adapters/storage/turso/**/*'
 
   test-all-rust:

@@ -30,9 +30,10 @@ pub struct AdminOpenApi;
 pub async fn get_dashboard_stats(
     State(state): State<AdminBffState>,
 ) -> AdminBffResult<Json<DashboardView>> {
-    let internal_api_url = format!("http://{}", state.config.server_host);
-    // For now, use a default — in production, this would come from config
-    let dashboard = fetch_dashboard("http://127.0.0.1:3001").await?;
+    let db = state.embedded_db.clone()
+        .ok_or_else(|| crate::error::AdminBffError::Internal("Embedded database not initialized".to_string()))?;
+
+    let dashboard = fetch_dashboard(db).await?;
     Ok(Json(dashboard))
 }
 

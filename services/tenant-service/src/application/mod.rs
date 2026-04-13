@@ -2,4 +2,4 @@
 
 pub mod service;
 
-pub use service::{TenantService, TenantServiceError, TenantServiceTrait};
+pub use service::{InitTenantResult, TenantService, TenantServiceError, TenantServiceTrait};

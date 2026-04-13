@@ -5,11 +5,11 @@ description: >
   with embedded or dockerized resources. Single-node, no replication.
 
 deployables:
-  - name: api-server
+  - name: web-bff
     replicas: 1
     enabled: true
 
-  - name: web-bff
+  - name: admin-bff
     replicas: 1
     enabled: true
 
@@ -38,6 +38,6 @@ resources:
 network:
   gateway: "localhost:8080"
   exposed_ports:
-    - 3001
     - 3010
+    - 3020
     - 8080

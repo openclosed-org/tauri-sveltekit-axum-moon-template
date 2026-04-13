@@ -9,9 +9,15 @@
 //! application/     → AdminDashboardService (orchestrates use cases)
 //! ports/           → Abstract interfaces for external dependencies
 //! infrastructure/  → Adapters that implement ports using concrete services
+//! contracts/       → DTO re-exports from packages/contracts/
+//! events/          → Domain events
+//! policies/        → Timeout, retry, idempotency policies
 //! ```
 
 pub mod application;
+pub mod contracts;
 pub mod domain;
+pub mod events;
 pub mod infrastructure;
+pub mod policies;
 pub mod ports;

@@ -1,3 +1,5 @@
+//! Admin tenant management routes.
+
 use axum::{
     routing::get,
     Json,
@@ -6,6 +8,9 @@ use axum::{
 };
 use serde::Serialize;
 use utoipa::OpenApi;
+use tenant_service::ports::TenantRepository;
+use tenant_service::infrastructure::libsql_adapter::LibSqlTenantRepository;
+
 use crate::state::AdminBffState;
 use crate::error::AdminBffResult;
 
@@ -41,13 +46,25 @@ pub struct TenantOpenApi;
     tag = "admin"
 )]
 pub async fn list_tenants(
-    State(_state): State<AdminBffState>,
+    State(state): State<AdminBffState>,
 ) -> AdminBffResult<Json<TenantListView>> {
-    // Placeholder — in production, call internal API /api/tenant/list
+    let db = state.embedded_db.clone()
+        .ok_or_else(|| crate::error::AdminBffError::Internal("Embedded database not initialized".to_string()))?;
+
+    let repo = LibSqlTenantRepository::new(db);
+    let tenants = repo.list_tenants().await
+        .map_err(|e| crate::error::AdminBffError::Internal(format!("Failed to list tenants: {}", e)))?;
+
     let view = TenantListView {
-        tenants: vec![],
-        total: 0,
+        total: tenants.len(),
+        tenants: tenants.into_iter().map(|t| TenantItemView {
+            id: t.id,
+            name: t.name,
+            created_at: t.created_at,
+            member_count: 0, // TODO: requires user_tenant count query
+        }).collect(),
     };
+
     Ok(Json(view))
 }
 

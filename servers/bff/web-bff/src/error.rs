@@ -25,7 +25,7 @@ impl IntoResponse for BffError {
         let (status, message) = match &self {
             BffError::Internal(_) => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
             BffError::Unauthorized(_) => (StatusCode::UNAUTHORIZED, self.to_string()),
-            BffError::Validation(_) => (StatusCode::BAD_REQUEST, self.to_string()),
+            BffError::Validation(_) => (StatusCode::UNPROCESSABLE_ENTITY, self.to_string()),
         };
 
         (status, Json(json!({ "error": message }))).into_response()

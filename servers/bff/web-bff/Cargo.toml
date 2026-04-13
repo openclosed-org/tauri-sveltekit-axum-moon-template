@@ -69,6 +69,9 @@ utoipa-swagger-ui = { version = "9", features = ["axum"] }
 http-body-util = "0.1"
 tower = { workspace = true, features = ["util"] }
 tracing-test = { workspace = true }
+jsonwebtoken = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true, features = ["v4"] }
 
 [features]
 default = []

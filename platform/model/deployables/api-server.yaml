@@ -2,6 +2,10 @@ name: api-server
 type: server
 version: 1.0.0
 description: >
+  DEPRECATED: This deployable has been replaced by web-bff and admin-bff.
+  This file is kept for reference only and should not be used in new deployments.
+  Migrate to web-bff (port 3010) and admin-bff (port 3020) via the gateway (port 3000).
+
   Main Axum API server aggregating all service routes.
   Provides REST/JSON API for all services. Internal-facing,
   behind edge-gateway in production topologies.
