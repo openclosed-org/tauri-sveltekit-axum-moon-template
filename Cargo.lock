@@ -3,42 +3,6 @@
 version = 4
 
 [[package]]
-name = "adapter-auth-dpop"
-version = "0.1.0"
-
-[[package]]
-name = "adapter-auth-oauth"
-version = "0.1.0"
-
-[[package]]
-name = "adapter-auth-passkey"
-version = "0.1.0"
-
-[[package]]
-name = "adapter-cache"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "thiserror 2.0.18",
-]
-
-[[package]]
-name = "adapter-chains-base"
-version = "0.1.0"
-
-[[package]]
-name = "adapter-chains-evm"
-version = "0.1.0"
-
-[[package]]
-name = "adapter-chains-solana"
-version = "0.1.0"
-
-[[package]]
-name = "adapter-chains-ton"
-version = "0.1.0"
-
-[[package]]
 name = "adapter-google"
 version = "0.1.0"
 dependencies = [
@@ -60,62 +24,6 @@ dependencies = [
  "tracing",
  "url",
  "workspace-hack",
-]
-
-[[package]]
-name = "adapter-hosts-base-app"
-version = "0.1.0"
-
-[[package]]
-name = "adapter-hosts-browser-extension"
-version = "0.1.0"
-
-[[package]]
-name = "adapter-hosts-farcaster-miniapp"
-version = "0.1.0"
-
-[[package]]
-name = "adapter-hosts-telegram-miniapp"
-version = "0.1.0"
-
-[[package]]
-name = "adapter-protocols-atproto"
-version = "0.1.0"
-
-[[package]]
-name = "adapter-protocols-farcaster"
-version = "0.1.0"
-
-[[package]]
-name = "adapter-protocols-nostr"
-version = "0.1.0"
-
-[[package]]
-name = "adapter-storage-extension"
-version = "0.1.0"
-dependencies = [
- "async-trait",
-]
-
-[[package]]
-name = "adapter-storage-indexeddb"
-version = "0.1.0"
-dependencies = [
- "async-trait",
-]
-
-[[package]]
-name = "adapter-storage-sqlite"
-version = "0.1.0"
-dependencies = [
- "async-trait",
-]
-
-[[package]]
-name = "adapter-storage-tauri-store"
-version = "0.1.0"
-dependencies = [
- "async-trait",
 ]
 
 [[package]]
@@ -2616,6 +2524,7 @@ name = "domain"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "kernel",
  "serde",
  "serde_json",
  "workspace-hack",
@@ -3069,66 +2978,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "feature-feed"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "serde",
- "thiserror 2.0.18",
-]
-
-[[package]]
-name = "feature-notifications"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "serde",
- "thiserror 2.0.18",
-]
-
-[[package]]
-name = "feature-payments"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "serde",
- "thiserror 2.0.18",
-]
-
-[[package]]
-name = "feature-profile"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "serde",
- "thiserror 2.0.18",
-]
-
-[[package]]
 name = "feature-settings"
 version = "0.1.0"
 dependencies = [
  "async-trait",
  "serde",
  "serde_json",
- "thiserror 2.0.18",
-]
-
-[[package]]
-name = "feature-social-graph"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "serde",
- "thiserror 2.0.18",
-]
-
-[[package]]
-name = "feature-wallet"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "serde",
  "thiserror 2.0.18",
 ]
 
@@ -9137,44 +8992,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f40ca3c46823713e0d4209592e8d6e826aa57e928f09752619fc696c499637f6"
 dependencies = [
  "lazy_static",
-]
-
-[[package]]
-name = "shared-config"
-version = "0.1.0"
-dependencies = [
- "serde",
- "thiserror 2.0.18",
-]
-
-[[package]]
-name = "shared-env"
-version = "0.1.0"
-dependencies = [
- "thiserror 2.0.18",
-]
-
-[[package]]
-name = "shared-errors"
-version = "0.1.0"
-dependencies = [
- "contracts_errors",
-]
-
-[[package]]
-name = "shared-testing"
-version = "0.1.0"
-dependencies = [
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "shared-types"
-version = "0.1.0"
-dependencies = [
- "serde",
- "thiserror 2.0.18",
 ]
 
 [[package]]

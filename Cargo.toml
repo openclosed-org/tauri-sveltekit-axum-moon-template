@@ -5,7 +5,7 @@ members = [
     # Core
     "packages/core/workspace-hack",
     "packages/core/domain",
-    # Packages (flat structure per ARCHITECTURE.md)
+    # Foundation
     "packages/kernel",
     "packages/platform",
     "packages/runtime",
@@ -14,53 +14,23 @@ members = [
     "packages/contracts/auth",
     "packages/contracts/events",
     "packages/contracts/errors",
-    # Shared
-    "packages/shared/errors",
+    # Shared (only utils remains; stubs removed)
     "packages/shared/utils",
-    "packages/shared/config",
-    "packages/shared/env",
-    "packages/shared/testing",
-    "packages/shared/types",
-    # Adapters
+    # Adapters (only crates with real code)
     "packages/adapters/telemetry/otel",
     "packages/adapters/telemetry/tracing",
     "packages/adapters/hosts/tauri",
-    "packages/adapters/hosts/base-app",
-    "packages/adapters/hosts/browser-extension",
-    "packages/adapters/hosts/farcaster-miniapp",
-    "packages/adapters/hosts/telegram-miniapp",
     "packages/adapters/storage/surrealdb",
     "packages/adapters/storage/turso",
-    "packages/adapters/storage/sqlite",
-    "packages/adapters/storage/extension-storage",
-    "packages/adapters/storage/indexeddb",
-    "packages/adapters/storage/tauri-store",
     "packages/adapters/auth/google",
-    "packages/adapters/auth/dpop",
-    "packages/adapters/auth/oauth",
-    "packages/adapters/auth/passkey",
-    "packages/adapters/cache",
-    "packages/adapters/chains/base",
-    "packages/adapters/chains/evm",
-    "packages/adapters/chains/solana",
-    "packages/adapters/chains/ton",
-    "packages/adapters/protocols/atproto",
-    "packages/adapters/protocols/farcaster",
-    "packages/adapters/protocols/nostr",
-    # Features
+    # Features (only traits with real code)
     "packages/features/auth",
     "packages/features/counter",
     "packages/features/admin",
     "packages/features/agent",
     "packages/features/chat",
     "packages/features/settings",
-    "packages/features/feed",
-    "packages/features/notifications",
-    "packages/features/payments",
-    "packages/features/profile",
-    "packages/features/social-graph",
-    "packages/features/wallet",
-    # Services (Clean Architecture — incremental implementation)
+    # Services
     "services/user-service",
     "services/tenant-service",
     "services/auth-service",
@@ -124,7 +94,6 @@ contracts_api = { path = "packages/contracts/api" }
 contracts_auth = { path = "packages/contracts/auth" }
 contracts_events = { path = "packages/contracts/events" }
 contracts_errors = { path = "packages/contracts/errors" }
-shared_errors = { path = "packages/shared/errors" }
 shared_utils = { path = "packages/shared/utils" }
 adapter_telemetry_otel = { path = "packages/adapters/telemetry/otel" }
 adapter_telemetry_tracing = { path = "packages/adapters/telemetry/tracing" }

@@ -6,6 +6,10 @@ edition = "2024"
 rust-version.workspace = true
 
 [dependencies]
+# Internal
+kernel = { workspace = true }
+
+# External
 async-trait = "0.1"
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }

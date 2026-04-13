@@ -1,8 +1,0 @@
-[package]
-name = "shared-errors"
-version = "0.1.0"
-edition = "2024"
-description = "Shared error types re-exported from contracts_errors"
-
-[dependencies]
-contracts_errors = { workspace = true }

@@ -10,19 +10,19 @@
 
 **当前阶段**：平台模型骨架已完成，业务层迁移接近尾声，但文档与代码仍有不一致。
 
-**完成度估算**：~85%（从 ~70% 提升）
+**完成度估算**：~90%（从 ~85% 提升）
 
 | 层级 | 完成度 | 一句话说明 |
 |-----|-------|-----------|
 | `platform/` | ✅ ~95% | schema/model/generators/validators/catalog 已完整落地 |
+| `packages/` | ✅ ~90% | 清理 30+ stub crate，TenantId 统一，分层文档建立 |
 | `workers/` | ✅ ~90% | 5 个 worker 已建立并集成 runtime ports |
-| `services/` | ✅ ~90% | 9 个 service 代码已就位，counter 补齐 policies/events，README 已更新 |
-| `servers/` | ✅ ~85% | servers/indexer 已清理（与 workers 冲突消除），api + bff 完整 |
-| `packages/` | ⚠️ ~75% | 分层文档已建立，sdk 策略已明确，过渡层待逐步收敛 |
+| `services/` | ✅ ~90% | 9 个 service 代码已就位，结构统一 |
+| `servers/` | ✅ ~85% | servers/indexer 已清理，api + bff 完整 |
 | `apps/` | ⚠️ ~60% | web/desktop/extension 骨架已建；前端消费 app-local generated client |
 | `infra/` | ⚠️ ~60% | docker compose/k3s base/gitops/sops 已建立；rendered 产物待生成 |
 | `verification/` | ⚠️ ~55% | README 说明完善，e2e/performance 待实现具体测试代码 |
-| `docs/` | ✅ ~90% | 8 ADR + C4 架构图 + 运维文档 + 当前状态文档已完整 |
+| `docs/` | ✅ ~90% | ADR + C4 架构图 + 运维文档 + 当前状态文档已完整 |
 | `fixtures/` | ⚠️ ~40% | 各域 README 已补齐，实际种子数据待填充 |
 
 ---
@@ -110,26 +110,33 @@ servers/
 - ~~servers/bff/mobile-bff~~ → 已删除（空占位）
 - BFF OpenAPI 策略已定义在 `servers/bff/OPENAPI-STRATEGY.md`
 
-### 3.5 `packages/` — ⚠️ 过渡层与最终层并存
+### 3.5 `packages/` — ✅ 已清理，结构明确
 
 ```
 packages/
-├── kernel/           ✅ 核心类型（ids/error/money/pagination/tenancy/time）
-├── platform/         ✅ config/health/buildinfo/env/service_meta
-├── runtime/          ✅ 8 个 ports + memory adapters（invocation/pubsub/state/workflow/lock/binding/secret/queue）
-├── contracts/        ✅ http/events/rpc/jsonschema/error-codes/compat/sdk-gen
-├── adapters/         ✅ hosts/tauri（Tauri commands）
-├── features/         ✅ settings 等 feature trait
-├── core/             ⚠️ 过渡层：domain/ports/state/workspace-hack（仍有部分业务逻辑）
-├── shared/           ⚠️ 过渡层：工具函数/错误处理
+├── kernel/           ✅ 核心类型（TenantId, UserId, Cursor, AppError）
+├── platform/         ✅ 平台能力 trait（零依赖，保留待未来使用）
+├── runtime/          ✅ 8 个 ports + memory adapters
+├── contracts/        ✅ api/auth/events/errors（空目录已清理）
+├── core/
+│   ├── domain/       ✅ 数据库端口 trait + TenantId 重导出（统一到 kernel）
+│   └── workspace-hack/  ✅ cargo-hakari 优化
+├── features/         ✅ 6 个真实 feature trait（6 个空 stub 已删除）
+├── adapters/         ✅ 6 个真实 adapter（22 个空 stub 已删除）
+├── shared/
+│   └── utils/        ✅ 工具函数（5 个空 stub 已删除）
 ├── ui/               ✅ Svelte 组件库
-└── sdk/              ⚠️ rust/.gitkeep + typescript/.gitkeep（空占位符）
+└── sdk/              ⚠️ 占位（策略已定义）
 ```
 
-**关键冲突**：
-- `packages/core/usecases/` 已删除，文档引用已清理
-- `packages/sdk/` 策略已明确：当前前端使用 app-local generated types，SDK 统一方案保留待迁移条件触发
-- `packages/LAYERING.md` 已建立，明确各目录职责和去向
+**已解决的冲突**：
+- ✅ `TenantId` 重复定义 → `core/domain` 重导出 `kernel::TenantId`，单一类型
+- ✅ `shared/` 6 个子目录零依赖 → 删除 5 个 stub，保留 utils
+- ✅ `features/` 6 个空 stub 零依赖 → 全部删除
+- ✅ `adapters/` 22 个空 stub → 全部删除
+- ✅ `contracts/` 4 个空目录 → 全部删除
+- ✅ `core/state/` 空占位 → 删除
+- ✅ `packages/LAYERING.md` 已建立，明确各目录职责和新增规则
 
 ### 3.6 `apps/` — ⚠️ 骨架已建，消费路径未统一
 
@@ -214,7 +221,7 @@ docs/
 2. ✅ 建立 packages/ 分层文档（LAYERING.md）
 3. ✅ 决定 packages/sdk 与 app-local generated 策略（SDK/README.md）
 4. ✅ BFF OpenAPI 策略（servers/bff/OPENAPI-STRATEGY.md）
-5. ⚠️ packages/ 过渡层（core/domain, features, shared）待逐步收敛（不阻塞开发）
+5. ✅ packages/ 过渡层清理（30+ stub crate 删除，TenantId 统一）
 
 ### P2（已建立骨架）
 1. ✅ fixtures/ 各域 README 已补齐（users/settings/counter/authz-tuples）
