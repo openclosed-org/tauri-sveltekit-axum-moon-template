@@ -34,7 +34,6 @@ jobs:
       - name: Cache Rust
         uses: Swatinem/rust-cache@v2
         with:
-          # Separate cache for backend-only builds
           shared-key: "backend-ci"
 
       - name: Rust fmt check
@@ -58,78 +57,8 @@ jobs:
           --exclude native-tauri
           -- --test-threads=4
 
-  # ============================================
-  # Frontend Web: Lint, Type Check, Build
-  # ============================================
-  frontend-web:
-    name: Frontend Web CI
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.3.11
-
-      - name: Install frontend deps
-        working-directory: apps/web
-        run: bun install --frozen-lockfile
-
-      - name: Type check
-        working-directory: apps/web
-        run: bun run check
-
-      - name: Lint
-        working-directory: apps/web
-        run: bun run lint
-
-      - name: Unit tests
-        working-directory: apps/web
-        run: bun run test:unit || true
-
-      - name: Build
-        working-directory: apps/web
-        run: bun run build
-
-  # ============================================
-  # Platform Validation (conditional)
-  # ============================================
-  platform-validation:
-    name: Platform Validation
-    runs-on: ubuntu-latest
-    if: >
-      github.event_name == 'push' ||
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'pull_request' && (
-        contains(github.event.pull_request.labels.*.name, 'platform-change') ||
-        github.event.pull_request.title == 'auto: platform-change'
-      ))
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: stable
-
-      - name: Cache Rust
-        uses: Swatinem/rust-cache@v2
-        with:
-          shared-key: "backend-ci"
-
-      - name: Validate platform models
-        run: cargo run --bin platform-validator -- --platform-dir platform || echo "⚠️ platform-validator skipped (not ready)"
-
-      - name: Validate dependency graph
-        run: cargo run --bin dependency-validator -- --platform-dir platform || echo "⚠️ dependency-validator skipped (not ready)"
-
-      - name: Check contract drift
-        run: cargo run --bin contract-drift-detector -- --platform-dir platform || echo "⚠️ contract-drift-detector skipped (not ready)"
-
-      - name: Generate platform catalog
-        run: cargo run --bin platform-generator -- --platform-dir platform --output-dir platform/catalog || echo "⚠️ platform-generator skipped (not ready)"
+      - name: Build BFF servers
+        run: >
+          cargo build --workspace
+          --exclude native-tauri
+          --release

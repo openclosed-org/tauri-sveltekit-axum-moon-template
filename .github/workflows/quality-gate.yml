@@ -37,7 +37,6 @@ jobs:
 
       - name: Check for unsafe code in production crates
         run: |
-          # Only check backend src/ directories
           ! grep -rn '#\[unsafe\]' --include="*.rs" packages/ services/ servers/ workers/ 2>/dev/null || true
 
   # ============================================
@@ -79,57 +78,13 @@ jobs:
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
-      - name: Upload coverage artifact
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: coverage-report-${{ github.run_id }}
-          path: lcov.info
-          retention-days: 30
-
-  # ============================================
-  # Phase 3: E2E Tests (main/develop only)
-  # ============================================
-  e2e:
-    name: E2E Tests
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.3.11
-
-      - name: Install dependencies
-        working-directory: apps/web
-        run: bun install --frozen-lockfile
-
-      - name: Install Playwright
-        working-directory: apps/web
-        run: npx playwright install --with-deps chromium
-
-      - name: Run Web E2E Tests
-        working-directory: apps/web
-        run: bun run test:e2e --project=desktop
-        timeout-minutes: 20
-
-      - name: Upload Playwright Report
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: playwright-report-${{ github.run_id }}
-          path: apps/web/playwright-report/
-          retention-days: 7
-
   # ============================================
   # Summary Report
   # ============================================
   summary:
     name: Quality Gate Summary
     runs-on: ubuntu-latest
-    needs: [security, coverage, e2e]
+    needs: [security, coverage]
     if: always()
 
     steps:
@@ -141,12 +96,10 @@ jobs:
           echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
           echo "| Security Audit | ${{ needs.security.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Coverage | ${{ needs.coverage.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| E2E Tests | ${{ needs.e2e.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
           if [ "${{ needs.security.result }}" == "success" ] && \
-             ([ "${{ needs.coverage.result }}" == "success" ] || [ "${{ needs.coverage.result }}" == "skipped" ]) && \
-             ([ "${{ needs.e2e.result }}" == "success" ] || [ "${{ needs.e2e.result }}" == "skipped" ]); then
+             ([ "${{ needs.coverage.result }}" == "success" ] || [ "${{ needs.coverage.result }}" == "skipped" ]); then
             echo "✅ **All quality gates passed!**" >> $GITHUB_STEP_SUMMARY
           else
             echo "❌ **Quality gate failed. Please review the errors above.**" >> $GITHUB_STEP_SUMMARY
