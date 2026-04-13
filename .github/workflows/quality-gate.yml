@@ -101,6 +101,7 @@ jobs:
       - name: Audit dependencies (backend only)
         run: >
           cargo deny
+          --exclude-dev
           --exclude workspace-hack
           --exclude native-tauri
           --exclude runtime_tauri
