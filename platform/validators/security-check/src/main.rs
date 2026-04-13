@@ -136,7 +136,7 @@ fn main() -> Result<()> {
 
 fn check_service_security(
     platform_dir: &Path,
-    errors: &mut Vec<String>,
+    _errors: &mut [String],
     warnings: &mut Vec<String>,
 ) -> Result<()> {
     info!("Checking service security configurations...");
@@ -226,13 +226,7 @@ fn check_resource_security(
         );
 
         if is_sensitive {
-            if resource.encryption.is_none() {
-                warnings.push(format!(
-                    "Sensitive resource '{}' has no encryption configuration",
-                    resource.name
-                ));
-            } else {
-                let enc = &resource.encryption.as_ref().unwrap();
+            if let Some(enc) = resource.encryption.as_ref() {
                 if enc.at_rest == Some(false) {
                     errors.push(format!(
                         "Sensitive resource '{}' explicitly disables encryption at rest",
@@ -245,6 +239,11 @@ fn check_resource_security(
                         resource.name
                     ));
                 }
+            } else {
+                warnings.push(format!(
+                    "Sensitive resource '{}' has no encryption configuration",
+                    resource.name
+                ));
             }
 
             // Check access control
@@ -262,7 +261,7 @@ fn check_resource_security(
 
 fn check_deployable_security(
     platform_dir: &Path,
-    errors: &mut Vec<String>,
+    _errors: &mut [String],
     warnings: &mut Vec<String>,
 ) -> Result<()> {
     info!("Checking deployable security configurations...");
@@ -316,7 +315,7 @@ fn check_deployable_security(
 
 fn check_security_antipatterns(
     platform_dir: &Path,
-    errors: &mut Vec<String>,
+    _errors: &mut [String],
     warnings: &mut Vec<String>,
 ) -> Result<()> {
     info!("Checking for security antipatterns...");

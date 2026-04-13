@@ -28,13 +28,11 @@ struct ServiceModel {
 struct DeployableModel {
     name: String,
     services: Option<Vec<String>>,
-    resources: Option<Vec<String>>,
 }
 
 #[derive(Debug, Deserialize)]
 struct TopologyDeployable {
     name: String,
-    enabled: Option<bool>,
 }
 
 #[derive(Debug, Deserialize)]

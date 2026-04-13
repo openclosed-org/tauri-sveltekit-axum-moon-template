@@ -316,9 +316,9 @@ mod tests {
 
     #[test]
     fn json_value_float() {
-        let result = json_to_surreal_value(serde_json::json!(3.14));
+        let result = json_to_surreal_value(serde_json::json!(std::f64::consts::PI));
         assert!(
-            matches!(result, surrealdb::types::Value::Number(surrealdb::types::Number::Float(f)) if (f - 3.14).abs() < 0.001)
+            matches!(result, surrealdb::types::Value::Number(surrealdb::types::Number::Float(f)) if (f - std::f64::consts::PI).abs() < 0.001)
         );
     }
 

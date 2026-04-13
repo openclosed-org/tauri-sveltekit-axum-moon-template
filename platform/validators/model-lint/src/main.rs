@@ -173,10 +173,7 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn check_service_deployable_refs(
-    platform_dir: &Path,
-    results: &mut Vec<ValidationResult>,
-) -> usize {
+fn check_service_deployable_refs(platform_dir: &Path, _results: &mut [ValidationResult]) -> usize {
     let mut warnings = 0;
 
     // Load all service models
@@ -226,7 +223,7 @@ fn check_service_deployable_refs(
     warnings
 }
 
-fn check_resource_refs(platform_dir: &Path, results: &mut Vec<ValidationResult>) -> usize {
+fn check_resource_refs(platform_dir: &Path, _results: &mut [ValidationResult]) -> usize {
     let mut warnings = 0;
 
     // Load all resource names

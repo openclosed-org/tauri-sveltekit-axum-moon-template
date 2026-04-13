@@ -26,12 +26,6 @@ struct ServiceModel {
     events: Option<Vec<serde_json::Value>>,
 }
 
-#[derive(Debug, Deserialize)]
-struct ContractEndpoint {
-    path: String,
-    method: String,
-}
-
 fn main() -> Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(

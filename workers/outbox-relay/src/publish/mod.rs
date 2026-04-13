@@ -12,13 +12,13 @@ use crate::polling::PendingOutboxEntry;
 #[derive(Debug, thiserror::Error)]
 pub enum PublishError {
     #[error("Failed to deserialize event: {0}")]
-    DeserializeError(String),
+    Deserialize(String),
 
     #[error("Failed to publish to event bus: {0}")]
-    BusError(String),
+    Bus(String),
 
     #[error("Failed to publish to pubsub: {0}")]
-    PubSubError(String),
+    PubSub(String),
 }
 
 /// Publishes outbox entries to both event bus and runtime pubsub.
@@ -35,7 +35,7 @@ impl<E: EventBus, P: PubSub> OutboxPublisher<E, P> {
     /// Publish a single outbox entry to both event bus and pubsub.
     pub async fn publish(&self, entry: &PendingOutboxEntry) -> Result<(), PublishError> {
         let event: AppEvent = serde_json::from_str(&entry.payload)
-            .map_err(|e| PublishError::DeserializeError(e.to_string()))?;
+            .map_err(|e| PublishError::Deserialize(e.to_string()))?;
 
         // Publish to event bus (for service-to-service communication)
         let envelope = EventEnvelope::new(event.clone(), &entry.source_service);
@@ -43,7 +43,7 @@ impl<E: EventBus, P: PubSub> OutboxPublisher<E, P> {
         self.event_bus
             .publish(envelope)
             .await
-            .map_err(|e| PublishError::BusError(e.to_string()))?;
+            .map_err(|e| PublishError::Bus(e.to_string()))?;
 
         // Publish to runtime pubsub (for workers and external consumers)
         let runtime_envelope = RuntimeMessageEnvelope::new(
@@ -55,7 +55,7 @@ impl<E: EventBus, P: PubSub> OutboxPublisher<E, P> {
         self.pubsub
             .publish(&format!("outbox.{}", entry.event_type), runtime_envelope)
             .await
-            .map_err(|e| PublishError::PubSubError(e.to_string()))?;
+            .map_err(|e| PublishError::PubSub(e.to_string()))?;
 
         debug!(entry_id = %entry.id, "published outbox entry to event bus and pubsub");
         Ok(())
@@ -127,6 +127,6 @@ mod tests {
 
         let entry = test_entry("entry-1", "not valid json");
         let result = publisher.publish(&entry).await;
-        assert!(matches!(result, Err(PublishError::DeserializeError(_))));
+        assert!(matches!(result, Err(PublishError::Deserialize(_))));
     }
 }

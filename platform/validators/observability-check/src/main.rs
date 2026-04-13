@@ -128,7 +128,7 @@ fn main() -> Result<()> {
 
 fn check_service_observability(
     platform_dir: &Path,
-    errors: &mut Vec<String>,
+    _errors: &mut [String],
     warnings: &mut Vec<String>,
 ) -> Result<()> {
     info!("Checking service observability configurations...");
@@ -161,27 +161,31 @@ fn check_service_observability(
         };
 
         // Check tracing
-        if obs.tracing.is_none() {
+        if let Some(tracing) = obs.tracing.as_ref() {
+            if tracing.enabled == Some(false) {
+                warnings.push(format!(
+                    "Service '{}' has tracing explicitly disabled",
+                    service.name
+                ));
+            }
+        } else {
             warnings.push(format!(
                 "Service '{}' has no tracing configuration",
-                service.name
-            ));
-        } else if obs.tracing.as_ref().unwrap().enabled == Some(false) {
-            warnings.push(format!(
-                "Service '{}' has tracing explicitly disabled",
                 service.name
             ));
         }
 
         // Check metrics
-        if obs.metrics.is_none() {
+        if let Some(metrics) = obs.metrics.as_ref() {
+            if metrics.enabled == Some(false) {
+                warnings.push(format!(
+                    "Service '{}' has metrics explicitly disabled",
+                    service.name
+                ));
+            }
+        } else {
             warnings.push(format!(
                 "Service '{}' has no metrics configuration",
-                service.name
-            ));
-        } else if obs.metrics.as_ref().unwrap().enabled == Some(false) {
-            warnings.push(format!(
-                "Service '{}' has metrics explicitly disabled",
                 service.name
             ));
         }
@@ -233,14 +237,16 @@ fn check_deployable_observability(
         };
 
         // Check health check
-        if obs.health_check.is_none() {
+        if let Some(health_check) = obs.health_check.as_ref() {
+            if health_check.endpoint.is_none() {
+                errors.push(format!(
+                    "Deployable '{}' health check has no endpoint",
+                    deployable.name
+                ));
+            }
+        } else {
             errors.push(format!(
                 "Deployable '{}' has no health check endpoint",
-                deployable.name
-            ));
-        } else if obs.health_check.as_ref().unwrap().endpoint.is_none() {
-            errors.push(format!(
-                "Deployable '{}' health check has no endpoint",
                 deployable.name
             ));
         }
@@ -259,7 +265,7 @@ fn check_deployable_observability(
 
 fn check_observability_resources(
     platform_dir: &Path,
-    errors: &mut Vec<String>,
+    _errors: &mut [String],
     warnings: &mut Vec<String>,
 ) -> Result<()> {
     info!("Checking observability resources...");
