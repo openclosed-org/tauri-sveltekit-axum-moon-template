@@ -8,12 +8,12 @@
 
 ## Service Registry
 
+- ✅ **admin** (admin/1.0.0)
+- ✅ **agent** (agent/1.0.0)
+- ✅ **auth** (auth/0.1.0)
+- ⚠️ **chat** (chat/0.1.0)
+- ✅ **counter** (counter/1.0.0)
+- ✅ **event-bus** (infrastructure/1.0.0)
 - ✅ **settings** (settings/1.0.0)
 - ✅ **tenant** (tenant/1.0.0)
-- ⚠️ **chat** (chat/0.1.0)
-- ✅ **event-bus** (infrastructure/1.0.0)
-- ✅ **agent** (agent/1.0.0)
-- ✅ **counter** (counter/1.0.0)
 - ✅ **user** (user/1.0.0)
-- ✅ **admin** (admin/1.0.0)
-- ✅ **auth** (auth/0.1.0)

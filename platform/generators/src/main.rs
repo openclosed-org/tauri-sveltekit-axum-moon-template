@@ -266,6 +266,8 @@ fn generate_architecture_doc(platform_dir: &Path, output_dir: &Path) -> Result<(
 
     doc.push_str("\n## Service Registry\n\n");
 
+    // Collect and sort service entries to ensure deterministic cross-platform output
+    let mut services: Vec<(String, String, String, String)> = Vec::new();
     if let Ok(entries) = fs::read_dir(&services_dir) {
         for entry in entries.flatten() {
             if entry.path().extension().and_then(|e| e.to_str()) == Some("yaml")
@@ -275,33 +277,43 @@ fn generate_architecture_doc(platform_dir: &Path, output_dir: &Path) -> Result<(
                 let name = yaml
                     .get("name")
                     .and_then(|v| v.as_str())
-                    .unwrap_or("unknown");
+                    .unwrap_or("unknown")
+                    .to_string();
                 let domain = yaml
                     .get("domain")
                     .and_then(|v| v.as_str())
-                    .unwrap_or("unknown");
+                    .unwrap_or("unknown")
+                    .to_string();
                 let version = yaml
                     .get("version")
                     .and_then(|v| v.as_str())
-                    .unwrap_or("0.0.0");
+                    .unwrap_or("0.0.0")
+                    .to_string();
                 let status = yaml
                     .get("status")
                     .and_then(|v| v.as_str())
-                    .unwrap_or("unknown");
+                    .unwrap_or("unknown")
+                    .to_string();
 
-                let status_icon = match status {
-                    "active" => "✅",
-                    "stub" => "⚠️",
-                    "pending" => "❌",
-                    _ => "❓",
-                };
-
-                doc.push_str(&format!(
-                    "- {} **{}** ({}/{})\n",
-                    status_icon, name, domain, version
-                ));
+                services.push((name, domain, version, status));
             }
         }
+    }
+    // Sort by service name for deterministic output
+    services.sort_by(|a, b| a.0.cmp(&b.0));
+
+    for (name, domain, version, status) in &services {
+        let status_icon = match status.as_str() {
+            "active" => "✅",
+            "stub" => "⚠️",
+            "pending" => "❌",
+            _ => "❓",
+        };
+
+        doc.push_str(&format!(
+            "- {} **{}** ({}/{})\n",
+            status_icon, name, domain, version
+        ));
     }
 
     fs::write(&doc_path, doc)
