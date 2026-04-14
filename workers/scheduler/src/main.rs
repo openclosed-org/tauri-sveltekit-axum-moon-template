@@ -12,6 +12,7 @@ use runtime::ports::Queue;
 use tokio::sync::RwLock;
 use tracing::{info, warn};
 
+mod dedupe;
 mod dispatch;
 mod jobs;
 

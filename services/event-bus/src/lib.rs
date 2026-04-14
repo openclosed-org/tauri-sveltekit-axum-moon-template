@@ -29,8 +29,8 @@
 //! )).await?;
 //! ```
 
-pub mod application;
 pub mod adapters;
+pub mod application;
 pub mod contracts;
 pub mod domain;
 pub mod events;

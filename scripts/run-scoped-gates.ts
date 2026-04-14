@@ -70,7 +70,7 @@ const SUBAGENT_GATES: Record<string, SubagentGates> = {
     required: [
       { label: 'Typecheck', cmd: 'just', args: ['typecheck'] },
       { label: 'Boundary check', cmd: 'just', args: ['boundary-check'] },
-      { label: 'Resilience checks', cmd: 'echo', args: ['TODO: implement resilience checks'], skip: true, todo: 'Script not yet implemented' },
+      { label: 'Resilience checks', cmd: 'bun', args: ['run', 'scripts/validate-resilience.ts', '--mode', 'warn'] },
     ],
     conditional: [],
   },

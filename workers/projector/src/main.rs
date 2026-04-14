@@ -18,6 +18,7 @@ mod checkpoint;
 mod consumers;
 mod error;
 mod readmodels;
+mod replay;
 
 use checkpoint::ProjectionCheckpoint;
 use consumers::EventConsumer;

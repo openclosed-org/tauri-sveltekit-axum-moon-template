@@ -12,6 +12,7 @@ use runtime::ports::Lock;
 use tokio::sync::RwLock;
 use tracing::{info, warn};
 
+mod checkpoint;
 mod conflict;
 mod executors;
 mod plans;

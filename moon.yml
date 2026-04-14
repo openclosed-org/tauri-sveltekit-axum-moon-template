@@ -136,11 +136,42 @@ tasks:
 
   contracts-check:
     script: |
-      echo "=== Running typegen ==="
+      echo "=== Checking contract drift BEFORE regeneration ==="
+      if git diff --name-only packages/contracts/generated/ 2>/dev/null | grep -q .; then
+        echo "DRIFT DETECTED: contracts changed but generated files not committed"
+        echo "Run 'just typegen' then recommit the generated files"
+        git diff --name-only packages/contracts/generated/
+        exit 1
+      else
+        echo "DRIFT CHECK PASSED: packages/contracts/generated/"
+      fi
+      if git diff --name-only apps/web/src/lib/generated/ 2>/dev/null | grep -q .; then
+        echo "FRONTEND DRIFT DETECTED: frontend types changed but generated files not committed"
+        echo "Run 'just typegen' then recommit the generated files"
+        git diff --name-only apps/web/src/lib/generated/
+        exit 1
+      else
+        echo "FRONTEND DRIFT CHECK PASSED: apps/web/src/lib/generated/"
+      fi
+      echo "=== No drift detected. Regenerating to verify alignment ==="
       moon run repo:typegen
-      echo "=== Checking for drift ==="
-      git diff --exit-code packages/contracts/generated/ && echo "DRIFT CHECK PASSED" || (echo "DRIFT CHECK FAILED - generated types differ from committed" && exit 1)
-      git diff --exit-code apps/web/src/lib/generated/ && echo "FRONTEND SYNC PASSED" || (echo "FRONTEND SYNC FAILED - frontend types differ from committed" && exit 1)
+      echo "=== Re-verifying post-regeneration ==="
+      if git diff --name-only packages/contracts/generated/ 2>/dev/null | grep -q .; then
+        echo "POST-REGEN DRIFT DETECTED: typegen produces different output"
+        echo "Fix source contracts or typegen script"
+        git diff --name-only packages/contracts/generated/
+        exit 1
+      else
+        echo "POST-REGEN DRIFT CHECK PASSED"
+      fi
+      if git diff --name-only apps/web/src/lib/generated/ 2>/dev/null | grep -q .; then
+        echo "POST-REGEN FRONTEND DRIFT DETECTED: typegen produces different frontend types"
+        git diff --name-only apps/web/src/lib/generated/
+        exit 1
+      else
+        echo "POST-REGEN FRONTEND CHECK PASSED"
+      fi
+      echo "=== All contract drift checks passed ==="
     inputs:
       - 'packages/contracts/**/src/**'
       - 'packages/contracts/**/Cargo.toml'

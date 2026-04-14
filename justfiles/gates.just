@@ -1,12 +1,12 @@
 # Gates — unified quality entrypoints for humans and agents
 
-# Local gate: keep warn-only during Phase 0 to avoid blocking evolution
+# Local gate: strict mode blocks commits that violate boundaries (Phase 2)
 gate-local:
-    bun run scripts/gate.ts local --mode warn
+    bun run scripts/gate.ts local --mode strict
 
-# Pre-push gate: broader checks but still warn-only in Phase 0
+# Pre-push gate: strict mode blocks pushes that fail quality gates (Phase 2)
 gate-prepush:
-    bun run scripts/gate.ts prepush --mode warn
+    bun run scripts/gate.ts prepush --mode strict
 
 # Phase 1 existence/import validation gate
 gate-existence MODE='warn':
@@ -23,3 +23,7 @@ gate-ci:
 # Release gate: final strict entry before packaging/release
 gate-release:
     bun run scripts/gate.ts release --mode strict
+
+# Scoped gate: run gates specific to a subagent's domain
+gate-scoped AGENT:
+    bun run scripts/run-scoped-gates.ts {{AGENT}}

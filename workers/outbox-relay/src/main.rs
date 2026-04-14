@@ -18,6 +18,7 @@ use tracing::{info, warn};
 
 mod checkpoint;
 mod dedupe;
+mod idempotency;
 mod polling;
 mod publish;
 

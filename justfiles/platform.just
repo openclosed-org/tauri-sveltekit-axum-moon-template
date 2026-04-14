@@ -63,13 +63,29 @@ validate-observability:
     @echo "Checking observability configuration..."
     cargo run -p observability-validator -- --platform-dir platform
 
+# ── SDK Generation (Pending Implementation) ───────────────────
+
+# Generate TypeScript and Rust SDKs from platform models
+# TODO: Implement SDK generators in platform/generators/
+gen-sdk:
+    @echo "WARNING: SDK generation not yet implemented"
+    @echo "  TypeScript SDK: packages/sdk/typescript/"
+    @echo "  Rust SDK:       packages/sdk/rust/"
+    @echo "  See: docs/architecture/repo-layout.md for planned structure"
+
+# Clean generated SDKs
+clean-sdk:
+    @echo "Cleaning generated SDKs..."
+    rm -rf packages/sdk/typescript/!(.gitkeep) packages/sdk/rust/!(.gitkeep) 2>/dev/null || true
+    @echo "SDKs cleaned"
+
 # ── Golden Baseline Verification ──────────────────────────────
 
 # Verify generated artifacts match golden baseline
 verify-generated:
     @bash scripts/verify-generated.sh
 
-# Commit golden baseline for platform catalog
+# Commit golden baselines for ALL generated artifacts
 commit-golden-baseline:
     @bash scripts/commit-golden-baseline.sh
 

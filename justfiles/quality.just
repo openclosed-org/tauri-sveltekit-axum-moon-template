@@ -16,13 +16,26 @@ lint:
 typecheck:
     moon run repo:typecheck
 
-# 合约类型漂移检查（typegen + drift detection）
-contracts-check:
-    moon run repo:contracts-check
+# 合约对齐检查（typegen + drift detection + server alignment validation）
+contracts-check MODE='warn':
+    bun run scripts/validate-contracts.ts --mode {{MODE}}
 
 # 生成合约类型绑定
 typegen:
     moon run repo:typegen
+
+# 合约漂移检查 — 检查 generated 目录是否与源码一致（不重新生成）
+# 用于 CI 和 scoped gates 中检测未提交的类型变更
+# 使用 git diff 检测未提交的变更（不包括已 staged 的变更）
+drift-check:
+    @echo "=== Checking contract drift ==="
+    DRIFT=$(git diff --name-only packages/contracts/generated/ 2>/dev/null) && test -z "$DRIFT" && echo "DRIFT CHECK PASSED" || { echo "DRIFT DETECTED: Run 'just typegen' to regenerate"; echo "$DRIFT"; exit 1; }
+
+# SDK 漂移检查 — 检查 packages/sdk/ 是否有未提交的变更
+# 用于 CI 中检测未重新生成 SDK 的漂移
+sdk-drift-check:
+    @echo "=== Checking SDK drift ==="
+    DRIFT=$(git diff --name-only packages/sdk/ 2>/dev/null) && test -z "$DRIFT" && echo "SDK DRIFT CHECK PASSED" || { echo "SDK DRIFT DETECTED: Run 'just typegen' to regenerate"; echo "$DRIFT"; exit 1; }
 
 # 架构边界检查（features / contracts 依赖约束）
 boundary-check:

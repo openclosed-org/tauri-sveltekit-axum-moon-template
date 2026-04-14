@@ -1,7 +1,7 @@
 {
   "name": "tauri-sveltekit-axum-moon-template",
-  "private": true,
   "packageManager": "bun@1.3.12",
+  "private": true,
   "workspaces": [
     "apps/web",
     "apps/desktop/tests/e2e"
