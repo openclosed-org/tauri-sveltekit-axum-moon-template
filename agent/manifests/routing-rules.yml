@@ -1,0 +1,157 @@
+# Routing Rules
+# Maps touched paths to subagent dispatch decisions
+# Used by planner to determine which subagents to invoke
+
+version: 1
+updated: "2026-04-14"
+
+# Dependency order for dispatch planning
+# When multiple domains are affected, dispatch in this order
+dispatch_order:
+  - platform-ops-agent    # platform/model changes first
+  - contract-agent        # then contracts if protocol affected
+  - service-agent         # then domain services
+  - server-agent          # then server endpoints
+  - worker-agent          # then async workers (parallel with server)
+  - app-shell-agent       # then frontend apps
+  - "(verify)"            # finally, total verification
+
+# Path → subagent mapping
+rules:
+  # Contract domain
+  - match: "packages/contracts/**"
+    primary: contract-agent
+    secondary:
+      - server-agent       # if API types change
+      - service-agent      # if event types change
+      - app-shell-agent    # if SDK types change
+    condition: "always dispatch contract-agent first"
+
+  # Platform model domain
+  - match: "platform/model/**"
+    primary: platform-ops-agent
+    secondary:
+      - contract-agent     # if protocol types affected
+      - service-agent      # if service model changed
+    condition: "regenerate after model change"
+
+  - match: "platform/schema/**"
+    primary: platform-ops-agent
+
+  - match: "platform/generators/**"
+    primary: platform-ops-agent
+    secondary:
+      - contract-agent     # if SDK generator changed
+
+  - match: "platform/validators/**"
+    primary: platform-ops-agent
+
+  # App domain
+  - match: "apps/web/**"
+    primary: app-shell-agent
+
+  - match: "apps/desktop/**"
+    primary: app-shell-agent
+
+  - match: "apps/mobile/**"
+    primary: app-shell-agent
+
+  - match: "packages/ui/**"
+    primary: app-shell-agent
+
+  # Server domain
+  - match: "servers/bff/**"
+    primary: server-agent
+
+  - match: "servers/gateway/**"
+    primary: server-agent
+
+  - match: "servers/internal-rpc/**"
+    primary: server-agent
+
+  # Service domain
+  - match: "services/**"
+    primary: service-agent
+
+  # Worker domain
+  - match: "workers/**"
+    primary: worker-agent
+
+  # Infra/Ops domain
+  - match: "infra/**"
+    primary: platform-ops-agent
+
+  - match: "ops/**"
+    primary: platform-ops-agent
+
+  # Verification domain
+  - match: "verification/e2e/**"
+    primary: app-shell-agent
+
+  - match: "verification/resilience/**"
+    primary: worker-agent
+
+  - match: "verification/topology/**"
+    primary: platform-ops-agent
+
+  - match: "verification/contract/**"
+    primary: contract-agent
+
+  # Documentation (no subagent needed — planner handles directly)
+  - match: "docs/adr/**"
+    primary: planner
+
+  - match: "docs/operations/**"
+    primary: platform-ops-agent
+
+  - match: "docs/platform-model/**"
+    primary: platform-ops-agent
+
+  - match: "docs/contracts/**"
+    primary: contract-agent
+
+  - match: "docs/architecture/**"
+    primary: planner
+
+  # Root config (planner handles directly)
+  - match: "Cargo.toml"
+    primary: planner
+
+  - match: "package.json"
+    primary: planner
+
+  - match: "moon.yml"
+    primary: planner
+
+  - match: "Justfile"
+    primary: planner
+
+  - match: "justfiles/**"
+    primary: planner
+
+  # Agent system itself
+  - match: "agent/**"
+    primary: planner
+
+  - match: ".agents/**"
+    primary: planner
+
+  - match: "AGENTS.md"
+    primary: planner
+
+# Parallel dispatch rules
+# These subagents can run in parallel when their paths are independent
+parallel_rules:
+  - condition: "apps/web/** AND apps/desktop/** only"
+    parallel:
+      - app-shell-agent      # web lane
+      - app-shell-agent      # desktop lane (same agent, different paths)
+
+  - condition: "servers/bff/web-bff/** AND servers/bff/admin-bff/** only"
+    parallel:
+      - server-agent         # web-bff lane
+      - server-agent         # admin-bff lane
+
+  - condition: "services/** only, no cross-service deps"
+    parallel:
+      - service-agent        # each service independently

@@ -5,12 +5,34 @@
 
 ## 核心约束
 
-1. **Agent 首要阅读入口**: 新 Agent 会话必须首先加载此文件
+1. **Agent 首要阅读入口**: 新 Agent 会话必须首先加载根级 `AGENTS.md`（总控协议）
 2. **模块边界**: 参见 `codemap.yml` — 每个模块的允许/禁止依赖、允许引入的 external crates、必须遵循的代码模式
 3. **目录修改边界**: 参见 `boundaries.md` — 明确哪些目录可改、哪些禁止跨改、哪些只读
 4. **约束规则**: 参见 `constraints/` — 依赖白/黑名单、禁止代码模式、契约变更流程、存储策略约束
 5. **生成模板**: 参见 `templates/` — 新增模块、BFF 端点的代码生成模板
 6. **检查清单**: 参见 `checklists/` — 关键操作的验证清单
+
+## Subagent 架构
+
+本仓库采用 Planner → Subagents 架构，每个 subagent 的完整定义在 `.agents/skills/*/SKILL.md`：
+
+| Subagent | Skill |
+|---|---|
+| contract-agent | `.agents/skills/contract-agent/SKILL.md` |
+| app-shell-agent | `.agents/skills/app-shell-agent/SKILL.md` |
+| server-agent | `.agents/skills/server-agent/SKILL.md` |
+| service-agent | `.agents/skills/service-agent/SKILL.md` |
+| worker-agent | `.agents/skills/worker-agent/SKILL.md` |
+| platform-ops-agent | `.agents/skills/platform-ops-agent/SKILL.md` |
+
+路由规则：`agent/manifests/routing-rules.yml`
+门禁矩阵：`agent/manifests/gate-matrix.yml`
+完整定义：`agent/manifests/subagents.yml`
+
+辅助脚本：
+- `scripts/route-task.ts` — 路由分析
+- `scripts/run-scoped-gates.ts` — 作用域门禁
+- `scripts/verify-handoff.ts` — 交接验证
 
 ## 快速规则
 

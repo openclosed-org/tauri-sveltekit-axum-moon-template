@@ -1,0 +1,159 @@
+# Gate Matrix
+# Maps subagents to their required gates
+# Used by planner to determine which gates to run after subagent completes
+
+version: 1
+updated: "2026-04-14"
+
+# Gate definitions
+gates:
+  typegen:
+    command: ["moon", "run", "repo:typegen"]
+    label: "Type generation"
+    scope: contract
+
+  drift_check:
+    command: ["git", "diff", "--exit-code", "packages/contracts/generated/"]
+    label: "Contract drift check"
+    scope: contract
+
+  typecheck:
+    command: ["just", "typecheck"]
+    label: "Type check"
+    scope: global
+
+  boundary_check:
+    command: ["just", "boundary-check"]
+    label: "Boundary check"
+    scope: global
+
+  web_check:
+    command: ["just", "web:check"]
+    label: "Frontend type check"
+    scope: app
+
+  web_lint:
+    command: ["just", "web:lint"]
+    label: "Frontend lint"
+    scope: app
+
+  test_e2e:
+    command: ["just", "test-e2e"]
+    label: "E2E tests"
+    scope: app
+    condition: "apps/ changed"
+
+  test_desktop:
+    command: ["just", "test-desktop"]
+    label: "Desktop tests"
+    scope: app
+    condition: "apps/desktop/ changed"
+
+  cargo_check:
+    command: ["cargo", "check", "-p", "<package>"]
+    label: "Cargo check"
+    scope: rust
+    variable: "package"
+
+  cargo_test:
+    command: ["cargo", "test", "-p", "<package>"]
+    label: "Cargo test"
+    scope: rust
+    variable: "package"
+
+  contract_check:
+    command: ["just", "contracts-check"]
+    label: "Contract checks"
+    scope: contract
+
+  resilience_check:
+    command: ["echo", "TODO: implement resilience checks"]
+    label: "Resilience checks"
+    scope: worker
+    todo: "Script not yet implemented — see scripts/run-scoped-gates.ts"
+
+  validate_platform:
+    command: ["just", "validate-platform"]
+    label: "Platform validation"
+    scope: platform
+
+  validate_topology:
+    command: ["just", "validate-topology"]
+    label: "Topology validation"
+    scope: platform
+
+  verify_generated:
+    command: ["just", "verify-generated"]
+    label: "Generated drift checks"
+    scope: platform
+
+  validate_deps:
+    command: ["just", "validate-deps"]
+    label: "Local/infra validation"
+    scope: platform
+
+  verify:
+    command: ["just", "verify"]
+    label: "Total verify"
+    scope: global
+    note: "Always run as final gate"
+
+# Subagent → gate mapping
+subagent_gates:
+  contract-agent:
+    required:
+      - typegen
+      - drift_check
+      - typecheck
+      - boundary_check
+    conditional: []
+
+  app-shell-agent:
+    required:
+      - web_check
+      - web_lint
+      - boundary_check
+    conditional:
+      - gate: test_e2e
+        when: "apps/ changed"
+      - gate: test_desktop
+        when: "apps/desktop/ changed"
+
+  server-agent:
+    required:
+      - cargo_check
+      - typecheck
+      - boundary_check
+    conditional:
+      - gate: contract_check
+        when: "packages/contracts/ changed"
+
+  service-agent:
+    required:
+      - cargo_check
+      - cargo_test
+      - typecheck
+      - boundary_check
+    conditional: []
+
+  worker-agent:
+    required:
+      - cargo_check
+      - cargo_test
+      - resilience_check
+      - boundary_check
+    conditional: []
+
+  platform-ops-agent:
+    required:
+      - validate_platform
+      - validate_topology
+      - verify_generated
+      - validate_deps
+      - boundary_check
+    conditional: []
+
+# Global gates (always run after all subagents complete)
+global_gates:
+  - verify           # just verify
+  - boundary_check   # just boundary-check

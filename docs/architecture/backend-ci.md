@@ -105,6 +105,11 @@
 
 当前 workflow 的职责如下。
 
+> **与 gate 的关系**：
+> - 本文件描述的 CI 分层仅面向后端 workflow（`.github/workflows/*.yml`）。
+> - 根 gate 组合（`scripts/gate.ts`、`just gate-*`、lefthook）由 integration 轨道负责接线。
+> - 本轨道不应因接线需求而修改根 gate 组合或前端 workflow。
+
 ### 3.1 `.github/workflows/ci.yml`
 
 名称：`CI`
@@ -187,6 +192,9 @@ Jobs：
 - 改主线服务，不应无条件触发替补线
 - 改替补适配器，不应拖慢主线准入
 - 改平台治理模块，应聚焦治理线反馈
+
+> **当前档位**：L2（第二档）稳定阶段。
+> 后端 CI 职责是维持第二档的可解释性与稳定性；第三档闭环验证（contract drift strict、generated drift strict）由 integration 轨道决定是否纳入。
 
 ---
 

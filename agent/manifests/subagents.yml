@@ -1,0 +1,234 @@
+# Subagent Manifests
+# Machine-readable definitions for planner routing
+# Source of truth: agent/codemap.yml layers + agent/boundaries.md
+
+version: 1
+updated: "2026-04-14"
+
+subagents:
+  contract-agent:
+    description: "Maintain contracts, schema, shared protocol, and generated source-of-truth"
+    skill_path: ".agents/skills/contract-agent/SKILL.md"
+    instructions_path: ".github/instructions/contract.instructions.md"
+    owned_paths:
+      - "packages/contracts/**"
+      - "docs/contracts/**"
+      - "verification/contract/**"
+    writable_paths:
+      - "packages/contracts/**"
+      - "docs/contracts/**"
+      - "verification/contract/**"
+    readonly_paths:
+      - "packages/sdk/**"
+      - "docs/generated/**"
+      - "infra/kubernetes/rendered/**"
+      - "platform/catalog/**"
+    gates:
+      - type: "command"
+        cmd: "moon"
+        args: ["run", "repo:typegen"]
+        label: "type generation"
+      - type: "drift_check"
+        path: "packages/contracts/generated/"
+        label: "contract drift"
+      - type: "just"
+        cmd: "typecheck"
+        label: "typecheck"
+      - type: "just"
+        cmd: "boundary-check"
+        label: "boundary check"
+    escalation_triggers:
+      - "breaking API change"
+      - "SDK generation drift unresolvable"
+      - "contract conflict across 3+ domains"
+
+  app-shell-agent:
+    description: "Maintain apps/web, apps/desktop, UI composition, and frontend shell"
+    skill_path: ".agents/skills/app-shell-agent/SKILL.md"
+    instructions_path: ".github/instructions/app-shell.instructions.md"
+    owned_paths:
+      - "apps/**"
+      - "packages/ui/**"
+    writable_paths:
+      - "apps/**"
+      - "packages/ui/**"
+      - "verification/e2e/**"
+    readonly_paths:
+      - "services/**"
+      - "workers/**"
+      - "infra/**"
+      - "packages/sdk/**"
+    gates:
+      - type: "just"
+        cmd: "web:check"
+        label: "frontend typecheck"
+      - type: "just"
+        cmd: "web:lint"
+        label: "frontend lint"
+      - type: "just"
+        cmd: "test-e2e"
+        label: "E2E tests"
+        condition: "apps/ changed"
+      - type: "just"
+        cmd: "boundary-check"
+        label: "boundary check"
+    escalation_triggers:
+      - "app needs direct service import"
+      - "SDK missing required types"
+      - "E2E contract mismatch"
+    notes: "Frontend is L1 maturity — gates minimal. Expand as frontend gates mature."
+
+  server-agent:
+    description: "Maintain servers, handlers, routes, middleware, and sync entrypoints"
+    skill_path: ".agents/skills/server-agent/SKILL.md"
+    instructions_path: ".github/instructions/server.instructions.md"
+    owned_paths:
+      - "servers/**"
+    writable_paths:
+      - "servers/**"
+      - "packages/contracts/**"
+    readonly_paths:
+      - "services/*/domain/**"
+      - "infra/**"
+      - "apps/**"
+    gates:
+      - type: "cargo"
+        cmd: "check"
+        package: "<server-package>"
+        label: "server build check"
+      - type: "just"
+        cmd: "typecheck"
+        label: "typecheck"
+      - type: "just"
+        cmd: "boundary-check"
+        label: "boundary check"
+      - type: "contract_check"
+        label: "contract alignment"
+    escalation_triggers:
+      - "handler implements domain logic"
+      - "protocol change without contract update"
+      - "server imports another server"
+
+  service-agent:
+    description: "Maintain services, domain logic, application layer, policies, and ports"
+    skill_path: ".agents/skills/service-agent/SKILL.md"
+    instructions_path: ".github/instructions/service.instructions.md"
+    owned_paths:
+      - "services/**"
+    writable_paths:
+      - "services/**"
+      - "fixtures/**"
+      - "verification/**"
+      - "packages/contracts/**"
+    readonly_paths:
+      - "infra/**"
+      - "packages/**/adapters/**"
+      - "apps/**"
+      - "servers/**"
+    gates:
+      - type: "cargo"
+        cmd: "test"
+        package: "<service-package>"
+        label: "service tests"
+      - type: "cargo"
+        cmd: "check"
+        package: "<service-package>"
+        label: "service build"
+      - type: "just"
+        cmd: "typecheck"
+        label: "typecheck"
+      - type: "just"
+        cmd: "boundary-check"
+        label: "boundary check"
+    escalation_triggers:
+      - "service imports another service"
+      - "service imports concrete adapter"
+      - "service contains main.rs"
+      - "missing tests for new domain logic"
+
+  worker-agent:
+    description: "Maintain workers, async executors, projectors, schedulers, sync coordinators"
+    skill_path: ".agents/skills/worker-agent/SKILL.md"
+    instructions_path: ".github/instructions/worker.instructions.md"
+    owned_paths:
+      - "workers/**"
+    writable_paths:
+      - "workers/**"
+      - "verification/resilience/**"
+      - "verification/topology/**"
+    readonly_paths:
+      - "apps/**"
+      - "packages/sdk/**"
+      - "infra/**"
+    gates:
+      - type: "cargo"
+        cmd: "check"
+        package: "<worker-package>"
+        label: "worker build"
+      - type: "cargo"
+        cmd: "test"
+        package: "<worker-package>"
+        label: "worker tests"
+      - type: "resilience"
+        label: "resilience checks"
+      - type: "just"
+        cmd: "boundary-check"
+        label: "boundary check"
+    escalation_triggers:
+      - "worker missing idempotency/retry/checkpoint"
+      - "worker imports apps/ or infra/"
+      - "worker consumes undefined event schema"
+    strategy_requirements:
+      outbox-relay: ["idempotency", "retry_policy"]
+      indexer: ["checkpoint", "dedupe_or_resume_strategy"]
+      projector: ["replay_strategy"]
+      scheduler: ["dedupe"]
+      sync-reconciler: ["conflict_strategy", "checkpoint"]
+      workflow-runner: ["compensation_strategy"]
+
+  platform-ops-agent:
+    description: "Maintain platform model, topology, generators, validators, infra, ops"
+    skill_path: ".agents/skills/platform-ops-agent/SKILL.md"
+    instructions_path: ".github/instructions/platform-ops.instructions.md"
+    owned_paths:
+      - "platform/model/**"
+      - "platform/schema/**"
+      - "platform/generators/**"
+      - "platform/validators/**"
+      - "infra/**"
+      - "ops/**"
+    writable_paths:
+      - "platform/model/**"
+      - "platform/schema/**"
+      - "platform/generators/**"
+      - "platform/validators/**"
+      - "infra/**"
+      - "ops/**"
+      - "docs/platform-model/**"
+      - "docs/operations/**"
+    readonly_paths:
+      - "platform/catalog/**"
+      - "infra/kubernetes/rendered/**"
+      - "docs/generated/**"
+      - "packages/sdk/**"
+    gates:
+      - type: "just"
+        cmd: "validate-platform"
+        label: "platform validation"
+      - type: "just"
+        cmd: "validate-topology"
+        label: "topology validation"
+      - type: "just"
+        cmd: "verify-generated"
+        label: "generated drift checks"
+      - type: "just"
+        cmd: "validate-deps"
+        label: "local/infra validation"
+      - type: "just"
+        cmd: "boundary-check"
+        label: "boundary check"
+    escalation_triggers:
+      - "model change breaks topology"
+      - "generated output invalid"
+      - "infrastructure render conflict"
+      - "security policy requires ADR update"
