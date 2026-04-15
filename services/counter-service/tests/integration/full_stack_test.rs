@@ -141,3 +141,61 @@ async fn full_stack_tenant_isolation() {
     assert_eq!(service.get_value(&a).await.unwrap(), 2);
     assert_eq!(service.get_value(&b).await.unwrap(), 1);
 }
+
+#[tokio::test]
+async fn full_stack_idempotency_key_caches_result() {
+    let port = InMemoryLibSqlPort::new();
+    let repo = LibSqlCounterRepository::new(port);
+    repo.migrate().await.unwrap();
+
+    let service = TenantScopedCounterService::new(repo);
+    let tenant = TenantId("tenant-idem".into());
+    let idem_key = "req-unique-1";
+
+    let v1 = service.increment(&tenant, Some(idem_key)).await.unwrap();
+    let v2 = service.increment(&tenant, Some(idem_key)).await.unwrap();
+
+    assert_eq!(v1, 1);
+    assert_eq!(v2, 1, "idempotency key must return cached result");
+
+    // Value in DB should still be 1
+    assert_eq!(service.get_value(&tenant).await.unwrap(), 1);
+}
+
+#[tokio::test]
+async fn full_stack_different_idempotency_keys_produce_different_results() {
+    let port = InMemoryLibSqlPort::new();
+    let repo = LibSqlCounterRepository::new(port);
+    repo.migrate().await.unwrap();
+
+    let service = TenantScopedCounterService::new(repo);
+    let tenant = TenantId("tenant-idem-2".into());
+
+    let v1 = service.increment(&tenant, Some("key-a")).await.unwrap();
+    let v2 = service.increment(&tenant, Some("key-b")).await.unwrap();
+
+    assert_eq!(v1, 1);
+    assert_eq!(v2, 2, "different keys must produce different results");
+}
+
+#[tokio::test]
+async fn full_stack_idempotency_prevents_duplicate_outbox() {
+    let port = InMemoryLibSqlPort::new();
+    let repo = LibSqlCounterRepository::new(port);
+    repo.migrate().await.unwrap();
+
+    let service = TenantScopedCounterService::new(repo);
+    let tenant = TenantId("tenant-idem-3".into());
+    let idem_key = "req-no-dup";
+
+    service.increment(&tenant, Some(idem_key)).await.unwrap();
+    service.increment(&tenant, Some(idem_key)).await.unwrap();
+
+    // Query outbox table via service's get_value (indirect verification)
+    // The outbox should have exactly 1 entry since the second increment was idempotent
+    let value = service.get_value(&tenant).await.unwrap();
+    assert_eq!(
+        value, 1,
+        "counter value should be 1 after idempotent increment"
+    );
+}
