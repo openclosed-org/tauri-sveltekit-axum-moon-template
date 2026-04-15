@@ -12,7 +12,7 @@ use counter_service::contracts::service::CounterService;
 use kernel::TenantId;
 use utoipa::OpenApi;
 
-use crate::state::BffState;
+use crate::state::{BffState, DatabaseBackend};
 
 pub fn router() -> Router<BffState> {
     Router::new()
@@ -38,21 +38,34 @@ async fn increment(
     State(state): State<BffState>,
     tenant: Option<Extension<TenantId>>,
 ) -> (StatusCode, Json<serde_json::Value>) {
-    let db = match state.embedded_db.clone() {
-        Some(db) => db,
-        None => return db_not_ready(),
-    };
     let tenant_id = match extract_tenant(tenant) {
         Ok(id) => id,
         Err(e) => return e,
     };
 
-    let repo = counter_service::infrastructure::LibSqlCounterRepository::new(db);
-    let service = counter_service::application::TenantScopedCounterService::new(repo);
     let kernel_tid = kernel::TenantId(tenant_id.0.clone());
 
-    match service.increment(&kernel_tid).await {
-        Ok(value) => (StatusCode::OK, Json(serde_json::json!({ "value": value }))),
+    let result = match state.db.clone() {
+        Some(DatabaseBackend::Embedded(db)) => {
+            let repo = counter_service::infrastructure::LibSqlCounterRepository::new(db);
+            let service = counter_service::application::TenantScopedCounterService::new(repo);
+            service.increment(&kernel_tid, None).await
+        }
+        Some(DatabaseBackend::Remote(db)) => {
+            let repo = counter_service::infrastructure::LibSqlCounterRepository::new(db);
+            let service = counter_service::application::TenantScopedCounterService::new(repo);
+            service.increment(&kernel_tid, None).await
+        }
+        None => return db_not_ready(),
+    };
+
+    match result {
+        Ok(value) => {
+            // Invalidate cache on mutation
+            let cache_key = format!("counter:{}", kernel_tid.as_str());
+            state.counter_cache.invalidate(&cache_key).await;
+            (StatusCode::OK, Json(serde_json::json!({ "value": value })))
+        }
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(serde_json::json!({ "error": e.to_string() })),
@@ -76,21 +89,33 @@ async fn decrement(
     State(state): State<BffState>,
     tenant: Option<Extension<TenantId>>,
 ) -> (StatusCode, Json<serde_json::Value>) {
-    let db = match state.embedded_db.clone() {
-        Some(db) => db,
-        None => return db_not_ready(),
-    };
     let tenant_id = match extract_tenant(tenant) {
         Ok(id) => id,
         Err(e) => return e,
     };
 
-    let repo = counter_service::infrastructure::LibSqlCounterRepository::new(db);
-    let service = counter_service::application::TenantScopedCounterService::new(repo);
     let kernel_tid = kernel::TenantId(tenant_id.0.clone());
 
-    match service.decrement(&kernel_tid).await {
-        Ok(value) => (StatusCode::OK, Json(serde_json::json!({ "value": value }))),
+    let result = match state.db.clone() {
+        Some(DatabaseBackend::Embedded(db)) => {
+            let repo = counter_service::infrastructure::LibSqlCounterRepository::new(db);
+            let service = counter_service::application::TenantScopedCounterService::new(repo);
+            service.decrement(&kernel_tid, None).await
+        }
+        Some(DatabaseBackend::Remote(db)) => {
+            let repo = counter_service::infrastructure::LibSqlCounterRepository::new(db);
+            let service = counter_service::application::TenantScopedCounterService::new(repo);
+            service.decrement(&kernel_tid, None).await
+        }
+        None => return db_not_ready(),
+    };
+
+    match result {
+        Ok(value) => {
+            let cache_key = format!("counter:{}", kernel_tid.as_str());
+            state.counter_cache.invalidate(&cache_key).await;
+            (StatusCode::OK, Json(serde_json::json!({ "value": value })))
+        }
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(serde_json::json!({ "error": e.to_string() })),
@@ -114,21 +139,33 @@ async fn reset(
     State(state): State<BffState>,
     tenant: Option<Extension<TenantId>>,
 ) -> (StatusCode, Json<serde_json::Value>) {
-    let db = match state.embedded_db.clone() {
-        Some(db) => db,
-        None => return db_not_ready(),
-    };
     let tenant_id = match extract_tenant(tenant) {
         Ok(id) => id,
         Err(e) => return e,
     };
 
-    let repo = counter_service::infrastructure::LibSqlCounterRepository::new(db);
-    let service = counter_service::application::TenantScopedCounterService::new(repo);
     let kernel_tid = kernel::TenantId(tenant_id.0.clone());
 
-    match service.reset(&kernel_tid).await {
-        Ok(value) => (StatusCode::OK, Json(serde_json::json!({ "value": value }))),
+    let result = match state.db.clone() {
+        Some(DatabaseBackend::Embedded(db)) => {
+            let repo = counter_service::infrastructure::LibSqlCounterRepository::new(db);
+            let service = counter_service::application::TenantScopedCounterService::new(repo);
+            service.reset(&kernel_tid, None).await
+        }
+        Some(DatabaseBackend::Remote(db)) => {
+            let repo = counter_service::infrastructure::LibSqlCounterRepository::new(db);
+            let service = counter_service::application::TenantScopedCounterService::new(repo);
+            service.reset(&kernel_tid, None).await
+        }
+        None => return db_not_ready(),
+    };
+
+    match result {
+        Ok(value) => {
+            let cache_key = format!("counter:{}", kernel_tid.as_str());
+            state.counter_cache.invalidate(&cache_key).await;
+            (StatusCode::OK, Json(serde_json::json!({ "value": value })))
+        }
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(serde_json::json!({ "error": e.to_string() })),
@@ -152,21 +189,40 @@ async fn get_value(
     State(state): State<BffState>,
     tenant: Option<Extension<TenantId>>,
 ) -> (StatusCode, Json<serde_json::Value>) {
-    let db = match state.embedded_db.clone() {
-        Some(db) => db,
-        None => return db_not_ready(),
-    };
     let tenant_id = match extract_tenant(tenant) {
         Ok(id) => id,
         Err(e) => return e,
     };
 
-    let repo = counter_service::infrastructure::LibSqlCounterRepository::new(db);
-    let service = counter_service::application::TenantScopedCounterService::new(repo);
     let kernel_tid = kernel::TenantId(tenant_id.0.clone());
 
-    match service.get_value(&kernel_tid).await {
-        Ok(value) => (StatusCode::OK, Json(serde_json::json!({ "value": value }))),
+    let result = match state.db.clone() {
+        Some(DatabaseBackend::Embedded(db)) => {
+            let repo = counter_service::infrastructure::LibSqlCounterRepository::new(db);
+            let service = counter_service::application::TenantScopedCounterService::new(repo);
+            service.get_value(&kernel_tid).await
+        }
+        Some(DatabaseBackend::Remote(db)) => {
+            let repo = counter_service::infrastructure::LibSqlCounterRepository::new(db);
+            let service = counter_service::application::TenantScopedCounterService::new(repo);
+            service.get_value(&kernel_tid).await
+        }
+        None => return db_not_ready(),
+    };
+
+    let cache_key = format!("counter:{}", kernel_tid.as_str());
+
+    // Check cache first
+    if let Some(cached) = state.counter_cache.get(&cache_key).await {
+        return (StatusCode::OK, Json(serde_json::json!({ "value": cached })));
+    }
+
+    match result {
+        Ok(value) => {
+            // Populate cache on read
+            state.counter_cache.insert(cache_key, value).await;
+            (StatusCode::OK, Json(serde_json::json!({ "value": value })))
+        }
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(serde_json::json!({ "error": e.to_string() })),

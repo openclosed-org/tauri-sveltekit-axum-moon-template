@@ -21,13 +21,19 @@ pub struct TenantMemberAdded {
     pub role: String,
 }
 
-/// Counter value changed event.
+/// Counter value changed event — emitted after a successful counter mutation.
+///
+/// ## Dedupe rule (per model.yaml)
+/// `tenant_id + counter_key + version`
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema, TS)]
 #[ts(export, export_to = "events/")]
 pub struct CounterChanged {
     pub tenant_id: String,
+    pub counter_key: String,
+    pub operation: String,
     pub new_value: i64,
     pub delta: i64,
+    pub version: i64,
 }
 
 /// Chat message sent event.

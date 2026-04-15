@@ -11,7 +11,7 @@ path = "src/main.rs"
 [dependencies]
 # Internal
 contracts_events = { path = "../../packages/contracts/events" }
-event-bus = { path = "../../services/event-bus" }
+event-bus = { path = "../../packages/messaging" }
 runtime = { path = "../../packages/runtime" }
 
 # Core

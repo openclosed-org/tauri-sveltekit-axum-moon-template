@@ -41,8 +41,11 @@ impl EventTransform for PassthroughTransform {
                 Ok(Some(AppEvent::CounterChanged(
                     contracts_events::CounterChanged {
                         tenant_id: raw.metadata.get("tenant_id").cloned().unwrap_or_default(),
+                        counter_key: "default".to_string(),
+                        operation: "unknown".to_string(),
                         new_value: 0,
                         delta: 0,
+                        version: 0,
                     },
                 )))
             }

@@ -111,16 +111,16 @@ async fn full_stack_increment_reset_increment() {
     let service = TenantScopedCounterService::new(repo);
     let tenant = TenantId("test-tenant".into());
 
-    let v1 = service.increment(&tenant).await.unwrap();
+    let v1 = service.increment(&tenant, None).await.unwrap();
     assert_eq!(v1, 1);
 
-    let v2 = service.increment(&tenant).await.unwrap();
+    let v2 = service.increment(&tenant, None).await.unwrap();
     assert_eq!(v2, 2);
 
-    let r = service.reset(&tenant).await.unwrap();
+    let r = service.reset(&tenant, None).await.unwrap();
     assert_eq!(r, 0);
 
-    let v3 = service.increment(&tenant).await.unwrap();
+    let v3 = service.increment(&tenant, None).await.unwrap();
     assert_eq!(v3, 1);
 }
 
@@ -134,9 +134,9 @@ async fn full_stack_tenant_isolation() {
     let a = TenantId("tenant-a".into());
     let b = TenantId("tenant-b".into());
 
-    service.increment(&a).await.unwrap();
-    service.increment(&a).await.unwrap();
-    service.increment(&b).await.unwrap();
+    service.increment(&a, None).await.unwrap();
+    service.increment(&a, None).await.unwrap();
+    service.increment(&b, None).await.unwrap();
 
     assert_eq!(service.get_value(&a).await.unwrap(), 2);
     assert_eq!(service.get_value(&b).await.unwrap(), 1);

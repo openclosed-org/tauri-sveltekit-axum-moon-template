@@ -12,7 +12,8 @@ logs/
 *.db-shm
 .data/
 
-# --- Environment / Secrets ---
+# --- Secrets / Environment ---
+.secrets/
 .env
 .env.*
 !.env.example
@@ -27,7 +28,8 @@ target/
 .moon/cache/
 
 # --- mise (tool versions cache) ---
-.mise/
+.mise/cache/
+.mise/installs/
 
 # --- Node / Bun / Frontend ---
 node_modules/

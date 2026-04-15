@@ -1,11 +1,58 @@
-# Project-level mise config — overrides global for this repo
+[settings]
+lockfile = true
+disable_tools = ["aqua:cargo-binstall/cargo-binstall"]
+
+[env]
+RUST_BACKTRACE = "1"
+CARGO_TERM_COLOR = "always"
+MISE_TASK_OUTPUT = "prefix"
+
 [tools]
+# ── 核心运行时（锁版本，影响编译产物）────────────────────
 rust = "1.94.1"
-node = "25.9"
+node = "24.14.1"
 bun = "1.3.12"
 
-# Disable broken aqua tools — installed via cargo instead
-[settings]
-disable_tools = ["aqua:cargo-binstall/cargo-binstall", "aqua:cargo-nextest/cargo-nextest"]
-experimental = true
-jobs = 4
+# ── 项目入口 / 编排（latest，行为稳定）────────────────────
+"aqua:moonrepo/moon" = "latest"
+just = "latest"
+
+# ── Secrets 管理（latest）──────────────────────────────────
+sops = "latest"
+age = "latest"
+
+# ── K8s / GitOps CLI（latest，版本跟集群走）────────────────
+flux2 = "latest"
+kubectl = "latest"
+kustomize = "latest"
+helm = "latest"
+
+# ── 通用文本处理 CLI（aqua registry）──────────────────────
+"aqua:jqlang/jq" = "latest"
+"aqua:mikefarah/yq" = "latest"
+
+# ── Rust 质量门禁（latest）────────────────────────────────
+"cargo:cargo-nextest" = "latest"
+"cargo:taplo-cli" = "latest"
+
+# ── 暂不启用（首次 bootstrap 安装太慢，按需开启）─────────
+# "aqua:cue-lang/cue" = "latest"       # CUE schema — 暂无 CUE 文件
+# "aqua:bufbuild/buf" = "latest"       # Proto 管理 — 暂无 proto
+# "npm:@redocly/cli" = "latest"        # API 文档 — 当前用 utoipa+scalar
+# "aqua:sigstore/cosign" = "latest"    # 签名 — 暂不需要
+# "aqua:anchore/syft" = "latest"       # SBOM — 暂不需要
+
+# ── mise tasks：仅工具管理，不执行项目逻辑 ─────────────────
+# 项目任务由 justfile 入口 → moon 编排 → cargo/bun 执行
+
+[tasks.install]
+description = "Install all project tools"
+run = "mise install"
+
+[tasks.lock]
+description = "Refresh mise.lock metadata/checksums"
+run = "mise lock"
+
+[tasks.doctor]
+description = "Print critical toolchain versions"
+run = "bun run scripts/doctor.ts"

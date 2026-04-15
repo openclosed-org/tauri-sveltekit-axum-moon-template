@@ -14,7 +14,7 @@ use user_service::infrastructure::{LibSqlUserRepository, LibSqlUserTenantReposit
 use user_service::ports::{TenantRepository, UserRepository, UserTenantRepository};
 use utoipa::OpenApi;
 
-use crate::state::BffState;
+use crate::state::{BffState, DatabaseBackend};
 
 pub fn router() -> Router<BffState> {
     Router::new()
@@ -39,18 +39,28 @@ async fn get_user_profile(
     State(state): State<BffState>,
     tenant: Option<Extension<TenantId>>,
 ) -> (StatusCode, Json<serde_json::Value>) {
-    let db = match state.embedded_db.clone() {
-        Some(db) => db,
-        None => return db_not_ready(),
-    };
     let user_sub = match extract_user_sub(tenant) {
         Ok(id) => id,
         Err(e) => return e,
     };
 
-    let user_repo = LibSqlUserRepository::new(db);
+    let db = match state.db.clone() {
+        Some(db) => db,
+        None => return db_not_ready(),
+    };
 
-    match user_repo.find_by_sub(&user_sub).await {
+    let result = match db {
+        DatabaseBackend::Embedded(db) => {
+            let user_repo = LibSqlUserRepository::new(db);
+            user_repo.find_by_sub(&user_sub).await
+        }
+        DatabaseBackend::Remote(db) => {
+            let user_repo = LibSqlUserRepository::new(db);
+            user_repo.find_by_sub(&user_sub).await
+        }
+    };
+
+    match result {
         Ok(Some(user)) => (
             StatusCode::OK,
             Json(serde_json::json!({
@@ -89,43 +99,79 @@ async fn get_user_tenants(
     State(state): State<BffState>,
     tenant: Option<Extension<TenantId>>,
 ) -> (StatusCode, Json<serde_json::Value>) {
-    let db = match state.embedded_db.clone() {
-        Some(db) => db,
-        None => return db_not_ready(),
-    };
     let user_sub = match extract_user_sub(tenant) {
         Ok(id) => id,
         Err(e) => return e,
     };
 
-    let binding_repo = LibSqlUserTenantRepository::new(db.clone());
-    let tenant_repo = user_service::infrastructure::LibSqlTenantRepository::new(db);
+    let db = match state.db.clone() {
+        Some(db) => db,
+        None => return db_not_ready(),
+    };
 
-    match binding_repo.find_user_tenant(&user_sub).await {
-        Ok(Some(binding)) => match tenant_repo.find_by_id(&binding.tenant_id).await {
-            Ok(Some(tenant_info)) => (
-                StatusCode::OK,
-                Json(serde_json::json!([{
-                    "tenant_id": tenant_info.id,
-                    "tenant_name": tenant_info.name,
-                    "role": binding.role,
-                    "joined_at": binding.joined_at.to_rfc3339(),
-                }])),
-            ),
-            Ok(None) | Err(_) => (
-                StatusCode::OK,
-                Json(serde_json::json!([{
-                    "tenant_id": binding.tenant_id,
-                    "role": binding.role,
-                    "joined_at": binding.joined_at.to_rfc3339(),
-                }])),
-            ),
-        },
-        Ok(None) => (StatusCode::OK, Json(serde_json::json!([]))),
-        Err(e) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(serde_json::json!({ "error": e.to_string() })),
-        ),
+    match db {
+        DatabaseBackend::Embedded(db) => {
+            let binding_repo = LibSqlUserTenantRepository::new(db.clone());
+            let tenant_repo = user_service::infrastructure::LibSqlTenantRepository::new(db);
+
+            match binding_repo.find_user_tenant(&user_sub).await {
+                Ok(Some(binding)) => match tenant_repo.find_by_id(&binding.tenant_id).await {
+                    Ok(Some(tenant_info)) => (
+                        StatusCode::OK,
+                        Json(serde_json::json!([{
+                            "tenant_id": tenant_info.id,
+                            "tenant_name": tenant_info.name,
+                            "role": binding.role,
+                            "joined_at": binding.joined_at.to_rfc3339(),
+                        }])),
+                    ),
+                    Ok(None) | Err(_) => (
+                        StatusCode::OK,
+                        Json(serde_json::json!([{
+                            "tenant_id": binding.tenant_id,
+                            "role": binding.role,
+                            "joined_at": binding.joined_at.to_rfc3339(),
+                        }])),
+                    ),
+                },
+                Ok(None) => (StatusCode::OK, Json(serde_json::json!([]))),
+                Err(e) => (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(serde_json::json!({ "error": e.to_string() })),
+                ),
+            }
+        }
+        DatabaseBackend::Remote(db) => {
+            let binding_repo = LibSqlUserTenantRepository::new(db.clone());
+            let tenant_repo = user_service::infrastructure::LibSqlTenantRepository::new(db);
+
+            match binding_repo.find_user_tenant(&user_sub).await {
+                Ok(Some(binding)) => match tenant_repo.find_by_id(&binding.tenant_id).await {
+                    Ok(Some(tenant_info)) => (
+                        StatusCode::OK,
+                        Json(serde_json::json!([{
+                            "tenant_id": tenant_info.id,
+                            "tenant_name": tenant_info.name,
+                            "role": binding.role,
+                            "joined_at": binding.joined_at.to_rfc3339(),
+                        }])),
+                    ),
+                    Ok(None) | Err(_) => (
+                        StatusCode::OK,
+                        Json(serde_json::json!([{
+                            "tenant_id": binding.tenant_id,
+                            "role": binding.role,
+                            "joined_at": binding.joined_at.to_rfc3339(),
+                        }])),
+                    ),
+                },
+                Ok(None) => (StatusCode::OK, Json(serde_json::json!([]))),
+                Err(e) => (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(serde_json::json!({ "error": e.to_string() })),
+                ),
+            }
+        }
     }
 }
 

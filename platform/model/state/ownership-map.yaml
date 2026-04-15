@@ -27,7 +27,3 @@ entities:
   - entity: search-index-snapshot
     owner_service: indexing
     source: services/indexing-service/model.yaml
-
-  - entity: relay-envelope
-    owner_service: event-bus
-    source: services/event-bus/model.yaml

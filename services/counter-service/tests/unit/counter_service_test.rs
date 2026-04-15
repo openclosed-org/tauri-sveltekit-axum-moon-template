@@ -14,15 +14,17 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-/// In-memory mock repository for testing.
+/// In-memory mock repository for testing with CAS and outbox support.
 struct MockCounterRepository {
     counters: Arc<Mutex<HashMap<String, Counter>>>,
+    outbox: Arc<Mutex<Vec<String>>>,
 }
 
 impl MockCounterRepository {
     fn new() -> Self {
         Self {
             counters: Arc::new(Mutex::new(HashMap::new())),
+            outbox: Arc::new(Mutex::new(Vec::new())),
         }
     }
 }
@@ -34,36 +36,62 @@ impl CounterRepository for MockCounterRepository {
         Ok(map.get(id.as_str()).cloned())
     }
 
-    async fn increment(&self, id: &CounterId, now: DateTime<Utc>) -> Result<i64, RepositoryError> {
+    async fn increment(
+        &self,
+        id: &CounterId,
+        _expected_version: i64,
+        now: DateTime<Utc>,
+    ) -> Result<(i64, i64), RepositoryError> {
         let mut map = self.counters.lock().await;
         let counter = map
             .entry(id.as_str().to_string())
             .or_insert_with(|| Counter::new(id.clone(), now));
         let updated = counter.clone().increment();
         *map.get_mut(id.as_str()).unwrap() = updated.clone();
-        Ok(updated.value)
+        Ok((updated.value, updated.version))
     }
 
-    async fn decrement(&self, id: &CounterId, now: DateTime<Utc>) -> Result<i64, RepositoryError> {
+    async fn decrement(
+        &self,
+        id: &CounterId,
+        _expected_version: i64,
+        now: DateTime<Utc>,
+    ) -> Result<(i64, i64), RepositoryError> {
         let mut map = self.counters.lock().await;
         let counter = map
             .entry(id.as_str().to_string())
             .or_insert_with(|| Counter::new(id.clone(), now));
         let updated = counter.clone().decrement();
         *map.get_mut(id.as_str()).unwrap() = updated.clone();
-        Ok(updated.value)
+        Ok((updated.value, updated.version))
     }
 
-    async fn reset(&self, id: &CounterId, now: DateTime<Utc>) -> Result<(), RepositoryError> {
+    async fn reset(
+        &self,
+        id: &CounterId,
+        _expected_version: i64,
+        now: DateTime<Utc>,
+    ) -> Result<i64, RepositoryError> {
         let mut map = self.counters.lock().await;
         let counter = Counter::new(id.clone(), now);
         map.insert(id.as_str().to_string(), counter);
-        Ok(())
+        Ok(0)
     }
 
     async fn upsert(&self, counter: &Counter) -> Result<(), RepositoryError> {
         let mut map = self.counters.lock().await;
         map.insert(counter.id.as_str().to_string(), counter.clone());
+        Ok(())
+    }
+
+    async fn write_outbox(
+        &self,
+        event_type: &str,
+        payload: &str,
+        _source_service: &str,
+    ) -> Result<(), RepositoryError> {
+        let mut outbox = self.outbox.lock().await;
+        outbox.push(format!("{}:{}", event_type, payload));
         Ok(())
     }
 }
@@ -75,7 +103,7 @@ async fn increment_creates_counter_at_one() {
         TenantScopedCounterService::new(repo);
     let tenant = TenantId("tenant-a".into());
 
-    let value = service.increment(&tenant).await.unwrap();
+    let value = service.increment(&tenant, None).await.unwrap();
     assert_eq!(value, 1, "first increment should produce value 1");
 }
 
@@ -86,9 +114,9 @@ async fn increment_is_idempotent_per_tenant() {
         TenantScopedCounterService::new(repo);
     let tenant = TenantId("tenant-a".into());
 
-    let v1 = service.increment(&tenant).await.unwrap();
-    let v2 = service.increment(&tenant).await.unwrap();
-    let v3 = service.increment(&tenant).await.unwrap();
+    let v1 = service.increment(&tenant, None).await.unwrap();
+    let v2 = service.increment(&tenant, None).await.unwrap();
+    let v3 = service.increment(&tenant, None).await.unwrap();
 
     assert_eq!(v1, 1);
     assert_eq!(v2, 2);
@@ -103,7 +131,7 @@ async fn tenant_a_increment_does_not_affect_tenant_b() {
     let tenant_a = TenantId("tenant-a".into());
     let tenant_b = TenantId("tenant-b".into());
 
-    service.increment(&tenant_a).await.unwrap();
+    service.increment(&tenant_a, None).await.unwrap();
     let b_value = service.get_value(&tenant_b).await.unwrap();
 
     assert_eq!(b_value, 0, "tenant-b should not see tenant-a's counter");
@@ -116,7 +144,7 @@ async fn decrement_can_go_negative() {
         TenantScopedCounterService::new(repo);
     let tenant = TenantId("tenant-a".into());
 
-    let value = service.decrement(&tenant).await.unwrap();
+    let value = service.decrement(&tenant, None).await.unwrap();
     assert_eq!(value, -1, "decrement on nonexistent counter should be -1");
 }
 
@@ -127,9 +155,9 @@ async fn reset_returns_zero() {
         TenantScopedCounterService::new(repo);
     let tenant = TenantId("tenant-a".into());
 
-    service.increment(&tenant).await.unwrap();
-    service.increment(&tenant).await.unwrap();
-    let result = service.reset(&tenant).await.unwrap();
+    service.increment(&tenant, None).await.unwrap();
+    service.increment(&tenant, None).await.unwrap();
+    let result = service.reset(&tenant, None).await.unwrap();
 
     assert_eq!(result, 0, "reset must always return 0");
 
@@ -145,11 +173,11 @@ async fn multi_tenant_isolation_after_reset() {
     let tenant_a = TenantId("tenant-a".into());
     let tenant_b = TenantId("tenant-b".into());
 
-    service.increment(&tenant_a).await.unwrap();
-    service.increment(&tenant_a).await.unwrap();
-    service.increment(&tenant_b).await.unwrap();
+    service.increment(&tenant_a, None).await.unwrap();
+    service.increment(&tenant_a, None).await.unwrap();
+    service.increment(&tenant_b, None).await.unwrap();
 
-    service.reset(&tenant_a).await.unwrap();
+    service.reset(&tenant_a, None).await.unwrap();
 
     let a_val = service.get_value(&tenant_a).await.unwrap();
     let b_val = service.get_value(&tenant_b).await.unwrap();
@@ -178,6 +206,6 @@ async fn repository_backed_service_implements_feature_trait() {
     // Verify it implements the contracts CounterService trait
     let _: &dyn counter_service::contracts::service::CounterService = &service;
 
-    let v = service.increment().await.unwrap();
+    let v = service.increment(None).await.unwrap();
     assert_eq!(v, 1);
 }

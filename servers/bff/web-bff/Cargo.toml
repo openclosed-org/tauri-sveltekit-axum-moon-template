@@ -48,6 +48,9 @@ tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 tracing-log = { workspace = true }
 
+# Cache
+moka = { workspace = true }
+
 # Utilities
 chrono = { workspace = true }
 uuid = { workspace = true, features = ["v7"] }

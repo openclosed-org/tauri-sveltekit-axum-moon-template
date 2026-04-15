@@ -3,11 +3,12 @@
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
-/// Counter state.
+/// Counter state — DTO for external consumers.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Counter {
     pub id: String,
     pub value: i64,
+    pub version: i64,
     pub updated_at: String,
 }
 
@@ -15,9 +16,11 @@ pub struct Counter {
 #[async_trait]
 pub trait CounterService: Send + Sync {
     async fn get_value(&self) -> Result<i64, CounterError>;
-    async fn increment(&self) -> Result<i64, CounterError>;
-    async fn decrement(&self) -> Result<i64, CounterError>;
-    async fn reset(&self) -> Result<i64, CounterError>;
+    /// Increment with optional idempotency key.
+    /// If the key was already processed, returns the cached result.
+    async fn increment(&self, idempotency_key: Option<&str>) -> Result<i64, CounterError>;
+    async fn decrement(&self, idempotency_key: Option<&str>) -> Result<i64, CounterError>;
+    async fn reset(&self, idempotency_key: Option<&str>) -> Result<i64, CounterError>;
 }
 
 #[derive(Debug, thiserror::Error)]

@@ -1,4 +1,6 @@
 //! Outbox poller — queries the database for pending outbox entries.
+//!
+//! Provides both in-memory (testing) and libsql-backed (production) readers.
 
 use std::time::Duration;
 
@@ -8,6 +10,8 @@ use tracing::{debug, warn};
 
 use crate::checkpoint::CheckpointStore;
 use crate::dedupe::MessageDedup;
+use data::ports::lib_sql::LibSqlPort;
+use serde::Deserialize;
 
 /// Represents a pending outbox entry.
 #[derive(Debug, Clone)]
@@ -29,6 +33,15 @@ pub trait OutboxReader: Send + Sync {
         since_sequence: u64,
         limit: usize,
     ) -> Result<Vec<PendingOutboxEntry>, Box<dyn std::error::Error + Send + Sync>>;
+
+    /// Mark outbox entries as published.
+    /// Default is a no-op (in-memory readers don't need this).
+    async fn mark_published(
+        &self,
+        _entry_ids: &[String],
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        Ok(())
+    }
 }
 
 /// In-memory stub reader for testing.
@@ -39,6 +52,82 @@ pub struct MemoryOutboxReader {
 impl MemoryOutboxReader {
     pub fn new(entries: Vec<PendingOutboxEntry>) -> Self {
         Self { entries }
+    }
+}
+
+/// Row shape from the counter_outbox table.
+#[derive(Debug, Deserialize)]
+struct OutboxRow {
+    id: i64,
+    event_type: String,
+    payload: String,
+    source_service: String,
+}
+
+/// LibSQL-backed outbox reader for production use.
+///
+/// Reads from the `counter_outbox` table where `published = 0`,
+/// ordered by `id ASC` (FIFO).
+pub struct LibSqlOutboxReader<P: LibSqlPort> {
+    port: P,
+}
+
+impl<P: LibSqlPort> LibSqlOutboxReader<P> {
+    pub fn new(port: P) -> Self {
+        Self { port }
+    }
+}
+
+#[async_trait]
+impl<P: LibSqlPort> OutboxReader for LibSqlOutboxReader<P> {
+    async fn fetch_pending(
+        &self,
+        since_sequence: u64,
+        limit: usize,
+    ) -> Result<Vec<PendingOutboxEntry>, Box<dyn std::error::Error + Send + Sync>> {
+        let rows: Vec<OutboxRow> = self
+            .port
+            .query(
+                "SELECT id, event_type, payload, source_service \
+                 FROM counter_outbox \
+                 WHERE published = 0 AND id > ? \
+                 ORDER BY id ASC \
+                 LIMIT ?",
+                vec![since_sequence.to_string(), limit.to_string()],
+            )
+            .await?;
+
+        let entries = rows
+            .into_iter()
+            .map(|r| PendingOutboxEntry {
+                id: r.id.to_string(),
+                sequence: r.id as u64,
+                event_type: r.event_type,
+                payload: r.payload,
+                source_service: r.source_service,
+                retry_count: 0,
+            })
+            .collect();
+
+        Ok(entries)
+    }
+
+    async fn mark_published(
+        &self,
+        entry_ids: &[String],
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        if entry_ids.is_empty() {
+            return Ok(());
+        }
+
+        let placeholders: Vec<String> = entry_ids.iter().map(|_| "?".to_string()).collect();
+        let sql = format!(
+            "UPDATE counter_outbox SET published = 1 WHERE id IN ({})",
+            placeholders.join(", ")
+        );
+
+        self.port.execute(&sql, entry_ids.to_vec()).await?;
+        Ok(())
     }
 }
 

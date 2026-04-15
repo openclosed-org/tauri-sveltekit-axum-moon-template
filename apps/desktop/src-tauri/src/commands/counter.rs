@@ -17,21 +17,21 @@ fn build_turso_counter_service(
 pub async fn counter_increment(app: tauri::AppHandle) -> Result<i64, String> {
     let db = app.state::<EmbeddedTurso>().inner().clone();
     let service = build_turso_counter_service(db);
-    service.increment().await.map_err(|e| e.to_string())
+    service.increment(None).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub async fn counter_decrement(app: tauri::AppHandle) -> Result<i64, String> {
     let db = app.state::<EmbeddedTurso>().inner().clone();
     let service = build_turso_counter_service(db);
-    service.decrement().await.map_err(|e| e.to_string())
+    service.decrement(None).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub async fn counter_reset(app: tauri::AppHandle) -> Result<i64, String> {
     let db = app.state::<EmbeddedTurso>().inner().clone();
     let service = build_turso_counter_service(db);
-    service.reset().await.map_err(|e| e.to_string())
+    service.reset(None).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]

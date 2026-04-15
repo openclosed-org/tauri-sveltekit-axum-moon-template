@@ -9,8 +9,11 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 fn make_counter_event() -> AppEvent {
     AppEvent::CounterChanged(CounterChanged {
         tenant_id: "t1".into(),
+        counter_key: "default".into(),
+        operation: "increment".into(),
         new_value: 0,
         delta: 0,
+        version: 0,
     })
 }
 
@@ -21,8 +24,11 @@ async fn publish_and_receive_via_broadcast() {
 
     let event = AppEvent::CounterChanged(CounterChanged {
         tenant_id: "t1".into(),
+        counter_key: "default".into(),
+        operation: "increment".into(),
         new_value: 42,
         delta: 1,
+        version: 1,
     });
 
     bus.publish(EventEnvelope::new(event, "counter-service"))

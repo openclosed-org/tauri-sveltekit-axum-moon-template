@@ -32,12 +32,14 @@ impl std::fmt::Display for CounterId {
 ///
 /// ## Invariants
 /// - `value` starts at 0 for new counters
+/// - `version` starts at 0 and increments on every mutation (CAS optimistic locking)
 /// - `updated_at` is set on every mutation
 /// - Counter is scoped to a single tenant (no cross-tenant operations)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Counter {
     pub id: CounterId,
     pub value: i64,
+    pub version: i64,
     pub updated_at: DateTime<Utc>,
 }
 
@@ -47,6 +49,7 @@ impl Counter {
         Self {
             id,
             value: 0,
+            version: 0,
             updated_at: now,
         }
     }
@@ -55,6 +58,7 @@ impl Counter {
     pub fn increment(self) -> Self {
         Self {
             value: self.value + 1,
+            version: self.version + 1,
             ..self
         }
     }
@@ -63,13 +67,18 @@ impl Counter {
     pub fn decrement(self) -> Self {
         Self {
             value: self.value - 1,
+            version: self.version + 1,
             ..self
         }
     }
 
     /// Return a new Counter with value reset to zero.
     pub fn reset(self) -> Self {
-        Self { value: 0, ..self }
+        Self {
+            value: 0,
+            version: self.version + 1,
+            ..self
+        }
     }
 }
 
@@ -83,6 +92,7 @@ mod tests {
         let now = Utc::now();
         let c = Counter::new(CounterId::new("tenant-1"), now);
         assert_eq!(c.value, 0);
+        assert_eq!(c.version, 0);
         assert_eq!(c.updated_at, now);
     }
 
@@ -91,6 +101,7 @@ mod tests {
         let now = Utc::now();
         let c = Counter::new(CounterId::new("t1"), now).increment();
         assert_eq!(c.value, 1);
+        assert_eq!(c.version, 1);
     }
 
     #[test]
@@ -98,6 +109,7 @@ mod tests {
         let now = Utc::now();
         let c = Counter::new(CounterId::new("t1"), now).decrement();
         assert_eq!(c.value, -1);
+        assert_eq!(c.version, 1);
     }
 
     #[test]
@@ -108,5 +120,6 @@ mod tests {
             .increment()
             .reset();
         assert_eq!(c.value, 0);
+        assert_eq!(c.version, 3);
     }
 }

@@ -50,4 +50,4 @@ spec:
     consistency: declared
     idempotency: declared
     partitioning: declared
-    failure_behavior: deferred
+    failure_behavior: declared

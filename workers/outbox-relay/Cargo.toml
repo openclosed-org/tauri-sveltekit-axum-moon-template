@@ -11,8 +11,10 @@ path = "src/main.rs"
 [dependencies]
 # Internal
 runtime = { path = "../../packages/runtime" }
-event-bus = { path = "../../services/event-bus" }
+event-bus = { path = "../../packages/messaging" }
 contracts_events = { path = "../../packages/contracts/events" }
+data = { path = "../../packages/data" }
+storage_turso = { path = "../../packages/data-adapters/turso" }
 
 # Core
 serde = { workspace = true }

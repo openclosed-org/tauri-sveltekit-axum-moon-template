@@ -1,9 +1,21 @@
 //! BFF 状态 — 组合所有服务依赖并注入 Axum State。
 //!
-//! Phase 0: 最小状态 — 仅含配置。Phase 1+: 注入 services/ 实例。
+//! Supports both embedded Turso (local SQLite) and remote Turso cloud.
+//! When `turso_url` is configured, connects to Turso cloud.
+//! Otherwise falls back to embedded database.
 
 use crate::config::Config;
+use moka::future::Cache;
+use std::sync::Arc;
 use storage_turso::EmbeddedTurso;
+use storage_turso::TursoCloud;
+
+/// Database backend — either embedded or remote Turso.
+#[derive(Clone)]
+pub enum DatabaseBackend {
+    Embedded(EmbeddedTurso),
+    Remote(TursoCloud),
+}
 
 /// Web BFF 应用状态。
 ///
@@ -12,8 +24,11 @@ use storage_turso::EmbeddedTurso;
 pub struct BffState {
     pub config: Config,
 
-    /// Embedded libsql for local features (counter, admin, tenant, agent).
-    pub embedded_db: Option<EmbeddedTurso>,
+    /// Database backend — embedded or remote Turso.
+    pub db: Option<DatabaseBackend>,
+
+    /// In-process cache for counter values (tenant_id → value).
+    pub counter_cache: Cache<String, i64>,
 
     /// Shared HTTP client for external service calls.
     pub http_client: reqwest::Client,
@@ -21,19 +36,23 @@ pub struct BffState {
 
 impl BffState {
     pub async fn new(config: Config) -> anyhow::Result<Self> {
-        // Embedded libsql initialization
-        let embedded_db = match &config.database_url {
-            Some(url) => {
-                let db = EmbeddedTurso::new(url).await.ok();
-                if let Some(ref db) = db {
-                    // Run tenant migrations
-                    storage_turso::embedded::run_tenant_migrations(db)
-                        .await
-                        .ok();
-                }
-                db
+        // Database initialization — prefer remote Turso if configured
+        let db = if let (Some(url), Some(token)) = (&config.turso_url, &config.turso_auth_token) {
+            let db = TursoCloud::new(url, token).await.ok();
+            if let Some(ref db) = db {
+                storage_turso::remote::run_tenant_migrations(db).await.ok();
             }
-            None => None,
+            db.map(DatabaseBackend::Remote)
+        } else if let Some(url) = &config.database_url {
+            let db = EmbeddedTurso::new(url).await.ok();
+            if let Some(ref db) = db {
+                storage_turso::embedded::run_tenant_migrations(db)
+                    .await
+                    .ok();
+            }
+            db.map(DatabaseBackend::Embedded)
+        } else {
+            None
         };
 
         let http_client = reqwest::Client::builder()
@@ -42,14 +61,20 @@ impl BffState {
             .build()
             .unwrap_or_default();
 
+        let counter_cache = Cache::builder()
+            .max_capacity(10_000)
+            .time_to_live(std::time::Duration::from_secs(300))
+            .build();
+
         Ok(Self {
             config,
-            embedded_db,
+            db,
+            counter_cache,
             http_client,
         })
     }
 
-    /// Create BffState with a pre-initialized EmbeddedTurso instance.
+    /// Create BffState with a pre-initialized database instance.
     /// Used for testing with in-memory databases.
     pub async fn new_with_db(db: EmbeddedTurso) -> Self {
         let http_client = reqwest::Client::builder()
@@ -60,7 +85,11 @@ impl BffState {
 
         Self {
             config: Config::default(),
-            embedded_db: Some(db),
+            db: Some(DatabaseBackend::Embedded(db)),
+            counter_cache: Cache::builder()
+                .max_capacity(10_000)
+                .time_to_live(std::time::Duration::from_secs(300))
+                .build(),
             http_client,
         }
     }

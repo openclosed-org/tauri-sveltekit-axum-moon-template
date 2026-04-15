@@ -12,7 +12,7 @@ use tenant_service::infrastructure::libsql_adapter::LibSqlTenantRepository;
 use validator::Validate;
 
 use crate::error::{BffError, BffResult};
-use crate::state::BffState;
+use crate::state::{BffState, DatabaseBackend};
 
 pub fn router() -> Router<BffState> {
     Router::<BffState>::new().route("/api/tenant/init", post(init_tenant))
@@ -43,27 +43,39 @@ pub async fn init_tenant(
     body.validate()
         .map_err(|e| BffError::Validation(e.to_string()))?;
 
-    let db = state
-        .embedded_db
-        .clone()
-        .ok_or_else(|| BffError::Internal("Embedded Turso database not initialized".to_string()))?;
-
-    // Construct the repository and run migrations
-    let repo = LibSqlTenantRepository::new(db);
-    repo.migrate()
-        .await
-        .map_err(|e| BffError::Internal(format!("Failed to run tenant migrations: {}", e)))?;
-
-    // Create the service and call the use case
-    let service = TenantService::new(repo);
-    let result = service
-        .init_tenant_for_user(&body.user_sub, &body.user_name)
-        .await
-        .map_err(|e| BffError::Internal(format!("Failed to initialize tenant: {}", e)))?;
-
-    Ok(Json(json!({
-        "tenant_id": result.tenant_id,
-        "role": result.role,
-        "created": result.created,
-    })))
+    match state.db.clone() {
+        Some(DatabaseBackend::Embedded(db)) => {
+            let repo = LibSqlTenantRepository::new(db);
+            repo.migrate().await.map_err(|e| {
+                BffError::Internal(format!("Failed to run tenant migrations: {}", e))
+            })?;
+            let service = TenantService::new(repo);
+            let result = service
+                .init_tenant_for_user(&body.user_sub, &body.user_name)
+                .await
+                .map_err(|e| BffError::Internal(format!("Failed to initialize tenant: {}", e)))?;
+            Ok(Json(json!({
+                "tenant_id": result.tenant_id,
+                "role": result.role,
+                "created": result.created,
+            })))
+        }
+        Some(DatabaseBackend::Remote(db)) => {
+            let repo = LibSqlTenantRepository::new(db);
+            repo.migrate().await.map_err(|e| {
+                BffError::Internal(format!("Failed to run tenant migrations: {}", e))
+            })?;
+            let service = TenantService::new(repo);
+            let result = service
+                .init_tenant_for_user(&body.user_sub, &body.user_name)
+                .await
+                .map_err(|e| BffError::Internal(format!("Failed to initialize tenant: {}", e)))?;
+            Ok(Json(json!({
+                "tenant_id": result.tenant_id,
+                "role": result.role,
+                "created": result.created,
+            })))
+        }
+        None => Err(BffError::Internal("Database not initialized".to_string())),
+    }
 }

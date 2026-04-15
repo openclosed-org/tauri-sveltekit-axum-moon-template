@@ -29,7 +29,7 @@ members = [
     "services/tenant-service",
     "services/auth-service",
     "services/counter-service",
-    "services/event-bus",
+    "packages/messaging",
     # Servers
     "servers/gateway",
     "servers/bff/web-bff",
@@ -94,7 +94,7 @@ counter-service = { path = "services/counter-service" }
 tenant-service = { path = "services/tenant-service" }
 user-service = { path = "services/user-service" }
 auth-service = { path = "services/auth-service" }
-event-bus = { path = "services/event-bus" }
+event-bus = { path = "packages/messaging" }
 web-bff = { path = "servers/bff/web-bff" }
 
 # Tauri
