@@ -27,7 +27,7 @@ access_control:
   abac: false
 
 required_by:
-  - counter
+  - counter-service
   - user
   - tenant
   - auth

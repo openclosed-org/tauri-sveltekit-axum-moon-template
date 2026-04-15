@@ -7,7 +7,7 @@ description: >
   the primary synchronous reference entrypoints.
 
 services:
-  - counter
+  - counter-service
   - tenant
 
 runtime_profile: http-latency-sensitive

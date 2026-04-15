@@ -5,7 +5,7 @@ description: >
 
 entities:
   - entity: counter
-    owner_service: counter
+    owner_service: counter-service
     source: services/counter-service/model.yaml
 
   - entity: tenant

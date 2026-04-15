@@ -1,12 +1,16 @@
 # Kustomization — Dev overlay
 # Minimal resources, single replica, debug enabled
+# Consumes SOPS-encrypted secrets (no .env files)
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
   - ../../base
+  - ../../security/sops/dev/web-bff.enc.yaml
+  - ../../security/sops/dev/outbox-relay-worker.enc.yaml
+  # - ../../security/sops/dev/counter-service.enc.yaml  # Phase 1+: when counter-service is separate deployable
 
-namespace: app
+namespace: app-dev
 
 commonLabels:
   app.kubernetes.io/env: dev
@@ -22,13 +26,6 @@ patches:
         value:
           cpu: "1"
           memory: 1Gi
-      - op: replace
-        path: /spec/template/spec/containers/0/env
-        value:
-          - name: RUST_LOG
-            value: "debug,web-bff=trace"
-          - name: WEB_BFF_DATABASE__URL
-            value: "file:/data/web-bff.db"
 
   - target:
       kind: Deployment
