@@ -196,7 +196,7 @@ graph TB
 
 | Aspect | Local Dev | Single VPS | K3s Cluster |
 |--------|----------|-----------|------------|
-| **Orchestration** | docker-compose | Docker | K3s + Flux |
+| **Orchestration** | docker-compose / k3d | Docker | K3s + Flux |
 | **Database** | Embedded libSQL | libSQL file | libSQL/Turso |
 | **Message Broker** | NATS (container) | NATS (container) | NATS StatefulSet |
 | **Cache** | Valkey (container) | Valkey (container) | Valkey StatefulSet |
@@ -206,5 +206,5 @@ graph TB
 | **Observability** | Not started | OpenObserve + Vector | OpenObserve + Vector |
 | **TLS** | None | Caddy/Traefik | Cert-Manager |
 | **Scaling** | Single instance | Vertical | Horizontal (HPA) |
-| **Secrets** | .env files | SOPS + .env | SOPS + Flux + age |
-| **Deployment** | docker-compose up | docker-compose + scripts | Flux GitOps |
+| **Secrets** | SOPS + age (no .env) | SOPS + age | SOPS + Flux + age |
+| **Deployment** | docker-compose up / sops-run | docker-compose + scripts | Flux GitOps |

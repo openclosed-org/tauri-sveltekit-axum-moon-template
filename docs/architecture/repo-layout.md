@@ -108,7 +108,7 @@
 
 ```text
 boilerplate/
-├── agent/                      # Agent 规则、模板、codemap、checklists
+├── agent/                      # Agent 最小规则层：codemap、routing、gates
 ├── platform/                   # 平台控制面与真理源
 ├── apps/                       # 前端 / 客户端壳层
 ├── servers/                    # 同步入口层
@@ -458,23 +458,28 @@ verification/
 
 ---
 
-## 10. `agent/`：harness 的第二核心
+## 10. `agent/`：最小编排层
 
-`agent/` 必须包含：
+`agent/` 只保留最小且高杠杆的 agent 协作真理源：
 
 1. `codemap.yml`
-2. routing rules
-3. anti-pattern 规则
-4. decision tree
-5. templates
-6. checklists
-7. handoff 协议
+2. `manifests/routing-rules.yml`
+3. `manifests/gate-matrix.yml`
+4. `README.md`
+
+### 各自职责
+
+1. `repo-layout.md` 负责让 agent 快速理解项目目标态、后端分布式边界、真理源分层与依赖方向。
+2. `codemap.yml` 负责让 agent 不敢乱写：路径边界、写权限、依赖方向、禁止模式、required fields、分布式硬规则都必须机器可读。
+3. `routing-rules.yml` 负责 touched paths 到 subagent 的路由与派发顺序。
+4. `gate-matrix.yml` 负责 subagent 完成后必须执行的 scoped gates 与总验证。
 
 ### 关键要求
 
-1. 关键约束必须机器可读，不允许只写散文说明。
-2. templates 必须和 reference modules 同步演进。
-3. codemap 必须告诉 agent：何时声明 owner、何时走 workflow、何时拒绝 cross-service write。
+1. `agent/` 不再承载 prompts、templates、checklists、handoff 散文说明；这些内容如果不能被脚本或 CI 直接消费，不应继续膨胀上下文。
+2. 关键约束必须机器可读，不允许只写散文说明。
+3. 真正的生产级分布式语义应落在 `platform/schema/**`、`platform/model/**`、`services/*/model.yaml`、`packages/contracts/**`，而不是堆积在 agent 文档层。
+4. `codemap.yml` 必须告诉 agent：何时声明 owner、何时走 workflow、何时拒绝 cross-service write，以及哪些 generated 目录禁止手改。
 
 ---
 
