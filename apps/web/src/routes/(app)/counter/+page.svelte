@@ -7,27 +7,20 @@ let count = $state(0);
 let loading = $state(false);
 let errorMessage = $state('');
 
-interface TauriWindow {
-  __TAURI__?: { core: { invoke(cmd: string): Promise<unknown> } };
+interface TauriWindow extends Window {
+  __TAURI__?: {
+    core: {
+      invoke(cmd: string): Promise<number>;
+    };
+  };
 }
-const tauriApi = typeof window !== 'undefined' ? (window as TauriWindow).__TAURI__ : undefined;
-const isTauri = !!tauriApi;
 
 async function invokeCommand(cmd: string) {
-  if (tauriApi) {
-    return tauriApi.core.invoke(cmd);
+  const tauriApi = (window as unknown as TauriWindow).__TAURI__;
+  if (!tauriApi) {
+    throw new Error('Tauri API is not available');
   }
-  const method = cmd.startsWith('counter_get') ? 'GET' : 'POST';
-  const endpoint = cmd.replace('counter_', '').replace('get_value', 'value');
-  const url = `http://localhost:3001/api/counter/${endpoint}`;
-  const token = localStorage.getItem('auth_id_token');
-  const headers: Record<string, string> = {};
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
-  const resp = await fetch(url, { method, headers });
-  const data = await resp.json();
-  return data.value;
+  return tauriApi.core.invoke(cmd);
 }
 
 async function loadValue() {

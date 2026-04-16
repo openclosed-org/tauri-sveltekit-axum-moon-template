@@ -5037,23 +5037,15 @@ dependencies = [
 name = "native-tauri"
 version = "0.1.0"
 dependencies = [
- "adapter-google",
  "async-trait",
- "auth-service",
- "base64 0.22.1",
  "chrono",
- "contracts_api",
- "contracts_auth",
  "counter-service",
  "data",
  "dotenvy",
  "kernel",
  "log",
- "rand 0.8.5",
- "reqwest 0.13.2",
  "serde",
  "serde_json",
- "sha2",
  "storage_turso",
  "tauri",
  "tauri-build",
@@ -5073,7 +5065,6 @@ dependencies = [
  "tracing",
  "tracing-log",
  "tracing-subscriber",
- "url",
  "workspace-hack",
 ]
 

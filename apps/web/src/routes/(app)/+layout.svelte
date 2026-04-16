@@ -1,18 +1,8 @@
 <script lang="ts">
-import { goto } from '$app/navigation';
 import { page } from '$app/state';
 import { Switch } from '$lib/components';
-import { auth, checkSession } from '$lib/stores/auth.svelte';
 import { getTheme, toggleTheme } from '$lib/stores/theme';
-import {
-  LayoutDashboard,
-  MessageSquare,
-  PanelLeftClose,
-  PanelLeftOpen,
-  Plus,
-  Settings,
-} from '@jis3r/icons';
-import { onMount } from 'svelte';
+import { PanelLeftClose, PanelLeftOpen, Plus } from '@jis3r/icons';
 import type { Snippet } from 'svelte';
 
 interface Props {
@@ -24,31 +14,8 @@ const { children }: Props = $props();
 // biome-ignore lint/style/useConst: Svelte 5 $state requires let for template reassignment
 let sidebarExpanded = $state(true);
 let isDark = $state(getTheme() === 'dark');
-let authReady = $state(false);
 
-// Auth guard: check session on mount, redirect if not authenticated
-onMount(async () => {
-  const hasSession = await checkSession();
-  authReady = true;
-  if (!hasSession) {
-    goto('/login');
-  }
-});
-
-// Reactive guard: only active after initial session check completes
-$effect(() => {
-  if (!authReady) return;
-  if (!auth.isAuthenticated) {
-    goto('/login');
-  }
-});
-
-const navItems = [
-  { href: '/counter', label: 'Counter', icon: Plus },
-  { href: '/admin', label: 'Admin', icon: LayoutDashboard },
-  { href: '/agent', label: 'Agent Chat', icon: MessageSquare },
-  { href: '/settings', label: 'Settings', icon: Settings },
-];
+const navItems = [{ href: '/counter', label: 'Counter', icon: Plus }];
 
 function handleThemeToggle(checked: boolean) {
   isDark = checked;
@@ -90,7 +57,7 @@ function handleThemeToggle(checked: boolean) {
 			{/each}
 		</nav>
 
-		<!-- Bottom: Settings + Theme Toggle -->
+		<!-- Bottom: Theme Toggle -->
 		<div class="border-t border-[var(--color-border)] p-3 space-y-2">
 			<div class="flex items-center justify-between">
 				{#if sidebarExpanded}

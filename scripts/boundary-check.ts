@@ -48,44 +48,54 @@ async function checkBoundary(rule: BoundaryRule): Promise<boolean> {
 async function main(): Promise<number> {
   const rules: BoundaryRule[] = [
     {
-      pkgName: 'domain',
+      pkgName: 'kernel',
       allowedPatterns: ['async-trait', 'serde', 'serde_json'],
-      disallowedPattern: /^(storage_|runtime_|contracts_|usecases|feature_)/,
-    },
-    {
-      pkgName: 'usecases',
-      allowedPatterns: ['async-trait', 'serde', 'serde_json', 'chrono', 'thiserror', 'feature_'],
-      disallowedPattern: /^(storage_|runtime_|contracts_)/,
+      disallowedPattern: /^(storage_|runtime_|contracts_|counter-service|auth-service|tenant-service|user-service)/,
     },
     {
       pkgName: 'contracts_api',
       allowedPatterns: ['serde', 'ts-rs', 'utoipa', 'validator'],
-      disallowedPattern: /^(domain|usecases|storage_|runtime_|feature_)/,
+      disallowedPattern: /^(kernel|storage_|runtime_|counter-service|auth-service|tenant-service|user-service)/,
     },
     {
-      pkgName: 'feature_auth',
-      allowedPatterns: ['async-trait', 'serde', 'serde_json', 'thiserror', 'contracts_auth'],
-      disallowedPattern: /^(domain|usecases|storage_|runtime_)/,
+      pkgName: 'contracts_auth',
+      allowedPatterns: ['serde', 'ts-rs', 'utoipa', 'validator'],
+      disallowedPattern: /^(kernel|storage_|runtime_|counter-service|auth-service|tenant-service|user-service)/,
     },
     {
-      pkgName: 'feature_counter',
-      allowedPatterns: ['async-trait', 'serde', 'serde_json', 'thiserror'],
-      disallowedPattern: /^(domain|usecases|storage_|runtime_|contracts_)/,
+      pkgName: 'contracts_events',
+      allowedPatterns: ['serde', 'ts-rs', 'utoipa', 'validator'],
+      disallowedPattern: /^(kernel|storage_|runtime_|counter-service|auth-service|tenant-service|user-service)/,
     },
     {
-      pkgName: 'feature_admin',
-      allowedPatterns: ['async-trait', 'serde', 'serde_json', 'thiserror', 'contracts_api'],
-      disallowedPattern: /^(domain|usecases|storage_|runtime_)/,
+      pkgName: 'contracts_errors',
+      allowedPatterns: ['serde', 'ts-rs', 'utoipa', 'validator'],
+      disallowedPattern: /^(kernel|storage_|runtime_|counter-service|auth-service|tenant-service|user-service)/,
     },
     {
-      pkgName: 'feature_agent',
-      allowedPatterns: ['async-trait', 'serde', 'serde_json', 'thiserror', 'contracts_api'],
-      disallowedPattern: /^(domain|usecases|storage_|runtime_)/,
+      pkgName: 'counter-service',
+      allowedPatterns: ['async-trait', 'serde', 'serde_json', 'thiserror', 'contracts_events', 'contracts_errors', 'kernel', 'data'],
+      disallowedPattern: /^(storage_|runtime_|auth-service|tenant-service|user-service)/,
+    },
+    {
+      pkgName: 'auth-service',
+      allowedPatterns: ['async-trait', 'serde', 'serde_json', 'thiserror', 'contracts_auth', 'contracts_errors', 'kernel', 'data'],
+      disallowedPattern: /^(storage_|runtime_|counter-service|tenant-service|user-service)/,
+    },
+    {
+      pkgName: 'tenant-service',
+      allowedPatterns: ['async-trait', 'serde', 'serde_json', 'thiserror', 'contracts_errors', 'kernel', 'data'],
+      disallowedPattern: /^(storage_|runtime_|counter-service|auth-service|user-service)/,
+    },
+    {
+      pkgName: 'user-service',
+      allowedPatterns: ['async-trait', 'serde', 'serde_json', 'thiserror', 'contracts_errors', 'kernel', 'data'],
+      disallowedPattern: /^(storage_|runtime_|counter-service|auth-service|tenant-service)/,
     },
   ];
 
   console.log('=== Architecture Boundary Check ===\n');
-  console.log('Rules: features MUST NOT depend on usecases\n');
+  console.log('Rules: services MUST NOT depend on other services\n');
   console.log('Rules: contracts MUST be Single Source of Truth for shared types\n');
 
   const results = await Promise.all(rules.map(checkBoundary));

@@ -3,6 +3,10 @@
 use async_trait::async_trait;
 use contracts_events::AppEvent;
 use event_bus::ports::EventEnvelope;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::sync::RwLock;
+use tracing::debug;
 
 use crate::ProjectorError;
 
@@ -38,5 +42,82 @@ impl EventConsumer for LoggingConsumer {
             envelope.source_service,
             chrono::Utc::now().to_rfc3339()
         )))
+    }
+}
+
+/// Counter state read model update.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CounterStateUpdate {
+    pub tenant_id: String,
+    pub counter_key: String,
+    pub new_value: i64,
+    pub version: u64,
+    pub operation: String,
+    pub projected_at: String,
+}
+
+/// Projects CounterChanged events into a counter state read model.
+pub struct CounterStateConsumer {
+    state: RwLock<HashMap<String, CounterStateUpdate>>,
+}
+
+impl CounterStateConsumer {
+    pub fn new() -> Self {
+        Self {
+            state: RwLock::new(HashMap::new()),
+        }
+    }
+
+    /// Build a composite key for the counter.
+    fn counter_key(tenant_id: &str, counter_key: &str) -> String {
+        format!("{}:{}", tenant_id, counter_key)
+    }
+}
+
+#[async_trait]
+impl EventConsumer for CounterStateConsumer {
+    fn name(&self) -> &str {
+        "counter-state"
+    }
+
+    fn is_interested(&self, event: &AppEvent) -> bool {
+        matches!(event, AppEvent::CounterChanged(_))
+    }
+
+    async fn consume(&self, envelope: &EventEnvelope) -> Result<Option<String>, ProjectorError> {
+        let counter_changed = match &envelope.event {
+            AppEvent::CounterChanged(event) => event,
+            _ => return Ok(None),
+        };
+
+        let key = Self::counter_key(&counter_changed.tenant_id, &counter_changed.counter_key);
+
+        let update = CounterStateUpdate {
+            tenant_id: counter_changed.tenant_id.clone(),
+            counter_key: counter_changed.counter_key.clone(),
+            new_value: counter_changed.new_value,
+            version: counter_changed.version as u64,
+            operation: counter_changed.operation.clone(),
+            projected_at: chrono::Utc::now().to_rfc3339(),
+        };
+
+        // Update in-memory state
+        {
+            let mut state = self.state.write().unwrap();
+            state.insert(key.clone(), update.clone());
+        }
+
+        debug!(
+            tenant_id = %counter_changed.tenant_id,
+            counter_key = %counter_changed.counter_key,
+            new_value = counter_changed.new_value,
+            version = counter_changed.version,
+            "projected counter state"
+        );
+
+        // Serialize the update for the read model
+        serde_json::to_string(&update)
+            .map(Some)
+            .map_err(|e| ProjectorError::Internal(format!("serialize counter state: {e}")))
     }
 }

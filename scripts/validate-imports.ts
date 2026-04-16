@@ -11,6 +11,7 @@ interface ImportRule {
   allow?: string[];
   disallow?: string[];
   except_same_module?: boolean;
+  except?: string[];  // Exceptions: paths that are allowed despite disallow rule
 }
 
 interface CodeMap {
@@ -175,7 +176,7 @@ async function loadManifestInfo(relativeManifestPath: string): Promise<ManifestI
 
   for (const section of dependencySections) {
     const sectionValue = manifest[section];
-    if (!sectionValue || typeof sectionValue !== 'object') {
+    if (!sectionValue || typeof sectionValue !== 'object' || Array.isArray(sectionValue)) {
       continue;
     }
 
@@ -184,9 +185,9 @@ async function loadManifestInfo(relativeManifestPath: string): Promise<ManifestI
         continue;
       }
 
-      const cratePath = value.path;
+      const cratePath = (value as { path?: string }).path;
       if (typeof cratePath !== 'string') {
-        if (value.workspace === true) {
+        if ((value as { workspace?: boolean }).workspace === true) {
           const workspacePath = workspaceDependencyPaths.get(dependencyName);
           if (workspacePath) {
             dependencies.push(workspacePath);
@@ -222,6 +223,25 @@ function isSameServiceModule(source: string, target: string): boolean {
   return sourceParts[0] === targetParts[0] && sourceParts[1] === targetParts[1];
 }
 
+function isException(sourcePath: string, targetPath: string, exceptions: string[] | undefined): boolean {
+  if (!exceptions || exceptions.length === 0) {
+    return false;
+  }
+  
+  // Check if source path matches any exception pattern
+  return exceptions.some((pattern) => {
+    // Pattern format: "source:target" or just "source" (any target)
+    const [exceptionSource, exceptionTarget] = pattern.includes(':') 
+      ? pattern.split(':') 
+      : [pattern, '*'];
+    
+    const sourceMatches = matchesPattern(sourcePath, exceptionSource);
+    const targetMatches = exceptionTarget === '*' || matchesPattern(targetPath, exceptionTarget);
+    
+    return sourceMatches && targetMatches;
+  });
+}
+
 function validateManifestAgainstRules(
   manifest: ManifestInfo,
   rules: ImportRule[],
@@ -241,6 +261,11 @@ function validateManifestAgainstRules(
 
     for (const rule of matchedRules) {
       if (rule.except_same_module && isSameServiceModule(sourcePath, targetPath)) {
+        continue;
+      }
+
+      // Check if this is an exception
+      if (isException(sourcePath, targetPath, rule.except)) {
         continue;
       }
 

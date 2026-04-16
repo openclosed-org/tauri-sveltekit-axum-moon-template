@@ -2,9 +2,7 @@
 import { onMount } from 'svelte';
 import '../app.css';
 import Toast from '$lib/components/ui/Toast.svelte';
-import { handleOAuthCallback } from '$lib/ipc/auth';
 import { isTauri, safeInvoke, safeListen } from '$lib/ipc/bridge';
-import { auth, initAuthListeners, setSession } from '$lib/stores/auth.svelte';
 
 const { children } = $props();
 
@@ -26,31 +24,6 @@ function dismissError() {
 }
 
 onMount(() => {
-  // Listen for auth:expired events from refresh timer (Tauri only)
-  const cleanupAuth = isTauri() ? initAuthListeners() : undefined;
-
-  // Listen for OAuth callback from Rust TCP listener (Tauri only)
-  let unlistenOAuthCleanup: (() => void) | undefined;
-  if (isTauri()) {
-    safeListen<string>('oauth-callback', async (payload) => {
-      console.log('[auth] Received oauth-callback event:', payload);
-      const url = payload;
-      if (url.includes('oauth/callback')) {
-        try {
-          const session = await handleOAuthCallback(url);
-          console.log('[auth] OAuth callback succeeded:', session.user.email);
-          setSession(session);
-        } catch (e) {
-          console.error('[auth] OAuth callback failed:', e);
-          auth.authLoading = false;
-          auth.authError = String(e);
-        }
-      }
-    }).then((cleanup) => {
-      unlistenOAuthCleanup = cleanup;
-    });
-  }
-
   // Listen for Rust panic events (Tauri only)
   let unlistenPanicCleanup: (() => void) | undefined;
   if (isTauri()) {
@@ -72,27 +45,9 @@ onMount(() => {
   };
   window.addEventListener('keydown', handleKeydown);
 
-  // MCP plugin listeners (Tauri only)
-  let mcpCleanup: (() => void) | undefined;
-  if (isTauri()) {
-    import('tauri-plugin-mcp')
-      .then(({ setupPluginListeners, cleanupPluginListeners }) => {
-        setupPluginListeners().catch((e) => {
-          console.error('[mcp] setupPluginListeners() failed:', e);
-        });
-        mcpCleanup = cleanupPluginListeners;
-      })
-      .catch((e) => {
-        console.warn('[mcp] failed to initialize plugin listeners:', e);
-      });
-  }
-
   return () => {
-    cleanupAuth?.();
-    unlistenOAuthCleanup?.();
     unlistenPanicCleanup?.();
     window.removeEventListener('keydown', handleKeydown);
-    mcpCleanup?.();
   };
 });
 </script>

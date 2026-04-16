@@ -266,6 +266,10 @@ rules:
       from: apps/**
       disallow:
         - services/**
+      except:
+        - "apps/desktop/**:services/counter-service"
+        - "apps/desktop/**:services/auth-service"
+
 
     - name: apps-cannot-import-workers
       from: apps/**

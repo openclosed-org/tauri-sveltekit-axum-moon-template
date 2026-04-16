@@ -66,6 +66,26 @@ const gateDefinitions: Record<GateName, GateCommand[]> = {
       command: 'just',
       args: ['platform-doctor'],
     },
+    {
+      label: 'validate state',
+      command: 'bun',
+      args: ['run', 'scripts/validate-state.ts', '--mode', 'strict'],
+    },
+    {
+      label: 'validate contracts',
+      command: 'bun',
+      args: ['run', 'scripts/validate-contracts.ts', '--mode', 'strict'],
+    },
+    {
+      label: 'validate imports',
+      command: 'bun',
+      args: ['run', 'scripts/validate-imports.ts', '--mode', 'strict'],
+    },
+    {
+      label: 'boundary check',
+      command: 'bun',
+      args: ['run', 'scripts/boundary-check.ts'],
+    },
   ],
   release: [
     {

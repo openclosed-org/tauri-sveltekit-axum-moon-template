@@ -147,6 +147,25 @@ impl OutboxReader for MemoryOutboxReader {
     }
 }
 
+/// Implement OutboxReader for boxed trait objects
+#[async_trait]
+impl OutboxReader for Box<dyn OutboxReader> {
+    async fn fetch_pending(
+        &self,
+        since_sequence: u64,
+        limit: usize,
+    ) -> Result<Vec<PendingOutboxEntry>, Box<dyn std::error::Error + Send + Sync>> {
+        self.as_ref().fetch_pending(since_sequence, limit).await
+    }
+
+    async fn mark_published(
+        &self,
+        entry_ids: &[String],
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        self.as_ref().mark_published(entry_ids).await
+    }
+}
+
 /// Configuration for the outbox poller.
 #[derive(Debug, Clone)]
 pub struct PollerConfig {
@@ -165,18 +184,18 @@ impl Default for PollerConfig {
 
 /// Polls the outbox and yields pending entries to the publisher.
 pub struct OutboxPoller<R: OutboxReader> {
-    reader: R,
+    pub reader: R,
     config: PollerConfig,
     checkpoint: CheckpointStore,
     dedup: MessageDedup,
 }
 
 impl<R: OutboxReader> OutboxPoller<R> {
-    pub fn new(reader: R, config: PollerConfig) -> Self {
+    pub fn new(reader: R, config: PollerConfig, checkpoint_path: &str) -> Self {
         Self {
             reader,
             config,
-            checkpoint: CheckpointStore::new(0),
+            checkpoint: CheckpointStore::new(0, checkpoint_path),
             dedup: MessageDedup::default(),
         }
     }
@@ -220,6 +239,14 @@ impl<R: OutboxReader> OutboxPoller<R> {
         }
     }
 
+    /// Mark entries as published in the database and advance checkpoint.
+    pub async fn mark_published(
+        &mut self,
+        entry_ids: &[String],
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        self.reader.mark_published(entry_ids).await
+    }
+
     /// Run the poller loop (for integration into a larger worker).
     pub async fn run<F, Fut>(&mut self, mut handler: F)
     where
@@ -242,6 +269,10 @@ impl<R: OutboxReader> OutboxPoller<R> {
 mod tests {
     use super::*;
 
+    fn test_checkpoint_path() -> &'static str {
+        "/tmp/outbox-poller-test-checkpoint.json"
+    }
+
     #[tokio::test]
     async fn poll_cycle_returns_pending_entries() {
         let entries = vec![PendingOutboxEntry {
@@ -253,11 +284,12 @@ mod tests {
             retry_count: 0,
         }];
         let reader = MemoryOutboxReader::new(entries);
-        let mut poller = OutboxPoller::new(reader, PollerConfig::default());
+        let mut poller = OutboxPoller::new(reader, PollerConfig::default(), test_checkpoint_path());
 
         let result = poller.poll_cycle().await;
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].id, "entry-1");
+        let _ = std::fs::remove_file(test_checkpoint_path());
     }
 
     #[tokio::test]
@@ -271,7 +303,7 @@ mod tests {
             retry_count: 0,
         }];
         let reader = MemoryOutboxReader::new(entries.clone());
-        let mut poller = OutboxPoller::new(reader, PollerConfig::default());
+        let mut poller = OutboxPoller::new(reader, PollerConfig::default(), test_checkpoint_path());
 
         // First poll
         let result1 = poller.poll_cycle().await;
@@ -283,5 +315,6 @@ mod tests {
         poller.reader = reader2;
         let result2 = poller.poll_cycle().await;
         assert_eq!(result2.len(), 0);
+        let _ = std::fs::remove_file(test_checkpoint_path());
     }
 }

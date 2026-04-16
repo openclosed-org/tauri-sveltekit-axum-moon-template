@@ -1,7 +1,6 @@
 //! native-tauri — Tauri application entry point
 
 mod commands;
-mod sync;
 
 /// Client-local schema bootstrapping for the embedded desktop runtime.
 pub mod schema {
@@ -30,14 +29,12 @@ pub mod schema {
         );";
 }
 
-use commands::{auth, config, counter};
+use commands::counter;
 use schema::COUNTER_MIGRATION;
 
 use data::ports::lib_sql::LibSqlPort;
 use std::path::{Path, PathBuf};
 use storage_turso::{EmbeddedTurso, embedded::run_tenant_migrations};
-use sync::SyncEngine;
-use sync::engine::init_sync_tables;
 use tauri::{Emitter, Manager};
 use tracing_subscriber::{EnvFilter, fmt, prelude::*};
 
@@ -167,21 +164,10 @@ pub fn run() {
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .plugin(log_plugin)
         .invoke_handler(tauri::generate_handler![
-            auth::start_oauth,
-            auth::handle_oauth_callback,
-            auth::get_session,
-            auth::logout,
-            auth::quit_app,
-            config::get_config,
             counter::counter_increment,
             counter::counter_decrement,
             counter::counter_reset,
             counter::counter_get_value,
-            commands::sync::sync_start,
-            commands::sync::sync_stop,
-            commands::sync::sync_once,
-            commands::sync::sync_get_stats,
-            commands::sync::sync_configure,
         ]);
 
     #[cfg(desktop)]
@@ -221,10 +207,6 @@ pub fn run() {
                 }
             }
 
-            let client_id = std::env::var("GOOGLE_CLIENT_ID").unwrap_or_default();
-            let client_secret = std::env::var("GOOGLE_CLIENT_SECRET").unwrap_or_default();
-            let api_url = std::env::var("API_URL").unwrap_or_default();
-
             let app_data_dir = app
                 .path()
                 .app_local_data_dir()
@@ -259,51 +241,6 @@ pub fn run() {
 
             app.manage(AppState { db: db.clone() });
             app.manage(db.clone());
-
-            tracing::info!(
-                client_id_len = client_id.len(),
-                client_secret_len = client_secret.len(),
-                %api_url,
-                "config loaded"
-            );
-
-            let handle = app.handle().clone();
-            auth::start_refresh_timer(handle);
-
-            // Initialize sync tables and start background sync if configured
-            let remote_url = std::env::var("TURSO_SYNC_URL").ok();
-            let auth_token = std::env::var("TURSO_AUTH_TOKEN").ok();
-
-            if let (Some(url), Some(token)) = (remote_url, auth_token) {
-                let db = app.state::<AppState>().db.clone();
-                let app_handle = app.handle().clone();
-
-                // Spawn async initialization for sync
-                tauri::async_runtime::spawn(async move {
-                    // Initialize sync metadata tables
-                    if let Err(e) = init_sync_tables(&db).await {
-                        tracing::error!(%e, "failed to initialize sync tables");
-                    }
-
-                    // Create and manage sync engine
-                    let sync_engine = SyncEngine::new(db, url, token, sync::SyncConfig::default());
-                    let sync_state = commands::sync::SyncState {
-                        engine: std::sync::Arc::new(tokio::sync::Mutex::new(sync_engine)),
-                    };
-                    app_handle.manage(sync_state);
-
-                    // Start background sync
-                    let state = app_handle.state::<commands::sync::SyncState>();
-                    let mut engine = state.engine.lock().await;
-                    let app_handle_for_sync = app_handle.clone();
-                    engine.start_background_sync(app_handle_for_sync);
-                    drop(engine);
-
-                    tracing::info!("background sync initialized and started");
-                });
-            } else {
-                tracing::info!("sync not configured (TURSO_SYNC_URL and TURSO_AUTH_TOKEN not set)");
-            }
 
             let app_handle = app.handle().clone();
             let default_hook = std::panic::take_hook();

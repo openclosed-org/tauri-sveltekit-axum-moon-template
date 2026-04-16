@@ -15,8 +15,9 @@ use event_bus::ports::EventBus;
 use runtime::adapters::memory::{MemoryPubSub, MemoryState};
 use runtime::ports::state::StateEntry;
 use runtime::ports::{MessageEnvelope, PubSub, State};
+use storage_turso::embedded::EmbeddedTurso;
 use tokio::sync::RwLock;
-use tracing::{info, warn};
+use tracing::{error, info, warn};
 
 mod checkpoint;
 mod config;
@@ -26,6 +27,7 @@ mod polling;
 mod publish;
 
 use config::Config;
+use idempotency::IdempotencyStore;
 use polling::{MemoryOutboxReader, OutboxPoller, OutboxReader, PendingOutboxEntry, PollerConfig};
 use publish::OutboxPublisher;
 
@@ -130,18 +132,17 @@ async fn main() -> anyhow::Result<()> {
     // Create outbox publisher with both event bus and pubsub
     let publisher = OutboxPublisher::new(event_bus, pubsub);
 
-    // Create outbox reader (stub for now; would be Turso/SQLite in production)
-    let reader = MemoryOutboxReader::new(Vec::new());
-    let poller_config = PollerConfig {
-        poll_interval: config.poll_interval(),
-        batch_size: config.batch_size,
-    };
-    let mut poller = OutboxPoller::new(reader, poller_config);
+    // Create idempotency store for exactly-once publishing
+    let idempotency_store = IdempotencyStore::default();
+
+    // Choose reader based on runtime config
+    let mut poller = create_outbox_poller(&config).await;
 
     info!(
-        "Outbox relay worker running (poll interval: {:?}, batch size: {})",
+        "Outbox relay worker running (poll interval: {:?}, batch size: {}, checkpoint: {})",
         config.poll_interval(),
-        config.batch_size
+        config.batch_size,
+        config.checkpoint_path
     );
 
     // Main processing loop
@@ -149,13 +150,75 @@ async fn main() -> anyhow::Result<()> {
         let entries = poller.poll_cycle().await;
 
         if !entries.is_empty() {
-            let (successes, failures) = publisher.publish_batch(&entries).await;
-            state.record_success(successes.len()).await;
-            state.record_failure(failures.len()).await;
-            poller.mark_processed(&entries);
+            // Filter out already-processed entries via idempotency store
+            let mut to_publish = Vec::new();
+            for entry in &entries {
+                if idempotency_store.is_already_processed(&entry.id) {
+                    info!(entry_id = %entry.id, "skipping already-processed entry");
+                    continue;
+                }
+                if idempotency_store.start(&entry.id) {
+                    to_publish.push(entry.clone());
+                } else {
+                    info!(entry_id = %entry.id, "skipping entry already in progress");
+                }
+            }
+
+            if !to_publish.is_empty() {
+                let (successes, failures) = publisher.publish_batch(&to_publish).await;
+                state.record_success(successes.len()).await;
+                state.record_failure(failures.len()).await;
+
+                // Mark published in database for successful entries
+                if !successes.is_empty() {
+                    if let Err(e) = poller.mark_published(&successes).await {
+                        error!(error = %e, "failed to mark outbox entries as published");
+                        for id in &successes {
+                            idempotency_store.fail(id, format!("mark_published failed: {}", e));
+                        }
+                    } else {
+                        for id in &successes {
+                            idempotency_store.complete(id);
+                        }
+                    }
+                }
+
+                // Mark failures in idempotency store
+                for (id, err) in &failures {
+                    idempotency_store.fail(id, err.to_string());
+                }
+
+                // Advance checkpoint and dedup
+                poller.mark_processed(&entries);
+            }
         }
 
         // Sleep for the poll interval
         tokio::time::sleep(config.poll_interval()).await;
+    }
+}
+
+/// Create the appropriate outbox poller based on configuration.
+/// Uses libsql-backed reader for production, in-memory for testing.
+async fn create_outbox_poller(config: &Config) -> OutboxPoller<Box<dyn OutboxReader>> {
+    let poller_config = PollerConfig {
+        poll_interval: config.poll_interval(),
+        batch_size: config.batch_size,
+    };
+
+    // Try to create libsql reader; fall back to memory reader if database unavailable
+    match EmbeddedTurso::new(&config.database_url).await {
+        Ok(turso) => {
+            let reader = polling::LibSqlOutboxReader::new(turso);
+            OutboxPoller::new(Box::new(reader), poller_config, &config.checkpoint_path)
+        }
+        Err(e) => {
+            warn!(
+                error = %e,
+                "failed to create libsql outbox reader, using in-memory stub"
+            );
+            let reader = MemoryOutboxReader::new(Vec::new());
+            OutboxPoller::new(Box::new(reader), poller_config, &config.checkpoint_path)
+        }
     }
 }

@@ -35,6 +35,7 @@ interface ServerModule {
   path: string;
   hasCargoToml: boolean;
   hasOpenApi: boolean;
+  hasRuntimeOpenApi: boolean;
   hasHandlers: boolean;
   hasRoutes: boolean;
   contractDependencies: string[];
@@ -157,13 +158,44 @@ function discoverServerModules(): ServerModule[] {
   // Recursively find server modules (directories with Cargo.toml)
   const stack = [serversDir];
 
+  // Check if a server has runtime OpenAPI (e.g., /scalar endpoint)
+  function checkRuntimeOpenApi(serverPath: string): boolean {
+    const libRsPath = path.join(serverPath, 'src', 'lib.rs');
+    const mainRsPath = path.join(serverPath, 'src', 'main.rs');
+    
+    for (const filePath of [libRsPath, mainRsPath]) {
+      if (!existsSync(filePath)) continue;
+      try {
+        const content = readFileSync(filePath, 'utf-8');
+        // Check for utoipa Scalar integration or /scalar route
+        if (content.includes('utoipa_scalar') || content.includes('Scalar::new') || content.includes('"/scalar"')) {
+          return true;
+        }
+      } catch {
+        // Skip files that can't be read
+      }
+    }
+    return false;
+  }
+
+  // Check if handlers directory has real handlers (not just .gitkeep)
+  function hasRealHandlers(handlersDir: string): boolean {
+    if (!existsSync(handlersDir)) return false;
+    const entries = readdirSync(handlersDir, { withFileTypes: true });
+    return entries.some(entry => {
+      if (!entry.isFile()) return false;
+      if (entry.name === '.gitkeep') return false;
+      return entry.name.endsWith('.rs');
+    });
+  }
+
   while (stack.length > 0) {
     const current = stack.pop();
     if (!current) continue;
 
     const entries = readdirSync(current, { withFileTypes: true });
     let hasCargoToml = false;
-    let hasOpenApi = false;
+    let hasStaticOpenApi = false;
     let hasHandlers = false;
     let hasRoutes = false;
     let contractDependencies: string[] = [];
@@ -172,12 +204,14 @@ function discoverServerModules(): ServerModule[] {
       const entryPath = path.join(current, entry.name);
 
       if (entry.isFile()) {
+        // Skip .gitkeep files
+        if (entry.name === '.gitkeep') continue;
         if (entry.name === 'Cargo.toml') {
           hasCargoToml = true;
           contractDependencies = extractContractDependencies(entryPath);
         }
         if (entry.name === 'openapi.yaml' || entry.name === 'openapi.yml') {
-          hasOpenApi = true;
+          hasStaticOpenApi = true;
         }
       }
 
@@ -185,7 +219,7 @@ function discoverServerModules(): ServerModule[] {
         if (entry.name === 'handlers' || entry.name === 'src') {
           const handlersPath = path.join(current, 'handlers');
           const srcHandlersPath = path.join(current, 'src', 'handlers');
-          if (existsSync(handlersPath) || existsSync(srcHandlersPath)) {
+          if (hasRealHandlers(handlersPath) || hasRealHandlers(srcHandlersPath)) {
             hasHandlers = true;
           }
         }
@@ -203,6 +237,10 @@ function discoverServerModules(): ServerModule[] {
       }
     }
 
+    // Check for runtime OpenAPI
+    const hasRuntimeOpenApi = checkRuntimeOpenApi(current);
+    const hasOpenApi = hasStaticOpenApi || hasRuntimeOpenApi;
+
     if (hasCargoToml) {
       const relativePath = path.relative(workspaceRoot, current);
       const serverName = path.basename(current);
@@ -212,6 +250,7 @@ function discoverServerModules(): ServerModule[] {
         path: relativePath,
         hasCargoToml,
         hasOpenApi,
+        hasRuntimeOpenApi,
         hasHandlers,
         hasRoutes,
         contractDependencies,
@@ -281,13 +320,13 @@ function validateContractCoverage(
     }
   }
 
-  // Check that servers with handlers have openapi.yaml
+  // Check that servers with handlers have openapi.yaml or runtime OpenAPI
   for (const server of serverModules) {
     if (server.hasHandlers && !server.hasOpenApi) {
       issues.push({
         level: mode === 'strict' ? 'error' : 'warn',
         scope: server.path,
-        message: 'has handlers but missing openapi.yaml',
+        message: 'has handlers but missing openapi documentation (static or runtime via /scalar)',
       });
     }
 
@@ -311,6 +350,12 @@ function validateOpenApiAlignment(
   const issues: ValidationIssue[] = [];
 
   for (const server of serverModules) {
+    // Skip servers with runtime OpenAPI (they generate docs dynamically)
+    if (server.hasRuntimeOpenApi) {
+      continue;
+    }
+
+    // Skip servers without static openapi.yaml
     if (!server.hasOpenApi) {
       continue;
     }
@@ -457,7 +502,7 @@ function printSummary(
       const flags = [
         server.hasHandlers ? 'handlers' : null,
         server.hasRoutes ? 'routes' : null,
-        server.hasOpenApi ? 'openapi' : null,
+        server.hasOpenApi ? (server.hasRuntimeOpenApi ? 'runtime-openapi' : 'static-openapi') : null,
       ].filter(Boolean).join(', ');
 
       console.log(`  - ${server.name} [${flags}]${deps}`);

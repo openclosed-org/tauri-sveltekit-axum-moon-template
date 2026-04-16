@@ -144,9 +144,10 @@ async fn main() -> anyhow::Result<()> {
         }
     });
 
-    // Build projector with stub components
+    // Build projector with real CounterChanged consumer
     let mut projector = Projector::new();
     projector.add_consumer(Box::new(consumers::LoggingConsumer));
+    projector.add_consumer(Box::new(consumers::CounterStateConsumer::new()));
     projector.add_read_model(Box::new(readmodels::MemoryReadModel::new()));
 
     // Subscribe to the event bus
