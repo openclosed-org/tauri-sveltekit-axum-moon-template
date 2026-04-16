@@ -8,7 +8,7 @@ description: >
 
 services:
   - counter-service
-  - tenant
+  - tenant-service
 
 runtime_profile: http-latency-sensitive
 statefulness: stateless

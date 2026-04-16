@@ -21,4 +21,3 @@ required_by:
   - event-bus
   - outbox-relay-worker
   - indexer-worker
-  - projector-worker

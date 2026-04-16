@@ -60,6 +60,7 @@ pub trait CounterRepository: Send + Sync {
         event_type: &str,
         payload: &str,
         source_service: &str,
+        correlation_id: Option<&str>,
     ) -> Result<(), RepositoryError>;
 
     /// Check if an idempotency key was already processed.

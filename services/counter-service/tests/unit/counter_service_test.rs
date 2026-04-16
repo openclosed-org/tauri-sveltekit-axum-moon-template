@@ -5,8 +5,9 @@
 
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
+use contracts_events::ActorRef;
 use counter_service::application::{RepositoryBackedCounterService, TenantScopedCounterService};
-use counter_service::contracts::service::CounterService;
+use counter_service::contracts::service::{CounterCommandContext, CounterService};
 use counter_service::domain::{Counter, CounterId};
 use counter_service::ports::{CounterRepository, RepositoryError};
 use kernel::TenantId;
@@ -91,9 +92,15 @@ impl CounterRepository for MockCounterRepository {
         event_type: &str,
         payload: &str,
         _source_service: &str,
+        correlation_id: Option<&str>,
     ) -> Result<(), RepositoryError> {
         let mut outbox = self.outbox.lock().await;
-        outbox.push(format!("{}:{}", event_type, payload));
+        outbox.push(format!(
+            "{}:{}:{}",
+            event_type,
+            correlation_id.unwrap_or(""),
+            payload
+        ));
         Ok(())
     }
 
@@ -324,4 +331,35 @@ async fn outbox_events_are_not_written_on_idempotent_hit() {
         1,
         "idempotent hit must not duplicate outbox event"
     );
+}
+
+#[tokio::test]
+async fn outbox_event_carries_request_context_metadata() {
+    let repo = MockCounterRepository::new();
+    let outbox_clone = repo.outbox.clone();
+    let service: RepositoryBackedCounterService<MockCounterRepository> =
+        RepositoryBackedCounterService::new(repo);
+    let counter_id = CounterId::new("tenant-a");
+    let context = CounterCommandContext {
+        correlation_id: Some("req-test-123".to_string()),
+        causation_id: Some("cause-test-123".to_string()),
+        actor: Some(ActorRef {
+            actor_id: "user-123".to_string(),
+            actor_type: "user".to_string(),
+            subject: Some("user-123".to_string()),
+        }),
+        trace_id: None,
+        span_id: None,
+    };
+
+    service
+        .increment_with_context(&counter_id, None, &context)
+        .await
+        .unwrap();
+
+    let outbox = outbox_clone.lock().await;
+    assert_eq!(outbox.len(), 1);
+    assert!(outbox[0].contains("req-test-123"));
+    assert!(outbox[0].contains("cause-test-123"));
+    assert!(outbox[0].contains("user-123"));
 }

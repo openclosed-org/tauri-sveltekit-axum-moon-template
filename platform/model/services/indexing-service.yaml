@@ -1,0 +1,10 @@
+name: indexing-service
+kind: planned-service
+criticality: medium
+tenant_scope: tenant
+logical_dependencies:
+  - tenant-service
+status: stub
+description: >
+  Planned indexing and search capability placeholder.
+  Reserved as a future derived-data boundary, not a first-wave reference module.

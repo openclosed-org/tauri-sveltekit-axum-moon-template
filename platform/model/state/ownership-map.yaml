@@ -9,21 +9,21 @@ entities:
     source: services/counter-service/model.yaml
 
   - entity: tenant
-    owner_service: tenant
+    owner_service: tenant-service
     source: services/tenant-service/model.yaml
 
   - entity: tenant-member
-    owner_service: tenant
+    owner_service: tenant-service
     source: services/tenant-service/model.yaml
 
   - entity: auth-session
-    owner_service: auth
+    owner_service: auth-service
     source: services/auth-service/model.yaml
 
   - entity: user-profile
-    owner_service: user
+    owner_service: user-service
     source: services/user-service/model.yaml
 
   - entity: search-index-snapshot
-    owner_service: indexing
+    owner_service: indexing-service
     source: services/indexing-service/model.yaml

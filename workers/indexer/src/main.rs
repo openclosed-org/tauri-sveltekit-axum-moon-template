@@ -7,6 +7,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 
 use axum::{Router, routing::get};
+use contracts_events::event_type_name;
 use runtime::adapters::memory::{MemoryPubSub, MemoryState};
 use runtime::ports::state::StateEntry;
 use runtime::ports::{MessageEnvelope, PubSub, State};
@@ -21,7 +22,7 @@ mod transforms;
 use checkpoint::SourceCheckpoint;
 use sinks::{EventSink, IndexedEvent, MemoryEventSink};
 use sources::{EventSource, RawEvent};
-use transforms::EventTransform;
+use transforms::{EventTransform, TransformedEvent};
 
 /// Indexer error types.
 #[derive(Debug, thiserror::Error)]
@@ -144,27 +145,22 @@ impl Indexer {
 
         info!(count = raw_events.len(), "pulled events from sources");
 
-        // 2. Transform raw events to AppEvent
+        // 2. Transform raw events to canonical EventEnvelope
         let mut indexed_events = Vec::new();
         for raw in raw_events {
             for transformer in &self.transformers {
                 if transformer.can_transform(&raw) {
-                    if let Some(app_event) = transformer.transform(&raw).await? {
-                        let event_type = match &app_event {
-                            contracts_events::AppEvent::TenantCreated(_) => "tenant.created",
-                            contracts_events::AppEvent::TenantMemberAdded(_) => {
-                                "tenant.member_added"
-                            }
-                            contracts_events::AppEvent::CounterChanged(_) => "counter.changed",
-                            contracts_events::AppEvent::ChatMessageSent(_) => "chat.message_sent",
-                        };
+                    if let Some(TransformedEvent { envelope }) = transformer.transform(&raw).await?
+                    {
+                        let event_type = event_type_name(&envelope.event);
 
                         let indexed = IndexedEvent {
-                            id: uuid::Uuid::now_v7().to_string(),
+                            id: envelope.id.to_string(),
                             event_type: event_type.to_string(),
                             source: raw.source.clone(),
-                            payload: serde_json::to_string(&app_event)
+                            payload: serde_json::to_string(&envelope.event)
                                 .map_err(|e| IndexerError::Transform(format!("serialize: {e}")))?,
+                            metadata: envelope.metadata,
                             indexed_at: chrono::Utc::now().to_rfc3339(),
                         };
                         indexed_events.push(indexed);
@@ -195,7 +191,8 @@ impl Indexer {
                     app_event,
                     format!("indexer.{}", event.event_type),
                     "indexer-worker",
-                );
+                )
+                .with_metadata(event.metadata.clone());
 
                 if let Err(e) = self
                     .pubsub
@@ -233,6 +230,88 @@ impl Default for Indexer {
     fn default() -> Self {
         // Default uses memory adapters
         Self::new(MemoryState::new(), MemoryPubSub::new())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+    use std::sync::Arc;
+
+    use async_trait::async_trait;
+    use contracts_events::{AppEvent, CounterChanged, EventEnvelope};
+    use runtime::adapters::memory::{MemoryPubSub, MemoryState};
+    use tokio::sync::Mutex;
+
+    use super::*;
+    use crate::sinks::{EventSink, IndexedEvent, MemoryEventSink};
+    use crate::sources::{MemoryEventSource, RawEvent};
+    use crate::transforms::PassthroughTransform;
+
+    struct SharedMemorySink {
+        inner: Arc<MemoryEventSink>,
+    }
+
+    #[async_trait]
+    impl EventSink for SharedMemorySink {
+        fn name(&self) -> &str {
+            self.inner.name()
+        }
+
+        fn as_any(&self) -> &dyn std::any::Any {
+            self
+        }
+
+        async fn write(&self, event: &IndexedEvent) -> Result<(), IndexerError> {
+            self.inner.write(event).await
+        }
+    }
+
+    #[tokio::test]
+    async fn run_cycle_preserves_envelope_identity_and_correlation() {
+        let base_envelope = EventEnvelope::new(
+            AppEvent::CounterChanged(CounterChanged {
+                tenant_id: "tenant-a".to_string(),
+                counter_key: "counter-a".to_string(),
+                operation: "increment".to_string(),
+                new_value: 1,
+                delta: 1,
+                version: 1,
+            }),
+            "counter-service",
+        )
+        .with_correlation_id("req-idx-1");
+        let envelope_id = base_envelope.id.to_string();
+
+        let raw = RawEvent {
+            source: "source-a".to_string(),
+            raw_payload: serde_json::to_string(&base_envelope).unwrap(),
+            timestamp: "now".to_string(),
+            metadata: HashMap::new(),
+        };
+
+        let state = MemoryState::new();
+        let pubsub = MemoryPubSub::new();
+        let mut indexer = Indexer::new(state, pubsub);
+        let sink = Arc::new(MemoryEventSink {
+            events: Mutex::new(Vec::new()),
+        });
+        indexer.add_source(Box::new(MemoryEventSource::new(vec![raw])));
+        indexer.add_transformer(Box::new(PassthroughTransform));
+        indexer.add_sink(Box::new(SharedMemorySink {
+            inner: sink.clone(),
+        }));
+
+        let count = indexer.run_cycle().await.unwrap();
+        assert_eq!(count, 1);
+
+        let events = sink.events.lock().await;
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].id, envelope_id);
+        assert_eq!(
+            events[0].metadata.correlation_id.as_deref(),
+            Some("req-idx-1")
+        );
     }
 }
 

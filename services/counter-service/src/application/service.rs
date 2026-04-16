@@ -19,10 +19,11 @@
 //! outbox table. The outbox-relay worker picks up these entries and publishes
 //! them to the event bus asynchronously (guaranteed delivery).
 
-use crate::contracts::service::{CounterError, CounterService};
+use crate::contracts::service::{CounterCommandContext, CounterError, CounterService};
 use async_trait::async_trait;
 use chrono::Utc;
-use contracts_events::CounterChanged;
+use contracts_events::{AppEvent, CounterChanged, EventEnvelope, event_type_name};
+use kernel::id::correlation_id as new_correlation_id;
 use tracing::debug;
 
 use crate::domain::CounterId;
@@ -61,6 +62,20 @@ impl<R: CounterRepository> CounterService for RepositoryBackedCounterService<R> 
         &self,
         tenant_id: &CounterId,
         idempotency_key: Option<&str>,
+    ) -> Result<i64, CounterError> {
+        self.increment_with_context(
+            tenant_id,
+            idempotency_key,
+            &CounterCommandContext::default(),
+        )
+        .await
+    }
+
+    async fn increment_with_context(
+        &self,
+        tenant_id: &CounterId,
+        idempotency_key: Option<&str>,
+        context: &CounterCommandContext,
     ) -> Result<i64, CounterError> {
         let now = Utc::now();
 
@@ -102,7 +117,8 @@ impl<R: CounterRepository> CounterService for RepositoryBackedCounterService<R> 
             delta: 1,
             version,
         };
-        self.write_outbox_event(&event).await?;
+        self.write_outbox_event(&event, idempotency_key, context)
+            .await?;
 
         // Cache idempotency result
         if let Some(key) = idempotency_key {
@@ -117,6 +133,20 @@ impl<R: CounterRepository> CounterService for RepositoryBackedCounterService<R> 
         &self,
         tenant_id: &CounterId,
         idempotency_key: Option<&str>,
+    ) -> Result<i64, CounterError> {
+        self.decrement_with_context(
+            tenant_id,
+            idempotency_key,
+            &CounterCommandContext::default(),
+        )
+        .await
+    }
+
+    async fn decrement_with_context(
+        &self,
+        tenant_id: &CounterId,
+        idempotency_key: Option<&str>,
+        context: &CounterCommandContext,
     ) -> Result<i64, CounterError> {
         let now = Utc::now();
 
@@ -155,7 +185,8 @@ impl<R: CounterRepository> CounterService for RepositoryBackedCounterService<R> 
             delta: -1,
             version,
         };
-        self.write_outbox_event(&event).await?;
+        self.write_outbox_event(&event, idempotency_key, context)
+            .await?;
 
         if let Some(key) = idempotency_key {
             self.cache_idempotency(key, value, version).await?;
@@ -169,6 +200,20 @@ impl<R: CounterRepository> CounterService for RepositoryBackedCounterService<R> 
         &self,
         tenant_id: &CounterId,
         idempotency_key: Option<&str>,
+    ) -> Result<i64, CounterError> {
+        self.reset_with_context(
+            tenant_id,
+            idempotency_key,
+            &CounterCommandContext::default(),
+        )
+        .await
+    }
+
+    async fn reset_with_context(
+        &self,
+        tenant_id: &CounterId,
+        idempotency_key: Option<&str>,
+        context: &CounterCommandContext,
     ) -> Result<i64, CounterError> {
         let now = Utc::now();
 
@@ -207,7 +252,8 @@ impl<R: CounterRepository> CounterService for RepositoryBackedCounterService<R> 
             delta: -value,
             version,
         };
-        self.write_outbox_event(&event).await?;
+        self.write_outbox_event(&event, idempotency_key, context)
+            .await?;
 
         if let Some(key) = idempotency_key {
             self.cache_idempotency(key, 0, version).await?;
@@ -220,12 +266,47 @@ impl<R: CounterRepository> CounterService for RepositoryBackedCounterService<R> 
 
 impl<R: CounterRepository> RepositoryBackedCounterService<R> {
     /// Write a counter-changed event to the outbox table.
-    async fn write_outbox_event(&self, event: &CounterChanged) -> Result<(), CounterError> {
+    async fn write_outbox_event(
+        &self,
+        event: &CounterChanged,
+        idempotency_key: Option<&str>,
+        context: &CounterCommandContext,
+    ) -> Result<(), CounterError> {
+        let mut envelope =
+            EventEnvelope::new(AppEvent::CounterChanged(event.clone()), "counter-service");
+        let correlation_id = context
+            .correlation_id
+            .clone()
+            .or_else(|| idempotency_key.map(std::borrow::ToOwned::to_owned))
+            .unwrap_or_else(new_correlation_id);
+        let causation_id = context
+            .causation_id
+            .clone()
+            .or_else(|| idempotency_key.map(std::borrow::ToOwned::to_owned))
+            .unwrap_or_else(|| correlation_id.clone());
+        envelope = envelope
+            .with_correlation_id(correlation_id.clone())
+            .with_causation_id(causation_id);
+        if let Some(actor) = &context.actor {
+            envelope.metadata.actor = Some(actor.clone());
+        }
+        if let Some(trace_id) = &context.trace_id {
+            envelope.metadata.trace_id = Some(trace_id.clone());
+        }
+        if let Some(span_id) = &context.span_id {
+            envelope.metadata.span_id = Some(span_id.clone());
+        }
+
         let payload =
-            serde_json::to_string(event).map_err(|e| CounterError::Database(Box::new(e)))?;
+            serde_json::to_string(&envelope).map_err(|e| CounterError::Database(Box::new(e)))?;
 
         self.repo
-            .write_outbox("counter.changed", &payload, "counter-service")
+            .write_outbox(
+                event_type_name(&envelope.event),
+                &payload,
+                &envelope.source_service,
+                Some(correlation_id.as_str()),
+            )
             .await
             .map_err(CounterError::Database)
     }
@@ -283,6 +364,20 @@ impl<R: CounterRepository> TenantScopedCounterService<R> {
         tenant_id: &kernel::TenantId,
         idempotency_key: Option<&str>,
     ) -> Result<i64, CounterError> {
+        self.increment_with_context(
+            tenant_id,
+            idempotency_key,
+            &CounterCommandContext::default(),
+        )
+        .await
+    }
+
+    pub async fn increment_with_context(
+        &self,
+        tenant_id: &kernel::TenantId,
+        idempotency_key: Option<&str>,
+        context: &CounterCommandContext,
+    ) -> Result<i64, CounterError> {
         let id = CounterId::new(tenant_id.as_str());
         let now = Utc::now();
 
@@ -320,7 +415,8 @@ impl<R: CounterRepository> TenantScopedCounterService<R> {
             delta: 1,
             version,
         };
-        self.write_outbox_event(&event).await?;
+        self.write_outbox_event(&event, idempotency_key, context)
+            .await?;
 
         // Cache idempotency result
         if let Some(key) = idempotency_key {
@@ -336,6 +432,20 @@ impl<R: CounterRepository> TenantScopedCounterService<R> {
         &self,
         tenant_id: &kernel::TenantId,
         idempotency_key: Option<&str>,
+    ) -> Result<i64, CounterError> {
+        self.decrement_with_context(
+            tenant_id,
+            idempotency_key,
+            &CounterCommandContext::default(),
+        )
+        .await
+    }
+
+    pub async fn decrement_with_context(
+        &self,
+        tenant_id: &kernel::TenantId,
+        idempotency_key: Option<&str>,
+        context: &CounterCommandContext,
     ) -> Result<i64, CounterError> {
         let id = CounterId::new(tenant_id.as_str());
         let now = Utc::now();
@@ -371,7 +481,8 @@ impl<R: CounterRepository> TenantScopedCounterService<R> {
             delta: -1,
             version,
         };
-        self.write_outbox_event(&event).await?;
+        self.write_outbox_event(&event, idempotency_key, context)
+            .await?;
 
         if let Some(key) = idempotency_key {
             self.cache_idempotency(key, value, version).await?;
@@ -386,6 +497,20 @@ impl<R: CounterRepository> TenantScopedCounterService<R> {
         &self,
         tenant_id: &kernel::TenantId,
         idempotency_key: Option<&str>,
+    ) -> Result<i64, CounterError> {
+        self.reset_with_context(
+            tenant_id,
+            idempotency_key,
+            &CounterCommandContext::default(),
+        )
+        .await
+    }
+
+    pub async fn reset_with_context(
+        &self,
+        tenant_id: &kernel::TenantId,
+        idempotency_key: Option<&str>,
+        context: &CounterCommandContext,
     ) -> Result<i64, CounterError> {
         let id = CounterId::new(tenant_id.as_str());
         let now = Utc::now();
@@ -421,7 +546,8 @@ impl<R: CounterRepository> TenantScopedCounterService<R> {
             delta: -value,
             version,
         };
-        self.write_outbox_event(&event).await?;
+        self.write_outbox_event(&event, idempotency_key, context)
+            .await?;
 
         if let Some(key) = idempotency_key {
             self.cache_idempotency(key, 0, version).await?;
@@ -454,12 +580,47 @@ impl<R: CounterRepository> TenantScopedCounterService<R> {
     }
 
     /// Write a counter-changed event to the outbox table.
-    async fn write_outbox_event(&self, event: &CounterChanged) -> Result<(), CounterError> {
+    async fn write_outbox_event(
+        &self,
+        event: &CounterChanged,
+        idempotency_key: Option<&str>,
+        context: &CounterCommandContext,
+    ) -> Result<(), CounterError> {
+        let mut envelope =
+            EventEnvelope::new(AppEvent::CounterChanged(event.clone()), "counter-service");
+        let correlation_id = context
+            .correlation_id
+            .clone()
+            .or_else(|| idempotency_key.map(std::borrow::ToOwned::to_owned))
+            .unwrap_or_else(new_correlation_id);
+        let causation_id = context
+            .causation_id
+            .clone()
+            .or_else(|| idempotency_key.map(std::borrow::ToOwned::to_owned))
+            .unwrap_or_else(|| correlation_id.clone());
+        envelope = envelope
+            .with_correlation_id(correlation_id.clone())
+            .with_causation_id(causation_id);
+        if let Some(actor) = &context.actor {
+            envelope.metadata.actor = Some(actor.clone());
+        }
+        if let Some(trace_id) = &context.trace_id {
+            envelope.metadata.trace_id = Some(trace_id.clone());
+        }
+        if let Some(span_id) = &context.span_id {
+            envelope.metadata.span_id = Some(span_id.clone());
+        }
+
         let payload =
-            serde_json::to_string(event).map_err(|e| CounterError::Database(Box::new(e)))?;
+            serde_json::to_string(&envelope).map_err(|e| CounterError::Database(Box::new(e)))?;
 
         self.repo
-            .write_outbox("counter.changed", &payload, "counter-service")
+            .write_outbox(
+                event_type_name(&envelope.event),
+                &payload,
+                &envelope.source_service,
+                Some(correlation_id.as_str()),
+            )
             .await
             .map_err(CounterError::Database)
     }

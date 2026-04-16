@@ -7,8 +7,19 @@
 
 use async_trait::async_trait;
 pub use contracts_api::CounterResponse;
+use contracts_events::ActorRef;
 
 use crate::domain::CounterId;
+
+/// Request-scoped command context propagated into event metadata.
+#[derive(Debug, Clone, Default)]
+pub struct CounterCommandContext {
+    pub correlation_id: Option<String>,
+    pub causation_id: Option<String>,
+    pub actor: Option<ActorRef>,
+    pub trace_id: Option<String>,
+    pub span_id: Option<String>,
+}
 
 /// Counter operations trait.
 #[async_trait]
@@ -21,16 +32,40 @@ pub trait CounterService: Send + Sync {
         tenant_id: &CounterId,
         idempotency_key: Option<&str>,
     ) -> Result<i64, CounterError>;
+    async fn increment_with_context(
+        &self,
+        tenant_id: &CounterId,
+        idempotency_key: Option<&str>,
+        _context: &CounterCommandContext,
+    ) -> Result<i64, CounterError> {
+        self.increment(tenant_id, idempotency_key).await
+    }
     async fn decrement(
         &self,
         tenant_id: &CounterId,
         idempotency_key: Option<&str>,
     ) -> Result<i64, CounterError>;
+    async fn decrement_with_context(
+        &self,
+        tenant_id: &CounterId,
+        idempotency_key: Option<&str>,
+        _context: &CounterCommandContext,
+    ) -> Result<i64, CounterError> {
+        self.decrement(tenant_id, idempotency_key).await
+    }
     async fn reset(
         &self,
         tenant_id: &CounterId,
         idempotency_key: Option<&str>,
     ) -> Result<i64, CounterError>;
+    async fn reset_with_context(
+        &self,
+        tenant_id: &CounterId,
+        idempotency_key: Option<&str>,
+        _context: &CounterCommandContext,
+    ) -> Result<i64, CounterError> {
+        self.reset(tenant_id, idempotency_key).await
+    }
 }
 
 #[derive(Debug, thiserror::Error)]

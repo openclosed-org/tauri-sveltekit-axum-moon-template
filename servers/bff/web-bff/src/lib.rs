@@ -17,8 +17,29 @@ use tower_http::{
     timeout::TimeoutLayer,
     trace::TraceLayer,
 };
-use utoipa::OpenApi;
+use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
+use utoipa::{Modify, OpenApi};
 use utoipa_scalar::{Scalar, Servable};
+
+struct SecurityAddon;
+
+impl Modify for SecurityAddon {
+    fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
+        let components = openapi.components.get_or_insert_with(Default::default);
+        components.add_security_scheme(
+            "bearer_auth",
+            SecurityScheme::Http(
+                HttpBuilder::new()
+                    .scheme(HttpAuthScheme::Bearer)
+                    .bearer_format("JWT")
+                    .description(Some(
+                        "Bearer JWT used to build authenticated request context",
+                    ))
+                    .build(),
+            ),
+        );
+    }
+}
 
 /// Unified OpenAPI documentation for web-bff.
 #[derive(OpenApi)]
@@ -32,7 +53,7 @@ use utoipa_scalar::{Scalar, Servable};
     handlers::tenant::init_tenant,
     handlers::health::healthz,
     handlers::health::readyz,
-))]
+), modifiers(&SecurityAddon))]
 pub struct ApiDoc;
 
 /// 生成 UUID v7 请求 ID。
@@ -53,7 +74,7 @@ pub fn create_router(state: BffState) -> Router {
     // Public routes — no auth required
     let public_routes: Router<BffState> = handlers::health::router();
 
-    // API routes — tenant-scoped, may require JWT auth
+    // API routes — authenticated request path backed by JWT auth
     let api_routes = Router::new()
         .merge(handlers::tenant::router())
         .merge(handlers::counter::router())

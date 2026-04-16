@@ -8,9 +8,10 @@ resources:
   - ../../base
   - ../../security/sops/dev/web-bff.enc.yaml
   - ../../security/sops/dev/outbox-relay-worker.enc.yaml
+  - ./shared-counter-db/kustomization.yaml
   # - ../../security/sops/dev/counter-service.enc.yaml  # Phase 1+: when counter-service is separate deployable
 
-namespace: app-dev
+namespace: app
 
 commonLabels:
   app.kubernetes.io/env: dev
@@ -21,6 +22,11 @@ patches:
       kind: Deployment
       name: web-bff
     patch: |
+      - op: add
+        path: /spec/template/spec/containers/0/envFrom/-
+        value:
+          secretRef:
+            name: counter-shared-db-secrets
       - op: replace
         path: /spec/template/spec/containers/0/resources/limits
         value:

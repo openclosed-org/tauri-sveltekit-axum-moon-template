@@ -1,0 +1,51 @@
+# Kustomization — Dev projector-worker overlay
+# Independent worker pods must read from a shared libSQL/Turso database.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../../base/configmap-projector-worker.yaml
+  - ../../../base/deployment-projector-worker.yaml
+  - ../../../security/sops/dev/projector-worker.enc.yaml
+  - ../shared-counter-db/kustomization.yaml
+
+namespace: app
+
+commonLabels:
+  app.kubernetes.io/env: dev
+
+patches:
+  - target:
+      kind: Deployment
+      name: projector-worker
+    patch: |
+      - op: add
+        path: /spec/template/spec/containers/0/envFrom/-
+        value:
+          secretRef:
+            name: counter-shared-db-secrets
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: PROJECTOR_DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: counter-shared-db-secrets
+              key: PROJECTOR_DATABASE_URL
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: PROJECTOR_TURSO_AUTH_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: counter-shared-db-secrets
+              key: PROJECTOR_TURSO_AUTH_TOKEN
+  # Keep the deployment defined in GitOps, but disabled by default until the
+  # secret is pointed at a shared libSQL/Turso database instead of a local file path.
+  - target:
+      kind: Deployment
+      name: projector-worker
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 1

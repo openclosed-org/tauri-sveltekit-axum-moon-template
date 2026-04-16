@@ -11,13 +11,16 @@ use axum::{
 };
 use contracts_api::CounterResponse;
 use contracts_errors::{ErrorCode, ErrorResponse};
-use counter_service::application::{RepositoryBackedCounterService, TenantScopedCounterService};
+use counter_service::application::RepositoryBackedCounterService;
+use counter_service::contracts::service::CounterCommandContext;
 use counter_service::contracts::service::{CounterError, CounterService};
 use counter_service::domain::CounterId;
 use counter_service::infrastructure::LibSqlCounterRepository;
-use kernel::TenantId;
+use user_service::infrastructure::LibSqlUserTenantRepository;
+use user_service::ports::UserTenantRepository;
 use utoipa::OpenApi;
 
+use crate::middleware::tenant::RequestContext;
 use crate::state::{BffState, DatabaseBackend};
 
 /// Boxed counter service trait object for handler use.
@@ -36,23 +39,25 @@ pub fn router() -> Router<BffState> {
     post,
     path = "/api/counter/increment",
     tag = "counter",
-    security(("tenant_auth" = [])),
+    security(("bearer_auth" = [])),
     responses(
         (status = 200, description = "Counter incremented successfully", body = CounterResponse, content_type = "application/json"),
-        (status = 401, description = "Unauthorized — missing tenant context", body = ErrorResponse),
+        (status = 401, description = "Unauthorized — missing authenticated request context", body = ErrorResponse),
         (status = 409, description = "CAS conflict — concurrent modification", body = ErrorResponse),
         (status = 500, description = "Internal server error", body = ErrorResponse),
     ),
 )]
 async fn increment(
     State(state): State<BffState>,
-    tenant: Option<Extension<TenantId>>,
+    request_context: Option<Extension<RequestContext>>,
 ) -> Result<(StatusCode, Json<CounterResponse>), (StatusCode, Json<ErrorResponse>)> {
-    let tenant_id = extract_tenant(tenant)?;
+    let request_context = extract_request_context(request_context)?;
+    let tenant_id = resolve_tenant_id(&state, &request_context).await?;
+    let command_context = build_command_context(request_context);
     let service = build_service(&state)?;
 
     let value = service
-        .increment(&CounterId::new(tenant_id.as_str()), None)
+        .increment_with_context(&CounterId::new(tenant_id.as_str()), None, &command_context)
         .await
         .map_err(map_counter_error)?;
 
@@ -68,23 +73,25 @@ async fn increment(
     post,
     path = "/api/counter/decrement",
     tag = "counter",
-    security(("tenant_auth" = [])),
+    security(("bearer_auth" = [])),
     responses(
         (status = 200, description = "Counter decremented successfully", body = CounterResponse, content_type = "application/json"),
-        (status = 401, description = "Unauthorized — missing tenant context", body = ErrorResponse),
+        (status = 401, description = "Unauthorized — missing authenticated request context", body = ErrorResponse),
         (status = 409, description = "CAS conflict — concurrent modification", body = ErrorResponse),
         (status = 500, description = "Internal server error", body = ErrorResponse),
     ),
 )]
 async fn decrement(
     State(state): State<BffState>,
-    tenant: Option<Extension<TenantId>>,
+    request_context: Option<Extension<RequestContext>>,
 ) -> Result<(StatusCode, Json<CounterResponse>), (StatusCode, Json<ErrorResponse>)> {
-    let tenant_id = extract_tenant(tenant)?;
+    let request_context = extract_request_context(request_context)?;
+    let tenant_id = resolve_tenant_id(&state, &request_context).await?;
+    let command_context = build_command_context(request_context);
     let service = build_service(&state)?;
 
     let value = service
-        .decrement(&CounterId::new(tenant_id.as_str()), None)
+        .decrement_with_context(&CounterId::new(tenant_id.as_str()), None, &command_context)
         .await
         .map_err(map_counter_error)?;
 
@@ -100,23 +107,25 @@ async fn decrement(
     post,
     path = "/api/counter/reset",
     tag = "counter",
-    security(("tenant_auth" = [])),
+    security(("bearer_auth" = [])),
     responses(
         (status = 200, description = "Counter reset successfully", body = CounterResponse, content_type = "application/json"),
-        (status = 401, description = "Unauthorized — missing tenant context", body = ErrorResponse),
+        (status = 401, description = "Unauthorized — missing authenticated request context", body = ErrorResponse),
         (status = 409, description = "CAS conflict — concurrent modification", body = ErrorResponse),
         (status = 500, description = "Internal server error", body = ErrorResponse),
     ),
 )]
 async fn reset(
     State(state): State<BffState>,
-    tenant: Option<Extension<TenantId>>,
+    request_context: Option<Extension<RequestContext>>,
 ) -> Result<(StatusCode, Json<CounterResponse>), (StatusCode, Json<ErrorResponse>)> {
-    let tenant_id = extract_tenant(tenant)?;
+    let request_context = extract_request_context(request_context)?;
+    let tenant_id = resolve_tenant_id(&state, &request_context).await?;
+    let command_context = build_command_context(request_context);
     let service = build_service(&state)?;
 
     let value = service
-        .reset(&CounterId::new(tenant_id.as_str()), None)
+        .reset_with_context(&CounterId::new(tenant_id.as_str()), None, &command_context)
         .await
         .map_err(map_counter_error)?;
 
@@ -133,18 +142,19 @@ async fn reset(
     get,
     path = "/api/counter/value",
     tag = "counter",
-    security(("tenant_auth" = [])),
+    security(("bearer_auth" = [])),
     responses(
         (status = 200, description = "Current counter value", body = CounterResponse, content_type = "application/json"),
-        (status = 401, description = "Unauthorized — missing tenant context", body = ErrorResponse),
+        (status = 401, description = "Unauthorized — missing authenticated request context", body = ErrorResponse),
         (status = 500, description = "Internal server error", body = ErrorResponse),
     ),
 )]
 async fn get_value(
     State(state): State<BffState>,
-    tenant: Option<Extension<TenantId>>,
+    request_context: Option<Extension<RequestContext>>,
 ) -> Result<(StatusCode, Json<CounterResponse>), (StatusCode, Json<ErrorResponse>)> {
-    let tenant_id = extract_tenant(tenant)?;
+    let request_context = extract_request_context(request_context)?;
+    let tenant_id = resolve_tenant_id(&state, &request_context).await?;
     let cache_key = format!("counter:{}", tenant_id.as_str());
 
     // Cache-first: check cache before hitting database
@@ -193,19 +203,97 @@ fn build_service(
     }
 }
 
-/// Extract tenant ID from extension, returning proper error response.
-fn extract_tenant(
-    tenant: Option<Extension<TenantId>>,
-) -> Result<TenantId, (StatusCode, Json<ErrorResponse>)> {
-    tenant.map(|Extension(id)| id).ok_or_else(|| {
+fn extract_request_context(
+    request_context: Option<Extension<RequestContext>>,
+) -> Result<RequestContext, (StatusCode, Json<ErrorResponse>)> {
+    request_context
+        .map(|Extension(context)| context)
+        .ok_or_else(|| {
+            (
+                StatusCode::UNAUTHORIZED,
+                Json(ErrorResponse::new(
+                    ErrorCode::Unauthorized,
+                    "Missing authenticated request context",
+                )),
+            )
+        })
+}
+
+fn build_command_context(request_context: RequestContext) -> CounterCommandContext {
+    CounterCommandContext {
+        correlation_id: request_context.request_id.clone(),
+        causation_id: request_context.request_id.clone(),
+        actor: Some(request_context.actor.clone()),
+        trace_id: None,
+        span_id: None,
+    }
+}
+
+async fn resolve_tenant_id(
+    state: &BffState,
+    request_context: &RequestContext,
+) -> Result<kernel::TenantId, (StatusCode, Json<ErrorResponse>)> {
+    let user_sub = &request_context.user_sub;
+    let tenant_id = match state.db.clone() {
+        Some(DatabaseBackend::Embedded(db)) => {
+            let binding_repo = LibSqlUserTenantRepository::new(db);
+            binding_repo
+                .find_user_tenant(user_sub)
+                .await
+                .map_err(map_tenant_resolution_error)?
+                .map(|binding| binding.tenant_id)
+        }
+        Some(DatabaseBackend::Remote(db)) => {
+            let binding_repo = LibSqlUserTenantRepository::new(db);
+            binding_repo
+                .find_user_tenant(user_sub)
+                .await
+                .map_err(map_tenant_resolution_error)?
+                .map(|binding| binding.tenant_id)
+        }
+        None => {
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    ErrorCode::InternalError,
+                    "Embedded database not initialized",
+                )),
+            ));
+        }
+    };
+
+    tenant_id.map(kernel::TenantId).ok_or_else(|| {
         (
             StatusCode::UNAUTHORIZED,
             Json(ErrorResponse::new(
                 ErrorCode::Unauthorized,
-                "Missing tenant context",
+                "No tenant binding found for authenticated user",
             )),
         )
     })
+}
+
+fn map_tenant_resolution_error(
+    error: user_service::domain::error::UserError,
+) -> (StatusCode, Json<ErrorResponse>) {
+    let message = error.to_string();
+    if message.contains("no such table: user_tenant") {
+        return (
+            StatusCode::UNAUTHORIZED,
+            Json(ErrorResponse::new(
+                ErrorCode::Unauthorized,
+                "No tenant binding found for authenticated user",
+            )),
+        );
+    }
+
+    (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        Json(ErrorResponse::new(
+            ErrorCode::DatabaseError,
+            format!("Failed to resolve tenant binding: {message}"),
+        )),
+    )
 }
 
 /// Map CounterError to HTTP status code and ErrorResponse.

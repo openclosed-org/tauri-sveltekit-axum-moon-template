@@ -1,0 +1,40 @@
+# Flux Application Definition — Projector Worker
+#
+# Reconciles the dedicated projector-worker dev overlay.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: projector-worker
+  namespace: flux-system
+spec:
+  interval: 10m0s
+  path: ./infra/k3s/overlays/dev/projector-worker
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  timeout: 5m0s
+  wait: true
+  retryInterval: 2m0s
+  maxRetries: 3
+
+  decryption:
+    provider: sops
+    secretRef:
+      name: sops-age
+
+  healthChecks:
+    - apiVersion: apps/v1
+      kind: Deployment
+      name: projector-worker
+      namespace: app
+
+  dependsOn:
+    - name: infrastructure
+      namespace: flux-system
+
+  postBuild:
+    substitute:
+      ENV: dev
+
+  targetNamespace: app

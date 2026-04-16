@@ -5,6 +5,7 @@
 
 use std::time::Duration;
 
+use contracts_events::NATS_EVENT_SUBJECT_PREFIX;
 use figment::{
     Figment,
     providers::{Env, Serialized},
@@ -17,10 +18,13 @@ pub struct Config {
     /// Database URL for reading outbox events (e.g., "file:/data/web-bff.db" or "libsql://...")
     pub database_url: String,
 
+    /// Remote Turso auth token when using a cloud libSQL database.
+    pub turso_auth_token: Option<String>,
+
     /// NATS URL for publishing events (e.g., "nats://localhost:4222")
     pub nats_url: String,
 
-    /// NATS subject prefix for published events (e.g., "counter")
+    /// NATS subject prefix for published events (e.g., "events")
     pub nats_subject_prefix: String,
 
     /// Poll interval in milliseconds for checking new outbox entries
@@ -61,8 +65,9 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             database_url: "file:/data/web-bff.db".to_string(),
+            turso_auth_token: None,
             nats_url: "nats://localhost:4222".to_string(),
-            nats_subject_prefix: "counter".to_string(),
+            nats_subject_prefix: NATS_EVENT_SUBJECT_PREFIX.to_string(),
             poll_interval_ms: 500,
             batch_size: 100,
             checkpoint_path: "/data/outbox-relay-checkpoint.json".to_string(),

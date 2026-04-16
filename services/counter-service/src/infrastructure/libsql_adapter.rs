@@ -251,15 +251,17 @@ impl<P: LibSqlPort> CounterRepository for LibSqlCounterRepository<P> {
         event_type: &str,
         payload: &str,
         source_service: &str,
+        correlation_id: Option<&str>,
     ) -> Result<(), RepositoryError> {
         self.port
             .execute(
-                "INSERT INTO counter_outbox (event_type, payload, source_service) \
-                 VALUES (?, ?, ?)",
+                "INSERT INTO counter_outbox (event_type, payload, source_service, correlation_id) \
+                 VALUES (?, ?, ?, ?)",
                 vec![
                     event_type.to_string(),
                     payload.to_string(),
                     source_service.to_string(),
+                    correlation_id.unwrap_or_default().to_string(),
                 ],
             )
             .await?;

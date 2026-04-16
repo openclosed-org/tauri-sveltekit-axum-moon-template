@@ -91,10 +91,14 @@ impl PubSub for MemoryPubSub {
 }
 
 /// Simple pattern matching for topic subscriptions.
-/// Supports "*" wildcard for single-level matching.
+/// Supports `*` as a whole-suffix wildcard for multi-segment topics.
 fn pattern_matches(pattern: &str, topic: &str) -> bool {
     if pattern == topic {
         return true;
+    }
+
+    if let Some(prefix) = pattern.strip_suffix("*") {
+        return topic.starts_with(prefix);
     }
 
     let pattern_parts: Vec<&str> = pattern.split('.').collect();

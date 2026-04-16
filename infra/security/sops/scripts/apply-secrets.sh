@@ -11,7 +11,10 @@
 
 set -euo pipefail
 
+export SOPS_AGE_KEY_FILE="${SOPS_AGE_KEY_FILE:-${HOME}/.config/sops/age/key.txt}"
+
 ENV="${1:-dev}"
+ENV="${ENV#ENV=}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SOPS_DIR="$(dirname "$SCRIPT_DIR")/$ENV"
 

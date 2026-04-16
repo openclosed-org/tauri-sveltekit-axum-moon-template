@@ -9,11 +9,11 @@ use axum::{
     http::StatusCode,
     routing::get,
 };
-use kernel::TenantId;
 use user_service::infrastructure::{LibSqlUserRepository, LibSqlUserTenantRepository};
 use user_service::ports::{TenantRepository, UserRepository, UserTenantRepository};
 use utoipa::OpenApi;
 
+use crate::middleware::tenant::RequestContext;
 use crate::state::{BffState, DatabaseBackend};
 
 pub fn router() -> Router<BffState> {
@@ -27,7 +27,7 @@ pub fn router() -> Router<BffState> {
     get,
     path = "/api/user/me",
     tag = "user",
-    security(("tenant_auth" = [])),
+    security(("bearer_auth" = [])),
     responses(
         (status = 200, description = "User profile retrieved", body = serde_json::Value, content_type = "application/json"),
         (status = 401, description = "Unauthorized"),
@@ -37,9 +37,9 @@ pub fn router() -> Router<BffState> {
 )]
 async fn get_user_profile(
     State(state): State<BffState>,
-    tenant: Option<Extension<TenantId>>,
+    request_context: Option<Extension<RequestContext>>,
 ) -> (StatusCode, Json<serde_json::Value>) {
-    let user_sub = match extract_user_sub(tenant) {
+    let user_sub = match extract_user_sub(request_context) {
         Ok(id) => id,
         Err(e) => return e,
     };
@@ -88,7 +88,7 @@ async fn get_user_profile(
     get,
     path = "/api/user/tenants",
     tag = "user",
-    security(("tenant_auth" = [])),
+    security(("bearer_auth" = [])),
     responses(
         (status = 200, description = "User tenants retrieved", body = serde_json::Value, content_type = "application/json"),
         (status = 401, description = "Unauthorized"),
@@ -97,9 +97,9 @@ async fn get_user_profile(
 )]
 async fn get_user_tenants(
     State(state): State<BffState>,
-    tenant: Option<Extension<TenantId>>,
+    request_context: Option<Extension<RequestContext>>,
 ) -> (StatusCode, Json<serde_json::Value>) {
-    let user_sub = match extract_user_sub(tenant) {
+    let user_sub = match extract_user_sub(request_context) {
         Ok(id) => id,
         Err(e) => return e,
     };
@@ -185,12 +185,14 @@ fn db_not_ready() -> (StatusCode, Json<serde_json::Value>) {
 }
 
 fn extract_user_sub(
-    tenant: Option<Extension<TenantId>>,
+    request_context: Option<Extension<RequestContext>>,
 ) -> Result<String, (StatusCode, Json<serde_json::Value>)> {
-    tenant.map(|Extension(id)| id.0).ok_or_else(|| {
-        (
-            StatusCode::UNAUTHORIZED,
-            Json(serde_json::json!({ "error": "Missing JWT — not authenticated" })),
-        )
-    })
+    request_context
+        .map(|Extension(context)| context.user_sub)
+        .ok_or_else(|| {
+            (
+                StatusCode::UNAUTHORIZED,
+                Json(serde_json::json!({ "error": "Missing JWT — not authenticated" })),
+            )
+        })
 }

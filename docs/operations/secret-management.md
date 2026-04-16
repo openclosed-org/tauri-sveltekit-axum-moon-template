@@ -1,232 +1,146 @@
-# Secret Management Guide (SOPS + age)
+# Secret Management
 
-> Manage encrypted secrets using SOPS and age encryption.
+> 目的：说明本仓库后端默认如何管理 secrets，以及它们如何挂接到 `counter-service` reference chain。
+>
+> 这不是通用 SOPS 教程；它只描述当前仓库里真实存在的路径、脚本和约束。
 
-## Prerequisites
+## 1. 核心结论
 
-- `sops` installed
-- `age` installed (age encryption tool)
+当前后端默认 secrets 路径是：
 
-```bash
-# Install on macOS
-brew install sops age
+1. 明文模板放在 `infra/security/sops/templates/<env>/`
+2. 加密产物放在 `infra/security/sops/<env>/*.enc.yaml`
+3. 加密规则由根目录 `.sops.yaml` 统一定义
+4. 本地非集群运行时，可通过 `just sops-run` 将解密后的环境变量注入进程
+5. 集群路径通过 Kustomize/Flux 消费加密 secrets，而不是依赖 `.env`
 
-# Install on Ubuntu
-sudo apt install sops age
-```
+这条路径是 `counter-service` 工程横切链的一部分，不是旁路能力。
 
-## Architecture
+## 2. 当前真实文件落点
 
-```
-┌──────────────────┐
-│  secrets.yaml    │ (plaintext — NEVER commit)
-└────────┬─────────┘
-         │ sops encrypt
-         ▼
-┌──────────────────┐
-│  secrets.enc.yaml│ (encrypted — safe to commit)
-└────────┬─────────┘
-         │ sops decrypt
-         ▼
-┌──────────────────┐
-│  Flux/K8s        │ (decrypts at runtime using age key)
-└──────────────────┘
-```
+### 2.1 SOPS 规则入口
 
-## Step 1: Generate age Key
+主要文件：
 
-```bash
-# Generate age key
-age-keygen -o ~/.config/sops/age/keys.txt
+1. `.sops.yaml`
+2. `justfiles/sops.just`
 
-# Output looks like:
-# Public key: age1ql3z7hjy54pw3hyww5ayyfg7zqgvc7w3j2elw8zmrj2kg5sfn9aqmcac8p
+当前已确认的事实：
 
-# Backup the key securely
-cat ~/.config/sops/age/keys.txt
-```
+1. `.sops.yaml` 已定义 `templates/`、`dev/`、`staging/`、`prod/` 的创建规则。
+2. `justfiles/sops.just` 已把仓库默认路径写成 `SOPS + Kustomize + Flux`，并明确说明后端环境变量默认不来自 `.env`。
+3. 当前建议的命令入口是 `just sops-gen-age-key`、`just sops-edit`、`just sops-encrypt-dev`、`just sops-run`、`just sops-reconcile`。
 
-## Step 2: Configure SOPS
+### 2.2 与 counter 参考链直接相关的模板
 
-Create `.sops.yaml` in the repository root:
+主要文件：
 
-```yaml
-creation_rules:
-  - path_regex: infra/security/sops/.*\.yaml$
-    age: >-
-      age1ql3z7hjy54pw3hyww5ayyfg7zqgvc7w3j2elw8zmrj2kg5sfn9aqmcac8p
-```
+1. `infra/security/sops/templates/dev/web-bff.yaml`
+2. `infra/security/sops/templates/dev/outbox-relay-worker.yaml`
+3. `infra/security/sops/templates/dev/projector-worker.yaml`
+4. `infra/security/sops/templates/dev/counter-shared-db.yaml`
+5. `infra/security/sops/templates/dev/counter-service.yaml`
 
-Replace the public key with your generated key.
+对应的加密产物当前也已存在：
 
-## Step 3: Create Secrets
+1. `infra/security/sops/dev/web-bff.enc.yaml`
+2. `infra/security/sops/dev/outbox-relay-worker.enc.yaml`
+3. `infra/security/sops/dev/projector-worker.enc.yaml`
+4. `infra/security/sops/dev/counter-shared-db.enc.yaml`
+5. `infra/security/sops/dev/counter-service.enc.yaml`
 
-### Create secrets template
+需要注意：
 
-Copy the template:
-```bash
-cp infra/security/sops/secrets.template.yaml infra/security/sops/secrets.yaml
-```
+1. `web-bff` secrets 对应当前 counter 的同步主路径。
+2. `outbox-relay-worker` secrets 对应当前异步 relay 主路径。
+3. `projector-worker` secrets 已有 dev 模板与加密产物，但默认 overlay 仍保持 replicas=0，只有在 shared secret 的真实值被核实后才应启用独立 Pod。
+4. `counter-shared-db` secrets 用来把 `web-bff`、`outbox-relay-worker`、`projector-worker` 指向同一份远程 libSQL/Turso 数据源。
+5. `counter-service` secrets 已有模板和加密产物，但模板本身已明确说明它主要为 Phase 1+ 独立 deployable 预留。
 
-### Edit the template
+因此，当前默认理解应是：
 
-```yaml
-# infra/security/sops/secrets.yaml
-apiVersion: v1
-kind: Secret
-metadata:
-  name: database-secrets
-  namespace: default
-type: Opaque
-stringData:
-  url: "libsql://file:/data/app.db?token=your-jwt-token"
-  admin-password: "super-secret-password"
+1. counter 的 secrets 链路已经有真实落点。
+2. 但独立 `counter-service` deployable 仍不是当前主运行形态。
 
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: minio-secrets
-  namespace: infrastructure
-type: Opaque
-stringData:
-  access-key: "minioadmin"
-  secret-key: "your-minio-secret-key"
+## 3. 默认操作路径
 
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: oauth-secrets
-  namespace: default
-type: Opaque
-stringData:
-  google-client-id: "your-google-client-id"
-  google-client-secret: "your-google-client-secret"
-```
+### 3.1 首次设置 age key
 
-## Step 4: Encrypt Secrets
+使用仓库已有命令：
 
 ```bash
-# Encrypt
-sops -e -i infra/security/sops/secrets.yaml
-
-# Verify encrypted file
-cat infra/security/sops/secrets.yaml
-# Should show encrypted content
-
-# Decrypt to verify
-sops -d infra/security/sops/secrets.yaml
+just sops-gen-age-key
+just sops-show-age-key
 ```
 
-## Step 5: Commit Encrypted Secrets
+然后更新根目录 `.sops.yaml` 中对应环境的 public key。
+
+### 3.2 编辑或生成某个 deployable 的 secrets
+
+推荐命令：
 
 ```bash
-git add infra/security/sops/secrets.yaml
-git commit -m "chore: add encrypted secrets"
-git push
+just sops-edit web-bff dev
+just sops-edit outbox-relay-worker dev
+just sops-edit projector-worker dev
+just sops-encrypt-dev DEPLOYABLE=web-bff
 ```
 
-**NEVER commit plaintext secrets!**
+当前更符合仓库结构的做法是：
 
-## Step 6: Use with Flux
+1. 修改 `infra/security/sops/templates/<env>/<deployable>.yaml`
+2. 重新加密生成 `infra/security/sops/<env>/<deployable>.enc.yaml`
+3. 提交加密产物，而不是提交明文模板变体或 `.env`
 
-Flux will automatically decrypt SOPS-encrypted secrets if configured with the age key:
+### 3.3 本地非集群运行
+
+本地后端默认不要通过 `.env` 注入 secrets。当前仓库提供的内环路径是：
 
 ```bash
-# Create age key secret in cluster
-kubectl create secret generic sops-age \
-  --namespace=flux-system \
-  --from-file=age.agekey=/root/.config/sops/age/keys.txt
+just sops-run DEPLOYABLE=web-bff ENV=dev
+just sops-run DEPLOYABLE=outbox-relay-worker ENV=dev CMD='cargo run -p outbox-relay-worker'
+just sops-run DEPLOYABLE=projector-worker ENV=dev CMD='cargo run -p projector-worker'
+just sops-verify-counter-shared-db ENV=dev
 ```
 
-Then Flux will decrypt secrets during reconciliation.
+这条路径的意义是：
 
-## Step 7: Apply Secrets Manually
+1. 让本地进程消费和集群一致的环境变量形状。
+2. 避免为了开发临时制造新的 `.env` 主路径。
+3. 在把独立 worker overlay 从 `replicas=0` 提到 `1` 前，先验证 shared remote DB secret 不再指向本地 `file:` 路径。
 
-```bash
-# Decrypt and apply
-sops -d infra/security/sops/secrets.yaml | kubectl apply -f -
-```
+## 4. 与 Kustomize / Flux 的关系
 
-## Key Rotation
+secrets 文档不能脱离部署链路单独理解。当前真实挂接关系是：
 
-### 1. Generate New Key
+1. `infra/k3s/overlays/dev/kustomization.yaml` 已引用：
+   - `web-bff.enc.yaml`
+   - `outbox-relay-worker.enc.yaml`
+   - `shared-counter-db/kustomization.yaml`
+2. `infra/k3s/overlays/dev/projector-worker/kustomization.yaml` 与 `infra/k3s/overlays/dev/outbox-relay-worker/kustomization.yaml` 都已显式挂接 `counter-shared-db` secret，并默认将副本数保持为 0。
+3. 同文件中 `counter-service.enc.yaml` 当前仍被注释，注释明确说明其对应未来独立 deployable 阶段。
+4. `infra/gitops/flux/apps/*.yaml` 已声明通过 `decryption.provider: sops` 和 `secretRef.name: sops-age` 解密。
 
-```bash
-age-keygen -o ~/.config/sops/age/keys-new.txt
-```
+因此这条链路当前的正确理解是：
 
-### 2. Update .sops.yaml
+1. secrets 已进入默认工程主线。
+2. 但 `counter-service` 本体仍主要通过 `web-bff` 承载，而不是通过独立 deployable 完整消费自身 secrets。
 
-Add the new public key to `.sops.yaml`:
+## 5. 文档边界
 
-```yaml
-creation_rules:
-  - path_regex: infra/security/sops/.*\.yaml$
-    age: >-
-      age1newpublickey...,age1oldpublickey...
-```
+这份文档只回答以下问题：
 
-### 3. Re-encrypt Secrets
+1. secrets 存在哪里。
+2. 如何编辑与加密。
+3. 如何挂接到本地进程和集群路径。
+4. 它和 `counter-service` reference chain 的关系是什么。
 
-```bash
-# Decrypt with old key, encrypt with both keys
-sops -d infra/security/sops/secrets.yaml > secrets-temp.yaml
-sops -e -i secrets-temp.yaml
-mv secrets-temp.yaml infra/security/sops/secrets.yaml
-```
+这份文档不负责：
 
-### 4. Remove Old Key
+1. 讲解通用 SOPS/age 全部知识。
+2. 保证当前 Flux/Kustomize 清单已经完全闭环。
+3. 将尚未实现的独立 `counter-service` deployable 写成既成事实。
 
-After verifying, remove the old public key from `.sops.yaml` and update all team members.
+## 6. 一句话结论
 
-## CI/CD Integration
-
-### GitHub Actions
-
-```yaml
-- name: Decrypt secrets
-  run: |
-    echo "${{ secrets.SOPS_AGE_KEY }}" > keys.txt
-    export SOPS_AGE_KEY_FILE=keys.txt
-    sops -d infra/security/sops/secrets.yaml | kubectl apply -f -
-```
-
-### Flux with GitHub
-
-Store the age key as a GitHub secret `SOPS_AGE_KEY` and reference it in your Flux configuration.
-
-## Troubleshooting
-
-### "no matching key found"
-
-```bash
-# Check your age key
-cat ~/.config/sops/age/keys.txt
-
-# Verify public key matches .sops.yaml
-grep age infra/security/sops/.sops.yaml
-```
-
-### "decryption failed"
-
-```bash
-# Check SOPS version
-sops --version
-
-# Try with explicit key file
-export SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt
-sops -d infra/security/sops/secrets.yaml
-```
-
-### Accidentally committed plaintext
-
-```bash
-# IMMEDIATELY rotate the key
-# 1. Generate new key
-# 2. Update .sops.yaml
-# 3. Re-encrypt secrets
-# 4. Force push to remove plaintext from history
-# 5. Invalidate all exposed credentials
-```
+当前后端默认 secrets 轨道已经是 `templates -> enc.yaml -> Kustomize/Flux 或 sops-run`，而 `counter-service` 已经挂在这条轨道上，只是其独立 deployable 路径仍未成为默认主运行形态。

@@ -19,6 +19,7 @@ thiserror = { workspace = true }
 anyhow = { workspace = true }
 uuid = { workspace = true }
 chrono = { workspace = true }
+async-nats = "0.38"
 
 # Tracing
 tracing = { workspace = true }

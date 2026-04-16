@@ -1,8 +1,9 @@
 //! Event publisher — publishes outbox entries to the event bus and runtime pubsub.
 
-use async_trait::async_trait;
-use contracts_events::AppEvent;
-use event_bus::ports::{EventBus, EventEnvelope};
+use contracts_events::{
+    AppEvent, CounterChanged, EventEnvelope, event_type_name, runtime_outbox_topic_for_type,
+};
+use event_bus::ports::EventBus;
 use runtime::ports::{MessageEnvelope as RuntimeMessageEnvelope, PubSub};
 use tracing::{debug, warn};
 
@@ -32,28 +33,46 @@ impl<E: EventBus, P: PubSub> OutboxPublisher<E, P> {
         Self { event_bus, pubsub }
     }
 
+    fn deserialize_event(payload: &str) -> Result<EventEnvelope, PublishError> {
+        match serde_json::from_str::<EventEnvelope>(payload) {
+            Ok(envelope) => Ok(envelope),
+            Err(envelope_error) => match serde_json::from_str::<AppEvent>(payload) {
+                Ok(event) => Ok(EventEnvelope::new(event, "counter-service")),
+                Err(app_event_error) => serde_json::from_str::<CounterChanged>(payload)
+                    .map(AppEvent::CounterChanged)
+                    .map(|event| EventEnvelope::new(event, "counter-service"))
+                    .map_err(|counter_changed_error| {
+                        PublishError::Deserialize(format!(
+                            "event envelope: {envelope_error}; app event: {app_event_error}; counter-changed fallback: {counter_changed_error}"
+                        ))
+                    }),
+            },
+        }
+    }
+
     /// Publish a single outbox entry to both event bus and pubsub.
     pub async fn publish(&self, entry: &PendingOutboxEntry) -> Result<(), PublishError> {
-        let event: AppEvent = serde_json::from_str(&entry.payload)
-            .map_err(|e| PublishError::Deserialize(e.to_string()))?;
+        let mut envelope = Self::deserialize_event(&entry.payload)?;
+        if envelope.metadata.correlation_id.is_none()
+            && let Some(correlation_id) = entry.correlation_id.as_deref()
+        {
+            envelope = envelope.with_correlation_id(correlation_id);
+        }
 
         // Publish to event bus (for service-to-service communication)
-        let envelope = EventEnvelope::new(event.clone(), &entry.source_service);
-
         self.event_bus
-            .publish(envelope)
+            .publish(envelope.clone())
             .await
             .map_err(|e| PublishError::Bus(e.to_string()))?;
 
         // Publish to runtime pubsub (for workers and external consumers)
-        let runtime_envelope = RuntimeMessageEnvelope::new(
-            event,
-            format!("outbox.{}", entry.event_type),
-            &entry.source_service,
-        );
+        let topic = runtime_outbox_topic_for_type(event_type_name(&envelope.event));
+        let runtime_envelope =
+            RuntimeMessageEnvelope::new(envelope.event.clone(), &topic, &envelope.source_service)
+                .with_metadata(envelope.metadata.clone());
 
         self.pubsub
-            .publish(&format!("outbox.{}", entry.event_type), runtime_envelope)
+            .publish(&topic, runtime_envelope)
             .await
             .map_err(|e| PublishError::PubSub(e.to_string()))?;
 
@@ -96,6 +115,7 @@ mod tests {
             event_type: "counter.changed".to_string(),
             payload: payload.to_string(),
             source_service: "counter-service".to_string(),
+            correlation_id: None,
             retry_count: 0,
         }
     }
@@ -106,7 +126,6 @@ mod tests {
         let pubsub = MemoryPubSub::new();
         let publisher = OutboxPublisher::new(bus, pubsub);
 
-        // CounterChanged event with valid JSON (AppEvent uses internally tagged format)
         let event = contracts_events::AppEvent::CounterChanged(contracts_events::CounterChanged {
             tenant_id: "test-tenant".to_string(),
             counter_key: "default".to_string(),
@@ -115,7 +134,11 @@ mod tests {
             delta: 1,
             version: 1,
         });
-        let payload = serde_json::to_string(&event).unwrap();
+        let payload = serde_json::to_string(&contracts_events::EventEnvelope::new(
+            event,
+            "counter-service",
+        ))
+        .unwrap();
 
         let entry = test_entry("entry-1", &payload);
         let result = publisher.publish(&entry).await;

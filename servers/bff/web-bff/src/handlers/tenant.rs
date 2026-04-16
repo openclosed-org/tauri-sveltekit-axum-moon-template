@@ -12,6 +12,7 @@ use tenant_service::infrastructure::libsql_adapter::LibSqlTenantRepository;
 use validator::Validate;
 
 use crate::error::{BffError, BffResult};
+use crate::middleware::tenant::RequestContext;
 use crate::state::{BffState, DatabaseBackend};
 
 pub fn router() -> Router<BffState> {
@@ -38,10 +39,17 @@ pub fn router() -> Router<BffState> {
 )]
 pub async fn init_tenant(
     State(state): State<BffState>,
+    axum::extract::Extension(request_context): axum::extract::Extension<RequestContext>,
     Json(body): Json<InitTenantRequest>,
 ) -> BffResult<Json<Value>> {
     body.validate()
         .map_err(|e| BffError::Validation(e.to_string()))?;
+
+    if body.user_sub != request_context.user_sub {
+        return Err(BffError::Unauthorized(
+            "JWT subject does not match requested user_sub".to_string(),
+        ));
+    }
 
     match state.db.clone() {
         Some(DatabaseBackend::Embedded(db)) => {
@@ -51,7 +59,7 @@ pub async fn init_tenant(
             })?;
             let service = TenantService::new(repo);
             let result = service
-                .init_tenant_for_user(&body.user_sub, &body.user_name)
+                .init_tenant_for_user(&request_context.user_sub, &body.user_name)
                 .await
                 .map_err(|e| BffError::Internal(format!("Failed to initialize tenant: {}", e)))?;
             Ok(Json(json!({
@@ -67,7 +75,7 @@ pub async fn init_tenant(
             })?;
             let service = TenantService::new(repo);
             let result = service
-                .init_tenant_for_user(&body.user_sub, &body.user_name)
+                .init_tenant_for_user(&request_context.user_sub, &body.user_name)
                 .await
                 .map_err(|e| BffError::Internal(format!("Failed to initialize tenant: {}", e)))?;
             Ok(Json(json!({

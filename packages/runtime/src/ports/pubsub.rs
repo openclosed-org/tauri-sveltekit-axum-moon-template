@@ -42,8 +42,8 @@ pub struct MessageEnvelope {
     pub topic: String,
     /// Source service identifier (e.g., "counter-service").
     pub source_service: String,
-    /// Correlation ID for distributed tracing.
-    pub correlation_id: Option<String>,
+    /// Shared event metadata used to propagate correlation and ownership context.
+    pub metadata: contracts_events::EventMetadata,
     /// Timestamp when the message was created (RFC3339).
     pub timestamp: String,
 }
@@ -54,18 +54,24 @@ impl MessageEnvelope {
         topic: impl Into<String>,
         source_service: impl Into<String>,
     ) -> Self {
+        let metadata = contracts_events::EventMetadata::for_event(&event);
         Self {
             message_id: uuid::Uuid::now_v7().to_string(),
             event,
             topic: topic.into(),
             source_service: source_service.into(),
-            correlation_id: None,
+            metadata,
             timestamp: chrono::Utc::now().to_rfc3339(),
         }
     }
 
     pub fn with_correlation_id(mut self, correlation_id: impl Into<String>) -> Self {
-        self.correlation_id = Some(correlation_id.into());
+        self.metadata = self.metadata.with_correlation_id(correlation_id);
+        self
+    }
+
+    pub fn with_metadata(mut self, metadata: contracts_events::EventMetadata) -> Self {
+        self.metadata = metadata;
         self
     }
 }

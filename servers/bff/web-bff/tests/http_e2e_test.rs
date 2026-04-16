@@ -282,6 +282,30 @@ async fn tenant_init_returns_existing_on_second_call() {
     assert_eq!(body2.get("created").unwrap(), false);
 }
 
+#[tokio::test]
+async fn tenant_init_rejects_jwt_sub_mismatch() {
+    let state = build_test_state().await;
+    let app = create_router(state);
+    let token = make_test_token("jwt-user");
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/tenant/init")
+                .method(http::Method::POST)
+                .header(http::header::AUTHORIZATION, format!("Bearer {token}"))
+                .header(http::header::CONTENT_TYPE, "application/json")
+                .body(Body::from(
+                    r#"{"user_sub":"different-user","user_name":"Mallory"}"#,
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+}
+
 // ─── Cross-Tenant Isolation ──────────────────────────────────────────────────
 
 #[tokio::test]
@@ -333,6 +357,103 @@ async fn two_users_get_different_tenants() {
         tenant_a, tenant_b,
         "Alice and Bob should have different tenant IDs"
     );
+}
+
+#[tokio::test]
+async fn counter_endpoints_require_existing_user_tenant_binding() {
+    let state = build_test_state().await;
+    let app = create_router(state);
+    let token = make_test_token("counter-user");
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/counter/value")
+                .method(http::Method::GET)
+                .header(http::header::AUTHORIZATION, format!("Bearer {token}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    let status = response.status();
+    let body_bytes = response.into_body().collect().await.unwrap().to_bytes();
+    let body_str = String::from_utf8_lossy(&body_bytes);
+    assert_eq!(
+        status,
+        StatusCode::UNAUTHORIZED,
+        "Expected 401 but got {}: {body_str}",
+        status
+    );
+}
+
+#[tokio::test]
+async fn counter_endpoints_resolve_real_tenant_binding_after_init() {
+    let state = build_test_state().await;
+    let app = create_router(state);
+    let token = make_test_token("bound-user");
+
+    let init_response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/tenant/init")
+                .method(http::Method::POST)
+                .header(http::header::AUTHORIZATION, format!("Bearer {token}"))
+                .header(http::header::CONTENT_TYPE, "application/json")
+                .body(Body::from(
+                    r#"{"user_sub":"bound-user","user_name":"Bound User"}"#,
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(init_response.status(), StatusCode::OK);
+
+    let increment_response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/counter/increment")
+                .method(http::Method::POST)
+                .header(http::header::AUTHORIZATION, format!("Bearer {token}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let increment_status = increment_response.status();
+    let increment_bytes = increment_response
+        .into_body()
+        .collect()
+        .await
+        .unwrap()
+        .to_bytes();
+    let increment_body_str = String::from_utf8_lossy(&increment_bytes);
+    assert_eq!(
+        increment_status,
+        StatusCode::OK,
+        "Expected 200 but got {}: {increment_body_str}",
+        increment_status
+    );
+    let increment_body: serde_json::Value = serde_json::from_slice(&increment_bytes).unwrap();
+    assert_eq!(increment_body.get("value").unwrap(), 1);
+
+    let value_response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/counter/value")
+                .method(http::Method::GET)
+                .header(http::header::AUTHORIZATION, format!("Bearer {token}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(value_response.status(), StatusCode::OK);
+    let value_body: serde_json::Value = body_to_json(value_response).await;
+    assert_eq!(value_body.get("value").unwrap(), 1);
 }
 
 // ─── Request Validation ──────────────────────────────────────────────────────
@@ -435,7 +556,7 @@ async fn tenant_init_with_sql_injection_attempt_in_user_sub() {
     let app = create_router(state);
     let token = make_test_token("attacker");
 
-    // Attempt SQL injection via user_sub
+    // Attempt to spoof user_sub in request body
     let response = app
         .clone()
         .oneshot(
@@ -452,12 +573,10 @@ async fn tenant_init_with_sql_injection_attempt_in_user_sub() {
         .await
         .unwrap();
 
-    // Should succeed (parameterized query treats injection as literal string)
-    assert_eq!(response.status(), StatusCode::OK);
-    let body: serde_json::Value = body_to_json(response).await;
-    assert_eq!(body.get("created").unwrap(), true);
+    // JWT subject is now the source of truth, so body spoofing is rejected.
+    assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 
-    // Verify the tenant table still exists and is queryable
+    // Verify the tenant table still exists and the legitimate request remains queryable.
     let response2 = app
         .oneshot(
             Request::builder()
@@ -466,7 +585,7 @@ async fn tenant_init_with_sql_injection_attempt_in_user_sub() {
                 .header(http::header::AUTHORIZATION, format!("Bearer {token}"))
                 .header(http::header::CONTENT_TYPE, "application/json")
                 .body(Body::from(
-                    r#"{"user_sub":"'; DROP TABLE tenant; --","user_name":"Attacker"}"#,
+                    r#"{"user_sub":"attacker","user_name":"Attacker"}"#,
                 ))
                 .unwrap(),
         )
@@ -475,7 +594,7 @@ async fn tenant_init_with_sql_injection_attempt_in_user_sub() {
 
     assert_eq!(response2.status(), StatusCode::OK);
     let body2: serde_json::Value = body_to_json(response2).await;
-    assert_eq!(body2.get("created").unwrap(), false);
+    assert_eq!(body2.get("created").unwrap(), true);
 }
 
 #[tokio::test]

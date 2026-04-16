@@ -20,6 +20,7 @@ tracing = { workspace = true }
 chrono = { workspace = true }
 uuid = { workspace = true, features = ["v7"] }
 thiserror = { workspace = true }
+async-nats = "0.38"
 
 # Phase 2: NATS (uncomment when ready)
 # async-nats = "0.38"
@@ -31,8 +32,7 @@ tokio = { workspace = true, features = ["macros", "rt", "sync"] }
 default = ["memory"]
 # Phase 1: in-memory event bus (dev/test)
 memory = []
-# Phase 2: NATS JetStream (production)
-# nats = ["dep:async-nats"]
+nats = []
 
 [[test]]
 name = "event_bus_tests"

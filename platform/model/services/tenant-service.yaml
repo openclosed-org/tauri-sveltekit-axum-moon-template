@@ -1,4 +1,4 @@
-name: tenant
+name: tenant-service
 kind: reference-service
 criticality: high
 tenant_scope: tenant

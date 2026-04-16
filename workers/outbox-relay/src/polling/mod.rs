@@ -21,6 +21,7 @@ pub struct PendingOutboxEntry {
     pub event_type: String,
     pub payload: String,
     pub source_service: String,
+    pub correlation_id: Option<String>,
     pub retry_count: u32,
 }
 
@@ -62,6 +63,7 @@ struct OutboxRow {
     event_type: String,
     payload: String,
     source_service: String,
+    correlation_id: Option<String>,
 }
 
 /// LibSQL-backed outbox reader for production use.
@@ -88,7 +90,7 @@ impl<P: LibSqlPort> OutboxReader for LibSqlOutboxReader<P> {
         let rows: Vec<OutboxRow> = self
             .port
             .query(
-                "SELECT id, event_type, payload, source_service \
+                "SELECT id, event_type, payload, source_service, correlation_id \
                  FROM counter_outbox \
                  WHERE published = 0 AND id > ? \
                  ORDER BY id ASC \
@@ -105,6 +107,7 @@ impl<P: LibSqlPort> OutboxReader for LibSqlOutboxReader<P> {
                 event_type: r.event_type,
                 payload: r.payload,
                 source_service: r.source_service,
+                correlation_id: r.correlation_id.filter(|value| !value.is_empty()),
                 retry_count: 0,
             })
             .collect();
@@ -282,6 +285,7 @@ mod tests {
             event_type: "counter.changed".to_string(),
             payload: "{}".to_string(),
             source_service: "counter-service".to_string(),
+            correlation_id: None,
             retry_count: 0,
         }];
         let reader = MemoryOutboxReader::new(entries);
@@ -302,6 +306,7 @@ mod tests {
             event_type: "counter.changed".to_string(),
             payload: "{}".to_string(),
             source_service: "counter-service".to_string(),
+            correlation_id: None,
             retry_count: 0,
         }];
         let reader = MemoryOutboxReader::new(entries.clone());

@@ -1,15 +1,15 @@
-//! Tenant extraction middleware — extracts user_sub from JWT Bearer token.
+//! Authentication context middleware — extracts user_sub from JWT Bearer token.
 //!
 //! Environment-gated JWT verification:
 //! - Dev mode (jwt_secret == "dev-secret-change-in-production"): insecure decode
 //!   without signature verification (backward-compatible with Phase 6).
 //! - Prod mode: full HS256 signature verification + exp claim validation.
 //!
-//! Extracts the JWT `sub` claim and injects it as `TenantId` into request extensions.
+//! Extracts the JWT `sub` claim and injects request-scoped auth context.
 
 use axum::{extract::Request, http::StatusCode, middleware::Next, response::Response};
+use contracts_events::ActorRef;
 use jsonwebtoken::{Algorithm, DecodingKey, Validation, dangerous::insecure_decode, decode};
-use kernel::TenantId;
 use serde::Deserialize;
 
 /// JWT claims we need — only `sub` matters for user identification.
@@ -18,10 +18,18 @@ struct IdTokenClaims {
     sub: String,
 }
 
+/// Request context extracted at the server boundary and forwarded into service calls.
+#[derive(Debug, Clone)]
+pub struct RequestContext {
+    pub user_sub: String,
+    pub request_id: Option<String>,
+    pub actor: ActorRef,
+}
+
 /// Default dev secret used by the boilerplate.
 const DEV_SECRET: &str = "dev-secret-change-in-production";
 
-/// Extract user_sub from Authorization: Bearer <token> and inject as TenantId.
+/// Extract user_sub from Authorization: Bearer <token> and inject request context.
 ///
 /// Reads `jwt_secret` from the BFF config in request extensions.
 pub async fn tenant_middleware(mut req: Request, next: Next) -> Result<Response, StatusCode> {
@@ -63,8 +71,23 @@ pub async fn tenant_middleware(mut req: Request, next: Next) -> Result<Response,
         })?
     };
 
-    // 4. Inject user_sub (JWT sub) as TenantId into request extensions
-    req.extensions_mut().insert(TenantId(token_data.claims.sub));
+    let subject = token_data.claims.sub;
+    let request_id = req
+        .headers()
+        .get("x-request-id")
+        .and_then(|value| value.to_str().ok())
+        .map(str::to_owned);
+
+    // 4. Inject authenticated request context for downstream handlers.
+    req.extensions_mut().insert(RequestContext {
+        user_sub: subject.clone(),
+        request_id,
+        actor: ActorRef {
+            actor_id: subject.clone(),
+            actor_type: "user".to_string(),
+            subject: Some(subject),
+        },
+    });
 
     Ok(next.run(req).await)
 }

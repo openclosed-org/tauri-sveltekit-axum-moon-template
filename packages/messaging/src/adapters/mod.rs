@@ -14,5 +14,7 @@
 //! - When event durability is required (use NATS + Outbox instead)
 
 pub mod memory_bus;
+pub mod nats_bus;
 
 pub use memory_bus::*;
+pub use nats_bus::*;

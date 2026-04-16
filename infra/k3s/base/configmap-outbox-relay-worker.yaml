@@ -1,0 +1,18 @@
+# ConfigMap — Outbox Relay Worker public configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: outbox-relay-worker-config
+  namespace: app
+  labels:
+    app.kubernetes.io/name: outbox-relay-worker
+    app.kubernetes.io/component: worker
+    app.kubernetes.io/part-of: tauri-sveltekit-axum
+data:
+  OUTBOX_RUST_LOG: "debug,outbox_relay_worker=trace"
+  OUTBOX_POLL_INTERVAL_MS: "500"
+  OUTBOX_BATCH_SIZE: "100"
+  OUTBOX_NATS_SUBJECT_PREFIX: "events"
+  OUTBOX_CHECKPOINT_PATH: "/data/outbox-relay-checkpoint.json"
+  OUTBOX_HEALTH_HOST: "0.0.0.0"
+  OUTBOX_HEALTH_PORT: "3030"

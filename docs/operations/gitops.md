@@ -1,275 +1,121 @@
-# GitOps Guide (Flux)
+# GitOps
 
-> Manage deployments through Git using Flux CD.
+> 目的：说明本仓库当前 GitOps/Flux 落点，以及它如何挂接到 `counter-service` 的工程横切链。
+>
+> 本文档不是 Flux 从零安装教程；它只描述当前代码树里已经存在的定义、它们的参考价值，以及仍未闭环的部分。
 
-## Prerequisites
+## 1. 核心结论
 
-- K3s cluster running (see [K3s Guide](./k3s-cluster.md))
-- `flux` CLI installed
-- GitHub/GitLab repository with infrastructure code
-- age key for SOPS decryption (see [Secret Management](./secret-management.md))
+当前仓库已经存在 GitOps 主路径的真实文件落点：
 
-## Architecture
+1. `infra/gitops/flux/infrastructure/infrastructure.yaml`
+2. `infra/gitops/flux/apps/api.yaml`
+3. `infra/gitops/flux/apps/web.yaml`
+4. `infra/gitops/flux/apps/outbox-relay-worker.yaml`
+5. `infra/gitops/flux/apps/projector-worker.yaml`
 
-```
-┌─────────────────┐
-│  Git Repository │
-│  (infra/)       │
-└────────┬────────┘
-         │ Flux watches
-         ▼
-┌─────────────────┐     ┌──────────────────┐
-│  Flux           │────▶│  Kubernetes      │
-│  Controllers    │     │  Cluster         │
-└─────────────────┘     └──────────────────┘
-```
+这些文件说明：
 
-## Step 1: Install Flux CLI
+1. Flux 已经被当作默认交付路径的一部分建模。
+2. SOPS 解密已经被挂进 Flux Kustomization。
+3. `counter-service` 相关能力目前主要通过 `infra/k3s/overlays/dev`、`web-bff`、`outbox-relay-worker` 这条路径进入 GitOps，而不是通过独立 `counter-service` deployable 完整闭环。
 
-```bash
-# Install Flux CLI
-brew install fluxcd/tap/flux
+## 2. 当前真实文件落点
 
-# Or
-curl -s https://fluxcd.io/install.sh | sudo bash
+### 2.1 Flux 根分层
 
-# Verify
-flux --version
-```
+主要文件：
 
-## Step 2: Bootstrap Flux
+1. `infra/gitops/flux/infrastructure/infrastructure.yaml`
+2. `infra/gitops/flux/infrastructure/*.yaml`
+3. `infra/gitops/flux/apps/api.yaml`
+4. `infra/gitops/flux/apps/web.yaml`
 
-```bash
-# Set your Git details
-export GITHUB_TOKEN=your-token
-export GITHUB_USER=your-username
-export GITHUB_REPO=tauri-sveltekit-axum-moon-template
+按当前目录理解：
 
-# Bootstrap Flux
-flux bootstrap github \
-  --owner=$GITHUB_USER \
-  --repository=$GITHUB_REPO \
-  --branch=main \
-  --path=infra/gitops/flux \
-  --personal
+1. `infrastructure/` 负责底层依赖，如 NATS、Valkey、MinIO。
+2. `apps/` 负责应用或交付单元的 Kustomization。
 
-# Verify Flux is running
-flux check
-```
+### 2.2 与 counter 参考链的真实挂接点
 
-## Step 3: Flux Configuration
+当前最关键的挂接点不是某个名为 `counter` 的 Flux 文件，而是：
 
-### Directory Structure
+1. `infra/k3s/overlays/dev/kustomization.yaml`
+2. `infra/security/sops/dev/web-bff.enc.yaml`
+3. `infra/security/sops/dev/outbox-relay-worker.enc.yaml`
+4. `infra/security/sops/dev/projector-worker.enc.yaml`
+5. `infra/security/sops/dev/counter-shared-db.enc.yaml`
+6. `infra/security/sops/dev/counter-service.enc.yaml`
 
-```
-infra/gitops/flux/
-├── apps/
-│   └── api.yaml              # API application Kustomization
-└── infrastructure/
-    └── infrastructure.yaml   # Infrastructure components Kustomization
-```
+这反映出当前真实状态：
 
-### Infrastructure Kustomization
+1. counter 的同步主路径嵌在 `web-bff` 中。
+2. `web-bff` 所在 dev overlay 已显式消费 `counter-shared-db` secret，使 cluster 路径优先走 shared remote DB。
+3. counter 的异步发布路径已经有独立 `outbox-relay-worker` Flux app 与 dev overlay，但默认仍保持 replicas=0。
+4. `projector-worker` 已有独立 Flux app 与 dev overlay，但默认仍保持 replicas=0，等待 shared libSQL/Turso secret 的真实值被核实后再启用。
+5. `counter-shared-db` secret 为 `web-bff` 与这些独立 worker 提供共享数据库入口。
+5. 独立 `counter-service` secrets 已预留，但 overlay 中仍注释掉了对应资源。
 
-```yaml
-# infra/gitops/flux/infrastructure/infrastructure.yaml
-apiVersion: kustomize.toolkit.fluxcd.io/v1
-kind: Kustomization
-metadata:
-  name: infrastructure
-  namespace: flux-system
-spec:
-  interval: 10m0s
-  path: ./infra/kubernetes/addons
-  prune: true
-  sourceRef:
-    kind: GitRepository
-    name: flux-system
-  healthChecks:
-  - apiVersion: apps/v1
-    kind: StatefulSet
-    name: nats
-    namespace: infrastructure
-  - apiVersion: apps/v1
-    kind: StatefulSet
-    name: valkey
-    namespace: infrastructure
-  - apiVersion: apps/v1
-    kind: StatefulSet
-    name: minio
-    namespace: infrastructure
-```
+## 3. 当前已经确认的事实
 
-### Application Kustomization
+通过现有 YAML 可以确认：
 
-```yaml
-# infra/gitops/flux/apps/api.yaml
-apiVersion: kustomize.toolkit.fluxcd.io/v1
-kind: Kustomization
-metadata:
-  name: api
-  namespace: flux-system
-spec:
-  interval: 10m0s
-  path: ./infra/k3s/overlays/dev
-  prune: true
-  sourceRef:
-    kind: GitRepository
-    name: flux-system
-  dependsOn:
-  - name: infrastructure
-  healthChecks:
-  - apiVersion: apps/v1
-    kind: Deployment
-    name: web-bff
-    namespace: default
-  postBuild:
-    substitute: {}
-    substituteFrom:
-    - kind: ConfigMap
-      name: cluster-config
-```
+1. `api.yaml` 与 `web.yaml` 都配置了 `decryption.provider: sops`。
+2. 二者都使用 `secretRef.name: sops-age`，说明 Flux 期望在集群中持有 age key secret。
+3. `infrastructure.yaml` 明确先于应用层落地基础依赖。
+4. `infra/k3s/overlays/dev/kustomization.yaml` 是当前 `web-bff` 主链的 dev overlay 入口。
+5. `infra/k3s/overlays/dev/outbox-relay-worker/kustomization.yaml` 是 `outbox-relay-worker` 的独立 dev overlay 入口。
+6. `infra/k3s/overlays/dev/projector-worker/kustomization.yaml` 是 `projector-worker` 的独立 dev overlay 入口。
 
-## Step 4: Deploy
+## 4. 当前不能过度承诺的部分
 
-### Push to Git
+这部分必须写清楚，否则文档会再次漂移。
 
-```bash
-# Make changes to infrastructure/ or infra/k3s/
-git add infra/
-git commit -m "feat: add new NATS configuration"
-git push
+当前还不能声称：
 
-# Flux will automatically reconcile within 10 minutes
-```
+1. GitOps 路径已经对 `counter-service` 独立 deployable 完整闭环。
+2. `infra/gitops/flux/apps/api.yaml`、`infra/gitops/flux/apps/web.yaml` 中的所有 health checks、命名和 target resources 都已经与现状完全一致。
+3. `outbox-relay-worker` 与 `projector-worker` 已经默认在集群中启用；当前它们虽然已接入 shared libSQL/Turso secret，但仍需要先通过 `just sops-verify-counter-shared-db ENV=dev` 核实已加密 secret 的真实值，才能把副本数从 0 提到 1。
+4. promotion、rollback、drift handling 已经通过一条统一且经验证的流水线完成。
 
-### Manual Reconciliation
+因此这份文档的正确定位是：
 
-```bash
-# Reconcile infrastructure
-flux reconcile kustomization infrastructure
+1. GitOps 结构已存在。
+2. SOPS 解密已挂接。
+3. counter 已经接入这条工程路径的一部分。
+4. 但仍需要围绕 `counter-service` 继续补齐 deployable、promotion、drift、runbook 主链。
 
-# Reconcile applications
-flux reconcile kustomization api
+## 5. 默认理解路径
 
-# Check status
-flux get kustomizations
-```
+如果要理解当前 GitOps 如何服务后端默认主链，建议按这个顺序看：
 
-## Step 5: Monitor
+1. `docs/operations/counter-service-reference-chain.md`
+2. `infra/security/sops/templates/dev/*.yaml`
+3. `infra/security/sops/dev/*.enc.yaml`
+4. `infra/k3s/overlays/dev/kustomization.yaml`
+5. `infra/k3s/overlays/dev/outbox-relay-worker/kustomization.yaml`
+6. `infra/k3s/overlays/dev/projector-worker/kustomization.yaml`
+7. `infra/gitops/flux/infrastructure/infrastructure.yaml`
+8. `infra/gitops/flux/apps/api.yaml`
+9. `infra/gitops/flux/apps/web.yaml`
+10. `infra/gitops/flux/apps/outbox-relay-worker.yaml`
+11. `infra/gitops/flux/apps/projector-worker.yaml`
 
-```bash
-# List all Kustomizations
-flux get kustomizations
+这样读的原因是：
 
-# View events
-flux events
+1. 先看 counter 参考链，知道自己在追哪条主线。
+2. 再看 secrets 和 overlay，知道应用清单实际从哪里拿配置。
+3. 最后再看 Flux Kustomization，知道 Git 是如何驱动集群落地的。
 
-# Check specific Kustomization
-flux get kustomization api --watch
-```
+## 6. 与 secrets 文档的关系
 
-## Environment Overlays
+GitOps 文档和 `secret-management.md` 是同一条工程链上的相邻两环：
 
-### Dev
+1. `secret-management.md` 关注 secrets 如何被编辑、加密、注入。
+2. 本文关注这些加密产物如何被 overlay 和 Flux 消费。
 
-```yaml
-# infra/k3s/overlays/dev/kustomization.yaml
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-resources:
-- ../../base
-- ../../addons
-patches:
-- target:
-    kind: Deployment
-    name: web-bff
-  patch: |
-    - op: replace
-      path: /spec/replicas
-      value: 1
-```
+两者共同服务 `counter-service` 的工程横切链，而不是两套独立体系。
 
-### Staging
+## 7. 一句话结论
 
-```yaml
-# infra/k3s/overlays/staging/kustomization.yaml
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-resources:
-- ../../base
-- ../../addons
-patches:
-- target:
-    kind: Deployment
-    name: web-bff
-  patch: |
-    - op: replace
-      path: /spec/replicas
-      value: 2
-```
-
-### Production
-
-```yaml
-# infra/k3s/overlays/prod/kustomization.yaml
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-resources:
-- ../../base
-- ../../addons
-patches:
-- target:
-    kind: Deployment
-    name: web-bff
-  patch: |
-    - op: replace
-      path: /spec/replicas
-      value: 3
-```
-
-## Rollback
-
-```bash
-# Revert Git commit
-git revert HEAD
-git push
-
-# Or reconcile to previous state
-flux reconcile kustomization api --with-source
-```
-
-## Troubleshooting
-
-### Kustomization not applied
-```bash
-# Check Kustomization status
-flux get kustomization api
-
-# Check events
-flux events --for Kustomization/api
-
-# Force reconciliation
-flux reconcile kustomization api --with-source
-```
-
-### Health check failing
-```bash
-# Check deployment
-kubectl get deployment web-bff
-
-# Check pods
-kubectl get pods -l app=web-bff
-
-# Check logs
-kubectl logs deployment/web-bff
-```
-
-### SOPS decryption failed
-```bash
-# Verify age key
-cat ~/.config/sops/age/keys.txt
-
-# Re-bootstrap Flux with correct key
-flux bootstrap github --owner=$GITHUB_USER --repository=$GITHUB_REPO --path=infra/gitops/flux
-```
+当前仓库已经把 Flux/SOPS/GitOps 放进默认后端工程路径；`web-bff`、`outbox-relay-worker`、`projector-worker` 都已接入 shared counter DB secret，但在当前环境无法解密核实该 secret 的真实值前，两个独立 worker 仍默认保持关闭，`counter-service` 的独立 deployable 与后续 promotion/drift 闭环仍需继续补齐。

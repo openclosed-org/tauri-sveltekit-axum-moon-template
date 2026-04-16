@@ -17,6 +17,8 @@ logs/
 .env
 .env.*
 !.env.example
+# SOPS plaintext templates — NEVER commit (contains secret shapes / may contain real values)
+infra/security/sops/templates/
 
 # --- AI planning artifacts ---
 # .planning/ (uncomment to exclude - currently tracking for sync)

@@ -9,7 +9,9 @@ infra/gitops/flux/
 ├── apps/                  # Application definitions
 │   ├── api.yaml           # API service deployment
 │   ├── web.yaml           # Web BFF deployment
-│   └── gateway.yaml       # Edge gateway deployment
+│   ├── gateway.yaml       # Edge gateway deployment
+│   ├── outbox-relay-worker.yaml
+│   └── projector-worker.yaml
 ├── infrastructure/        # Infrastructure components
 │   ├── nats.yaml          # NATS message broker
 │   ├── valkey.yaml        # Valkey cache (Redis-compatible)
@@ -113,12 +115,14 @@ flux resume kustomization api
 ### ✅ Implemented
 - Core infrastructure (NATS, Valkey, MinIO)
 - Application deployments (API, Web BFF, Admin BFF, Edge Gateway)
+- Dedicated outbox-relay-worker Flux Kustomization (disabled by default until shared libSQL/Turso secret is configured)
+- Dedicated projector-worker Flux Kustomization (disabled by default until shared libSQL/Turso secret is configured)
 - Namespace, RBAC, and Resource Quota policies
 - SOPS decryption integration
 - Health checks for all components
 
 ### ⏳ TODO
-- Worker Kustomizations (outbox-relay, indexer, projector, scheduler, sync-reconciler)
+- Worker Kustomizations (indexer, scheduler, sync-reconciler)
 - Observability stack (OpenObserve, Grafana)
 - Dragonfly cache configuration (for k3s-staging topology)
 - Network policies (Cilium)

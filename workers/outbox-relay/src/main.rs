@@ -10,12 +10,12 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 
 use axum::{Router, routing::get};
-use event_bus::adapters::memory_bus::InMemoryEventBus;
+use event_bus::adapters::nats_bus::NatsEventBus;
 use event_bus::ports::EventBus;
-use runtime::adapters::memory::{MemoryPubSub, MemoryState};
+use runtime::adapters::nats::NatsPubSub;
 use runtime::ports::state::StateEntry;
 use runtime::ports::{MessageEnvelope, PubSub, State};
-use storage_turso::embedded::EmbeddedTurso;
+use storage_turso::TursoBackend;
 use tokio::sync::RwLock;
 use tracing::{error, info, warn};
 
@@ -28,7 +28,7 @@ mod publish;
 
 use config::Config;
 use idempotency::IdempotencyStore;
-use polling::{MemoryOutboxReader, OutboxPoller, OutboxReader, PendingOutboxEntry, PollerConfig};
+use polling::{OutboxPoller, OutboxReader, PollerConfig};
 use publish::OutboxPublisher;
 
 /// Worker state shared across tasks.
@@ -123,11 +123,8 @@ async fn main() -> anyhow::Result<()> {
         }
     });
 
-    // Create event bus (in-memory for now; would be NATS in production)
-    let event_bus = InMemoryEventBus::new();
-
-    // Create runtime pubsub (in-memory for now; would be NATS in production)
-    let pubsub = MemoryPubSub::new();
+    let event_bus = NatsEventBus::connect(&config.nats_url, &config.nats_subject_prefix).await?;
+    let pubsub = NatsPubSub::connect(&config.nats_url, &config.nats_subject_prefix).await?;
 
     // Create outbox publisher with both event bus and pubsub
     let publisher = OutboxPublisher::new(event_bus, pubsub);
@@ -135,8 +132,8 @@ async fn main() -> anyhow::Result<()> {
     // Create idempotency store for exactly-once publishing
     let idempotency_store = IdempotencyStore::default();
 
-    // Choose reader based on runtime config
-    let mut poller = create_outbox_poller(&config).await;
+    // Create the production reader from the configured database.
+    let mut poller = create_outbox_poller(&config).await?;
 
     info!(
         "Outbox relay worker running (poll interval: {:?}, batch size: {}, checkpoint: {})",
@@ -198,27 +195,28 @@ async fn main() -> anyhow::Result<()> {
     }
 }
 
-/// Create the appropriate outbox poller based on configuration.
-/// Uses libsql-backed reader for production, in-memory for testing.
-async fn create_outbox_poller(config: &Config) -> OutboxPoller<Box<dyn OutboxReader>> {
+/// Create the production outbox poller from the configured database.
+async fn create_outbox_poller(
+    config: &Config,
+) -> anyhow::Result<OutboxPoller<Box<dyn OutboxReader>>> {
     let poller_config = PollerConfig {
         poll_interval: config.poll_interval(),
         batch_size: config.batch_size,
     };
 
-    // Try to create libsql reader; fall back to memory reader if database unavailable
-    match EmbeddedTurso::new(&config.database_url).await {
-        Ok(turso) => {
-            let reader = polling::LibSqlOutboxReader::new(turso);
-            OutboxPoller::new(Box::new(reader), poller_config, &config.checkpoint_path)
-        }
-        Err(e) => {
-            warn!(
-                error = %e,
-                "failed to create libsql outbox reader, using in-memory stub"
-            );
-            let reader = MemoryOutboxReader::new(Vec::new());
-            OutboxPoller::new(Box::new(reader), poller_config, &config.checkpoint_path)
-        }
-    }
+    let turso = TursoBackend::connect(&config.database_url, config.turso_auth_token.as_deref())
+        .await
+        .map_err(|e| {
+            anyhow::anyhow!(
+                "failed to open outbox database '{}': {e}",
+                config.database_url
+            )
+        })?;
+    let reader = polling::LibSqlOutboxReader::new(turso);
+
+    Ok(OutboxPoller::new(
+        Box::new(reader),
+        poller_config,
+        &config.checkpoint_path,
+    ))
 }

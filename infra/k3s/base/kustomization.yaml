@@ -7,7 +7,11 @@ resources:
   - rbac.yaml
   - network-policy.yaml
   - configmap.yaml
+  - configmap-outbox-relay-worker.yaml
+  - configmap-projector-worker.yaml
+  - deployment-outbox-relay-worker.yaml
   - deployment-web-bff.yaml
   - deployment-web.yaml
+  - deployment-projector-worker.yaml
   - service.yaml
   - ingress.yaml

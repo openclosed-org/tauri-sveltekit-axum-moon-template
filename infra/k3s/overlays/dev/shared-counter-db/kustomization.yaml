@@ -1,0 +1,11 @@
+# Kustomization — Dev shared counter DB credentials
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../../security/sops/dev/counter-shared-db.enc.yaml
+
+namespace: app
+
+commonLabels:
+  app.kubernetes.io/env: dev

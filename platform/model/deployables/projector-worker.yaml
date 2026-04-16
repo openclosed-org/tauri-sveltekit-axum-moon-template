@@ -17,7 +17,6 @@ scaling_axis:
 failure_domain: async-projection
 
 resources:
-  - nats
   - turso
 
 entry_point: workers/projector/src/main.rs

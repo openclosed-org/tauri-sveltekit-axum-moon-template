@@ -6,7 +6,7 @@
 //! - All events carry a unique ID, timestamp, and type discriminator
 
 use async_trait::async_trait;
-use contracts_events::AppEvent;
+pub use contracts_events::{EventEnvelope, EventId};
 
 /// Error type for event bus operations.
 #[derive(Debug, thiserror::Error)]
@@ -19,48 +19,6 @@ pub enum EventBusError {
 
     #[error("Event handler error: {0}")]
     HandlerError(String),
-}
-
-/// Unique identifier for an event envelope.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct EventId(pub uuid::Uuid);
-
-impl EventId {
-    pub fn new_v7() -> Self {
-        Self(uuid::Uuid::now_v7())
-    }
-}
-
-impl std::fmt::Display for EventId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-/// A typed event envelope wrapping the event payload.
-#[derive(Debug, Clone)]
-pub struct EventEnvelope {
-    pub id: EventId,
-    pub event: AppEvent,
-    pub source_service: String,
-    /// Correlation ID for tracing across service boundaries.
-    pub correlation_id: Option<String>,
-}
-
-impl EventEnvelope {
-    pub fn new(event: AppEvent, source_service: impl Into<String>) -> Self {
-        Self {
-            id: EventId::new_v7(),
-            event,
-            source_service: source_service.into(),
-            correlation_id: None,
-        }
-    }
-
-    pub fn with_correlation_id(mut self, id: impl Into<String>) -> Self {
-        self.correlation_id = Some(id.into());
-        self
-    }
 }
 
 /// Type alias for event handlers.

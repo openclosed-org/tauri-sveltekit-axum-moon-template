@@ -1,0 +1,18 @@
+# ConfigMap — Projector Worker public configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: projector-worker-config
+  namespace: app
+  labels:
+    app.kubernetes.io/name: projector-worker
+    app.kubernetes.io/component: worker
+    app.kubernetes.io/part-of: tauri-sveltekit-axum
+data:
+  PROJECTOR_RUST_LOG: "info,projector_worker=debug"
+  PROJECTOR_POLL_INTERVAL_MS: "500"
+  PROJECTOR_BATCH_SIZE: "100"
+  PROJECTOR_NATS_QUEUE_GROUP: "projector-worker"
+  PROJECTOR_CHECKPOINT_PATH: "/data/projector-checkpoint.json"
+  PROJECTOR_HEALTH_HOST: "0.0.0.0"
+  PROJECTOR_HEALTH_PORT: "3050"

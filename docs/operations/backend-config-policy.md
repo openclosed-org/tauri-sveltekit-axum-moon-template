@@ -78,7 +78,7 @@
 just sops-reconcile dev
 
 # 部署应用
-just deploy-prod dev
+just deploy-prod ENV=dev
 ```
 
 ### Quick Inner Loop (No Cluster)
@@ -92,6 +92,8 @@ just sops-run web-bff
 # sops exec-env infra/security/sops/dev/web-bff.enc.yaml -- cargo run -p web-bff
 
 just sops-run outbox-relay-worker
+just sops-run projector-worker
+just sops-run counter-shared-db  # 仅用于检查 secret 形状，不直接启动二进制
 just sops-run counter-service
 ```
 
@@ -112,8 +114,15 @@ just sops-run counter-service
 
 | 类型 | 来源 | 示例 |
 |---|---|---|
-| 公开配置 | ConfigMap | OUTBOX_POLL_INTERVAL_MS, OUTBOX_BATCH_SIZE |
-| 敏感配置 | SOPS Secret | DATABASE_URL, NATS_URL |
+| 公开配置 | ConfigMap | OUTBOX_POLL_INTERVAL_MS, OUTBOX_BATCH_SIZE, OUTBOX_NATS_SUBJECT_PREFIX |
+| 敏感配置 | SOPS Secret | OUTBOX_DATABASE_URL, OUTBOX_TURSO_AUTH_TOKEN, OUTBOX_NATS_URL |
+
+### projector-worker
+
+| 类型 | 来源 | 示例 |
+|---|---|---|
+| 公开配置 | ConfigMap | PROJECTOR_POLL_INTERVAL_MS, PROJECTOR_BATCH_SIZE, PROJECTOR_CHECKPOINT_PATH |
+| 敏感配置 | SOPS Secret | PROJECTOR_DATABASE_URL, PROJECTOR_TURSO_AUTH_TOKEN |
 
 ### counter-service (Phase 1+)
 
@@ -147,6 +156,8 @@ just sops-gen-age-key
 ```bash
 just sops-encrypt-dev web-bff
 just sops-encrypt-dev outbox-relay-worker
+just sops-encrypt-dev projector-worker
+just sops-encrypt-dev counter-shared-db
 ```
 
 ### 5. 运行服务
@@ -157,7 +168,7 @@ just sops-run web-bff
 
 # 有集群
 just sops-reconcile dev
-just deploy-prod dev
+just deploy-prod ENV=dev
 ```
 
 ---
@@ -171,6 +182,8 @@ infra/security/sops/
 │   ├── dev/
 │   │   ├── web-bff.yaml
 │   │   ├── outbox-relay-worker.yaml
+│   │   ├── projector-worker.yaml
+│   │   ├── counter-shared-db.yaml
 │   │   └── counter-service.yaml
 │   └── staging/
 │       ├── web-bff.yaml
@@ -178,6 +191,8 @@ infra/security/sops/
 ├── dev/                    # 加密密钥（dev）
 │   ├── web-bff.enc.yaml
 │   ├── outbox-relay-worker.enc.yaml
+│   ├── projector-worker.enc.yaml
+│   ├── counter-shared-db.enc.yaml
 │   └── counter-service.enc.yaml
 ├── staging/                # 加密密钥（staging）
 │   ├── web-bff.enc.yaml

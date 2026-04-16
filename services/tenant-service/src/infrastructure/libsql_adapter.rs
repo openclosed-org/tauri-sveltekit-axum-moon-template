@@ -37,13 +37,31 @@ impl<P: LibSqlPort> LibSqlTenantRepository<P> {
             )";
         const USER_TENANT_MIGRATION: &str = "CREATE TABLE IF NOT EXISTS user_tenant (\
                 id TEXT PRIMARY KEY,\
-                user_sub TEXT NOT NULL,\
-                tenant_id TEXT NOT NULL,\
+                user_sub TEXT NOT NULL UNIQUE,\
+                tenant_id TEXT NOT NULL REFERENCES tenant(id),\
                 role TEXT NOT NULL DEFAULT 'member',\
-                FOREIGN KEY (tenant_id) REFERENCES tenant(id)\
+                joined_at TEXT NOT NULL DEFAULT (datetime('now'))\
             )";
+        const USER_TENANT_JOINED_AT_MIGRATION: &str =
+            "ALTER TABLE user_tenant ADD COLUMN joined_at TEXT";
+        const USER_TENANT_JOINED_AT_BACKFILL: &str = "UPDATE user_tenant SET joined_at = datetime('now') WHERE joined_at IS NULL OR joined_at = ''";
+        const USER_TENANT_TENANT_INDEX: &str =
+            "CREATE INDEX IF NOT EXISTS idx_user_tenant_tenant_id ON user_tenant(tenant_id)";
+        const USER_TENANT_USER_SUB_INDEX: &str =
+            "CREATE INDEX IF NOT EXISTS idx_user_tenant_user_sub ON user_tenant(user_sub)";
         self.port.execute(TENANT_MIGRATION, vec![]).await?;
         self.port.execute(USER_TENANT_MIGRATION, vec![]).await?;
+        self.port
+            .execute(USER_TENANT_JOINED_AT_MIGRATION, vec![])
+            .await
+            .ok();
+        self.port
+            .execute(USER_TENANT_JOINED_AT_BACKFILL, vec![])
+            .await?;
+        self.port.execute(USER_TENANT_TENANT_INDEX, vec![]).await?;
+        self.port
+            .execute(USER_TENANT_USER_SUB_INDEX, vec![])
+            .await?;
         Ok(())
     }
 }
@@ -130,7 +148,7 @@ impl<P: LibSqlPort> TenantRepository for LibSqlTenantRepository<P> {
     ) -> Result<(), RepositoryError> {
         self.port
             .execute(
-                "INSERT INTO user_tenant (id, user_sub, tenant_id, role) VALUES (lower(hex(randomblob(16))), ?, ?, ?)",
+                "INSERT INTO user_tenant (id, user_sub, tenant_id, role, joined_at) VALUES (lower(hex(randomblob(16))), ?, ?, ?, datetime('now'))",
                 vec![user_sub.to_string(), tenant_id.to_string(), role.to_string()],
             )
             .await?;

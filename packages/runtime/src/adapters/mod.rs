@@ -6,3 +6,4 @@
 //! - `dapr/` — Dapr sidecar adapter (distributed deployments)
 
 pub mod memory;
+pub mod nats;

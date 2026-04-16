@@ -94,15 +94,15 @@ services:
 
   # === Workers ===
   indexer-worker:
-    image: your-registry/worker-indexer:${TAG:-latest}
+    image: your-registry/indexer-worker:${TAG:-latest}
     environment:
       - NATS_URL=nats://nats:4222
       - DATABASE_URL=libsql://file:/data/app.db
     depends_on:
       - nats
 
-  outbox-relay:
-    image: your-registry/worker-outbox-relay:${TAG:-latest}
+  outbox-relay-worker:
+    image: your-registry/outbox-relay-worker:${TAG:-latest}
     environment:
       - NATS_URL=nats://nats:4222
       - DATABASE_URL=libsql://file:/data/app.db

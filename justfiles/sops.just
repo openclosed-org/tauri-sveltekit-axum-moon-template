@@ -77,18 +77,13 @@ sops-edit DEPLOYABLE='web-bff' ENV='dev':
 # This is the ONLY allowed non-cluster dev path
 # Does NOT create .env files
 sops-run DEPLOYABLE='web-bff' ENV='dev' CMD='':
-    @if [ -z "{{CMD}}" ]; then \
-        CMD="cargo run -p {{DEPLOYABLE}}"; \
-    fi
-    @echo "Running with SOPS-decrypted env vars: {{DEPLOYABLE}} ({{ENV}})"
-    @bash infra/security/sops/scripts/sops-run.sh {{DEPLOYABLE}} {{ENV}} -- {{CMD}}
+    @bash infra/security/sops/scripts/sops-run.sh "{{DEPLOYABLE}}" "{{ENV}}" -- {{CMD}}
 
 # ── Cluster Reconciliation ──────────────────────────────────
 
 # Apply SOPS-encrypted secrets to k3s cluster
 sops-reconcile ENV='dev':
-    @echo "Applying SOPS secrets for environment: {{ENV}}"
-    @bash infra/security/sops/scripts/apply-secrets.sh {{ENV}}
+    @bash infra/security/sops/scripts/apply-secrets.sh "{{ENV}}"
 
 # ── Flux Integration ────────────────────────────────────────
 
@@ -124,3 +119,7 @@ sops-validate:
     @find infra/security/sops -name "*.enc.yaml" | wc -l | tr -d ' ' | xargs -I{} echo "✓ Encrypted secrets: {} files"
     @echo ""
     @echo "SOPS configuration valid"
+
+# Verify that shared counter DB secret is ready for independent worker pods
+sops-verify-counter-shared-db ENV='dev':
+    @bash infra/security/sops/scripts/verify-counter-shared-db.sh "{{ENV}}"

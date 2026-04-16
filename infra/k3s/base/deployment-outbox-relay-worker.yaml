@@ -1,0 +1,83 @@
+# Deployment — Outbox Relay Worker
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: outbox-relay-worker
+  namespace: app
+  labels:
+    app.kubernetes.io/name: outbox-relay-worker
+    app.kubernetes.io/component: worker
+    app.kubernetes.io/part-of: tauri-sveltekit-axum
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: outbox-relay-worker
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: outbox-relay-worker
+        app.kubernetes.io/component: worker
+      annotations:
+        kubectl.kubernetes.io/default-container: outbox-relay-worker
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: outbox-relay-worker
+          image: outbox-relay-worker:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: health
+              containerPort: 3030
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: outbox-relay-worker-config
+            - secretRef:
+                name: outbox-relay-worker-secrets
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: health
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: health
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop: ["ALL"]
+      volumes:
+        - name: data
+          emptyDir: {}

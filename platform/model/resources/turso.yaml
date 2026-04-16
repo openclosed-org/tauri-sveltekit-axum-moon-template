@@ -28,6 +28,6 @@ access_control:
 
 required_by:
   - counter-service
-  - user
-  - tenant
-  - auth
+  - user-service
+  - tenant-service
+  - auth-service

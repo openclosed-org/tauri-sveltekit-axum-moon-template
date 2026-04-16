@@ -18,7 +18,7 @@
 #   2. Generate key: just sops-gen-age-key
 #   3. Update public key in this file (or use just sops-set-age-key)
 #   4. Create/edit secrets: just sops-edit <deployable> <env>
-#   5. Local reconcile: just sops-reconcile-dev
+#   5. Local reconcile: just sops-reconcile ENV=dev
 
 creation_rules:
   # ── Templates (for encryption) ─────────────────────────────

@@ -16,6 +16,7 @@ pub mod schema {
             event_type TEXT NOT NULL,\
             payload TEXT NOT NULL,\
             source_service TEXT NOT NULL DEFAULT 'counter-service',\
+            correlation_id TEXT,\
             created_at TEXT NOT NULL DEFAULT (datetime('now')),\
             published INTEGER NOT NULL DEFAULT 0\
         );\

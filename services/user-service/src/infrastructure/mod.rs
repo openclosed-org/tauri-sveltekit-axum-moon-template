@@ -215,9 +215,7 @@ impl<P: LibSqlPort> UserTenantRepository for LibSqlUserTenantRepository<P> {
             user_sub: row.user_sub.clone(),
             tenant_id: row.tenant_id.clone(),
             role: row.role.clone(),
-            joined_at: chrono::DateTime::parse_from_rfc3339(&row.joined_at)
-                .map(|dt| dt.with_timezone(&Utc))
-                .unwrap_or_else(|_| Utc::now()),
+            joined_at: parse_joined_at(&row.joined_at).unwrap_or_else(Utc::now),
         }))
     }
 
@@ -229,8 +227,8 @@ impl<P: LibSqlPort> UserTenantRepository for LibSqlUserTenantRepository<P> {
     ) -> Result<UserTenantBinding, UserError> {
         self.db
             .execute(
-                "INSERT INTO user_tenant (id, user_sub, tenant_id, role) \
-                 VALUES (lower(hex(randomblob(16))), ?, ?, ?)",
+                "INSERT INTO user_tenant (id, user_sub, tenant_id, role, joined_at) \
+                 VALUES (lower(hex(randomblob(16))), ?, ?, ?, datetime('now'))",
                 vec![
                     user_sub.to_string(),
                     tenant_id.to_string(),
@@ -248,4 +246,14 @@ impl<P: LibSqlPort> UserTenantRepository for LibSqlUserTenantRepository<P> {
 
         Ok(binding)
     }
+}
+
+fn parse_joined_at(value: &str) -> Option<chrono::DateTime<Utc>> {
+    if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(value) {
+        return Some(dt.with_timezone(&Utc));
+    }
+
+    chrono::NaiveDateTime::parse_from_str(value, "%Y-%m-%d %H:%M:%S")
+        .ok()
+        .map(|dt| dt.and_utc())
 }

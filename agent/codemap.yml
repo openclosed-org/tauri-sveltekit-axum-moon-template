@@ -3,11 +3,11 @@ repo:
   name: boilerplate
   mode: agent-first-distributed-harness
   purpose: >
-    以生产级,完全体分布式要求为基线，构建可由多个专职 agent 接力开发、
-    且不会因隐性上下文缺失而写偏的 monorepo harness。
+    为后端优先的 agent 协作提供稳定目录边界、真理源分层与默认参考锚点，
+    让后续修改优先沿 `counter-service` reference chain 与既有 gate/tooling 推进。
 
 notes: >
-  本文档描述的是重建后的目标态规则。
+  本文档描述当前稳定边界与默认开发轨道，不把未落地模块写成既成事实。
   service 的细粒度分布式语义归属 services/<name>/model.yaml，
   platform/model/* 只保留平台级元数据、全局规则、deployable、workflow、topology、resource、environment。
 
@@ -146,7 +146,7 @@ reference_modules:
   services:
     - name: counter-service
       path: services/counter-service
-      role: 最小完整链路、CAS、event、projection 样例
+      role: 默认后端参考锚点，承载业务主链与工程横切链的最小参考样例
       status: reference
     - name: tenant
       path: services/tenant-service
@@ -156,11 +156,11 @@ reference_modules:
   workers:
     - name: outbox-relay
       path: workers/outbox-relay
-      role: 至少一次投递、去重、checkpoint、retry 样例
+      role: 至少一次投递、去重、checkpoint、retry 样例；当前已具结构参考价值但未完全收敛
       status: reference
     - name: projector
       path: workers/projector
-      role: projection、rebuild、replay、lag SLO 样例
+      role: projection、rebuild、replay、lag SLO 样例骨架；当前仍需继续补齐
       status: reference
 
 planned_or_stub_domains:
@@ -168,7 +168,7 @@ planned_or_stub_domains:
     - auth
     - indexing
   note: >
-    这些域可以存在为 stub 或 planned，但不作为第一批 reference module。
+    这些域可以存在为 stub 或 planned，但默认学习路径仍应优先从 counter-service 开始。
 
 ownership:
   generated_readonly:
@@ -266,10 +266,6 @@ rules:
       from: apps/**
       disallow:
         - services/**
-      except:
-        - "apps/desktop/**:services/counter-service"
-        - "apps/desktop/**:services/auth-service"
-
 
     - name: apps-cannot-import-workers
       from: apps/**

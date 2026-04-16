@@ -23,10 +23,13 @@ just sops-show-age-key
 # 4. Encrypt secrets for dev
 just sops-encrypt-dev web-bff
 just sops-encrypt-dev outbox-relay-worker
+just sops-encrypt-dev projector-worker
+just sops-encrypt-dev counter-shared-db
 
 # 5. Run services
 just sops-run web-bff              # No cluster needed
 just sops-run outbox-relay-worker
+just sops-run projector-worker
 ```
 
 ### Daily Development
@@ -37,7 +40,7 @@ just sops-run web-bff
 
 # With cluster
 just sops-reconcile dev
-just deploy-prod dev
+just deploy-prod ENV=dev
 ```
 
 ---
@@ -46,23 +49,21 @@ just deploy-prod dev
 
 ```
 infra/security/sops/
-├── templates/              # Plaintext templates (DO NOT commit with real values)
-│   ├── dev/
-│   │   ├── web-bff.yaml
-│   │   ├── outbox-relay-worker.yaml
-│   │   └── counter-service.yaml
-│   └── staging/
-│       ├── web-bff.yaml
-│       └── outbox-relay-worker.yaml
+├── templates/              # Plaintext templates (gitignored — local only)
+│   └── ...                 # These files exist on disk but are NOT in Git
 ├── dev/                    # Encrypted secrets (dev environment)
 │   ├── web-bff.enc.yaml
 │   ├── outbox-relay-worker.enc.yaml
+│   ├── projector-worker.enc.yaml
+│   ├── counter-shared-db.enc.yaml
 │   └── counter-service.enc.yaml
 ├── staging/                # Encrypted secrets (staging environment)
 ├── prod/                   # Encrypted secrets (production environment)
 ├── scripts/                # Helper scripts
+│   ├── decrypt-env.sh      # Decrypt → export env vars (handles K8s Secret YAML)
 │   ├── apply-secrets.sh    # Apply secrets to Kubernetes cluster
-│   └── sops-run.sh         # Run binary with decrypted env vars
+│   ├── sops-run.sh         # Run binary with decrypted env vars
+│   └── verify-counter-shared-db.sh  # Verify shared DB secret is ready
 ├── AGE-KEY-MANAGEMENT.md   # Detailed age key management guide
 └── README.md               # This file
 ```
@@ -91,31 +92,57 @@ infra/security/sops/
 |---|---|---|
 | `web-bff` | Web BFF server (Axum) | ✅ Active |
 | `outbox-relay-worker` | Outbox relay worker | ✅ Active |
+| `projector-worker` | Projection worker | ⚠ Requires shared libSQL/Turso secret before scaling above 0 |
+| `counter-shared-db` | Shared counter-chain libSQL/Turso credentials | ⚠ Bootstrap secret for independent worker pods |
 | `counter-service` | Counter service (Phase 1+) | 🔄 Planned |
 
 ---
 
 ## Workflows
 
+### Editing Existing Secrets
+
+```bash
+# Edit encrypted secrets directly (recommended)
+just sops-edit web-bff dev
+just sops-edit counter-shared-db dev
+```
+
+This decrypts the file, opens your editor, and re-encrypts on save.
+Plaintext never touches disk.
+
 ### Adding a New Deployables
 
-1. Create template:
+1. Create a temp plaintext file (NEVER commit):
    ```bash
-   cp infra/security/sops/templates/dev/web-bff.yaml \
-      infra/security/sops/templates/dev/<new-deployable>.yaml
-   $EDITOR infra/security/sops/templates/dev/<new-deployable>.yaml
+   cp infra/security/sops/templates/dev/web-bff.yaml /tmp/<new-deployable>.yaml
+   $EDITOR /tmp/<new-deployable>.yaml
    ```
 
 2. Encrypt:
    ```bash
-   just sops-encrypt-dev <new-deployable>
+   sops --encrypt --input-type yaml --output-type yaml \
+     /tmp/<new-deployable>.yaml \
+     > infra/security/sops/dev/<new-deployable>.enc.yaml
    ```
 
-3. Commit:
+3. Clean up:
+   ```bash
+   rm /tmp/<new-deployable>.yaml
+   ```
+
+4. Commit:
    ```bash
    git add infra/security/sops/dev/<new-deployable>.enc.yaml
    git commit -m "Add encrypted secrets for <new-deployable>"
    ```
+
+### Security Rules
+
+1. **NEVER commit `templates/`** — already gitignored
+2. **NEVER commit `.env`** — already gitignored
+3. **NEVER commit age private key** — keep at `~/.config/sops/age/key.txt` (not in repo)
+4. **ONLY commit `*.enc.yaml`** — these are safe for public GitHub repos
 
 ### Rotating Keys
 

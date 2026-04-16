@@ -130,9 +130,9 @@ platform/model/
 
 参考样例固定为：
 
-1. `counter`：最小完整链路、CAS、event、projection 样例
-2. `tenant`：多租户、多实体、workflow、补偿样例
-3. 如需继续扩大参考集，应在 `counter`、`tenant` 两个样例稳定后再追加。
+1. `counter-service`：最小完整链路、CAS、event、projection 样例
+2. `tenant-service`：多租户、多实体、workflow、补偿样例
+3. 如需继续扩大参考集，应在 `counter-service`、`tenant-service` 两个样例稳定后再追加。
 
 这些样例的细粒度语义全部在各自 `services/<name>/model.yaml` 中表达。
 平台层只保留它们的元数据与全局约束。

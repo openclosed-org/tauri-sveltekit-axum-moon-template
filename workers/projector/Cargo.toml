@@ -13,6 +13,8 @@ path = "src/main.rs"
 contracts_events = { path = "../../packages/contracts/events" }
 event-bus = { path = "../../packages/messaging" }
 runtime = { path = "../../packages/runtime" }
+storage_turso = { path = "../../packages/data-adapters/turso" }
+data = { path = "../../packages/data" }
 
 # Core
 serde = { workspace = true }
@@ -25,9 +27,14 @@ async-trait = { workspace = true }
 chrono = { workspace = true }
 uuid = { workspace = true, features = ["v7"] }
 anyhow = { workspace = true }
+async-nats = "0.38"
+futures-util = { workspace = true }
 
 # HTTP server for health checks
 axum = { workspace = true }
+
+# Configuration
+figment = { version = "0.10", features = ["env"] }
 
 [dev-dependencies]
 

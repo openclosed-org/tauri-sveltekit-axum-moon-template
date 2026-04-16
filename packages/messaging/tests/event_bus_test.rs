@@ -161,5 +161,8 @@ async fn event_id_is_unique() {
 async fn correlation_id_can_be_set() {
     let envelope = EventEnvelope::new(make_counter_event(), "test").with_correlation_id("corr-123");
 
-    assert_eq!(envelope.correlation_id, Some("corr-123".to_string()));
+    assert_eq!(
+        envelope.metadata.correlation_id,
+        Some("corr-123".to_string())
+    );
 }

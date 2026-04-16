@@ -11,9 +11,9 @@
 | `api-server` | `infra/gitops/flux/apps/api.yaml` | ✅ |
 | `web-bff` | `infra/gitops/flux/apps/web.yaml` | ✅ |
 | `edge-gateway` | `infra/gitops/flux/apps/gateway.yaml` | ✅ |
-| `outbox-relay-worker` | *(pending)* | ⚠️ TODO |
+| `outbox-relay-worker` | `infra/gitops/flux/apps/outbox-relay-worker.yaml` | ⚠️ Defined, replicas=0 until shared libSQL/Turso secret is configured |
 | `indexer-worker` | *(pending)* | ⚠️ TODO |
-| `projector-worker` | *(pending)* | ⚠️ TODO |
+| `projector-worker` | `infra/gitops/flux/apps/projector-worker.yaml` | ⚠️ Defined, replicas=0 until shared libSQL/Turso secret is configured |
 | `scheduler-worker` | *(pending)* | ⚠️ TODO |
 | `sync-reconciler-worker` | *(pending)* | ⚠️ TODO |
 
@@ -48,13 +48,13 @@
 
 ## Gaps Identified
 
-1. **Worker Kustomizations Missing**: Workers (`outbox-relay`, `indexer`, `projector`, `scheduler`, `sync-reconciler`) need Flux Kustomization files for k3s deployment.
+1. **Worker Kustomizations Missing**: Workers (`indexer`, `scheduler`, `sync-reconciler`) still need Flux Kustomization files for k3s deployment.
 2. **Dragonfly vs Valkey**: `k3s-staging` topology uses Dragonfly, but Flux config has Valkey. Need to create `dragonfly.yaml` or update topology.
 3. **Observability Stack**: OpenObserve/OpenTelemetry components not yet defined in Flux infrastructure.
 
 ## Recommendations
 
-- **Short-term**: Create worker Kustomization files for k3s deployment
+- **Short-term**: Create the remaining worker Kustomization files for k3s deployment
 - **Medium-term**: Decide on Dragonfly vs Valkey for staging, align topology and Flux
 - **Long-term**: Add observability stack (OpenObserve, Grafana, etc.) to Flux infrastructure
 

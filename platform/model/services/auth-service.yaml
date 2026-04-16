@@ -1,9 +1,9 @@
-name: auth
+name: auth-service
 kind: planned-service
 criticality: high
 tenant_scope: user
 logical_dependencies:
-  - user
+  - user-service
 status: stub
 description: >
   Planned authentication-related capability. Not part of the first-wave

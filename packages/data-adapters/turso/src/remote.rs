@@ -116,10 +116,22 @@ pub async fn run_tenant_migrations(db: &TursoCloud) -> Result<(), LibSqlError> {
         );
 
         CREATE INDEX IF NOT EXISTS idx_user_tenant_tenant_id ON user_tenant(tenant_id);
+        CREATE INDEX IF NOT EXISTS idx_user_tenant_user_sub ON user_tenant(user_sub);
         ",
         vec![],
     )
     .await?;
+
+    db.execute("ALTER TABLE user_tenant ADD COLUMN joined_at TEXT", vec![])
+        .await
+        .ok();
+
+    db.execute(
+        "UPDATE user_tenant SET joined_at = datetime('now') WHERE joined_at IS NULL OR joined_at = ''",
+        vec![],
+    )
+    .await
+    .ok();
 
     Ok(())
 }

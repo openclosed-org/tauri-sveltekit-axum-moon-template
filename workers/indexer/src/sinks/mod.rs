@@ -1,7 +1,9 @@
 //! Event sinks — write indexed events to storage.
 
+use std::any::Any;
+
 use async_trait::async_trait;
-use contracts_events::AppEvent;
+use contracts_events::{AppEvent, AppEvent::CounterChanged, EventMetadata, event_type_name};
 
 use crate::IndexerError;
 
@@ -12,6 +14,7 @@ pub struct IndexedEvent {
     pub event_type: String,
     pub source: String,
     pub payload: String, // JSON-serialized AppEvent
+    pub metadata: EventMetadata,
     pub indexed_at: String,
 }
 
@@ -20,6 +23,9 @@ pub struct IndexedEvent {
 pub trait EventSink: Send + Sync {
     /// Name of this sink (e.g., "turso-events").
     fn name(&self) -> &str;
+
+    /// Downcast hook used by tests and diagnostics.
+    fn as_any(&self) -> &dyn Any;
 
     /// Write an event to the sink.
     async fn write(&self, event: &IndexedEvent) -> Result<(), IndexerError>;
@@ -50,6 +56,10 @@ impl EventSink for MemoryEventSink {
         "memory-sink"
     }
 
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
     async fn write(&self, event: &IndexedEvent) -> Result<(), IndexerError> {
         self.events.lock().await.push(event.clone());
         Ok(())
@@ -65,9 +75,27 @@ mod tests {
         let sink = MemoryEventSink::new();
         let event = IndexedEvent {
             id: "evt-1".to_string(),
-            event_type: "counter.changed".to_string(),
+            event_type: event_type_name(&CounterChanged(contracts_events::CounterChanged {
+                tenant_id: "tenant-a".to_string(),
+                counter_key: "tenant-a".to_string(),
+                operation: "increment".to_string(),
+                new_value: 1,
+                delta: 1,
+                version: 1,
+            }))
+            .to_string(),
             source: "test".to_string(),
             payload: "{}".to_string(),
+            metadata: EventMetadata::for_event(&AppEvent::CounterChanged(
+                contracts_events::CounterChanged {
+                    tenant_id: "tenant-a".to_string(),
+                    counter_key: "tenant-a".to_string(),
+                    operation: "increment".to_string(),
+                    new_value: 1,
+                    delta: 1,
+                    version: 1,
+                },
+            )),
             indexed_at: "now".to_string(),
         };
 

@@ -19,9 +19,17 @@ pub struct EmbeddedTurso {
 }
 
 impl EmbeddedTurso {
+    fn normalize_local_path(path: &str) -> &str {
+        path.strip_prefix("libsql://file:")
+            .or_else(|| path.strip_prefix("file:"))
+            .unwrap_or(path)
+    }
+
     /// Create a new embedded Turso instance from the given path.
     pub async fn new(path: &str) -> Result<Self, LibSqlError> {
-        let db = Builder::new_local(path).build().await?;
+        let db = Builder::new_local(Self::normalize_local_path(path))
+            .build()
+            .await?;
         Ok(Self { db: Arc::new(db) })
     }
 
@@ -120,10 +128,22 @@ pub async fn run_tenant_migrations(db: &EmbeddedTurso) -> Result<(), LibSqlError
         );
 
         CREATE INDEX IF NOT EXISTS idx_user_tenant_tenant_id ON user_tenant(tenant_id);
+        CREATE INDEX IF NOT EXISTS idx_user_tenant_user_sub ON user_tenant(user_sub);
         ",
         vec![],
     )
     .await?;
+
+    db.execute("ALTER TABLE user_tenant ADD COLUMN joined_at TEXT", vec![])
+        .await
+        .ok();
+
+    db.execute(
+        "UPDATE user_tenant SET joined_at = datetime('now') WHERE joined_at IS NULL OR joined_at = ''",
+        vec![],
+    )
+    .await
+    .ok();
 
     Ok(())
 }
@@ -205,6 +225,57 @@ mod tests {
         assert_eq!(tenants[0].name, "Test Tenant");
     }
 
+    #[derive(Debug, Deserialize)]
+    struct UserTenantRow {
+        joined_at: String,
+    }
+
+    #[tokio::test]
+    async fn test_migrations_backfill_existing_user_tenant_joined_at() {
+        let db = EmbeddedTurso::new_in_memory().await.unwrap();
+        db.execute(
+            "CREATE TABLE tenant (id TEXT PRIMARY KEY, name TEXT NOT NULL)",
+            vec![],
+        )
+        .await
+        .unwrap();
+        db.execute(
+            "CREATE TABLE user_tenant (id TEXT PRIMARY KEY, user_sub TEXT NOT NULL UNIQUE, tenant_id TEXT NOT NULL REFERENCES tenant(id), role TEXT NOT NULL DEFAULT 'member')",
+            vec![],
+        )
+        .await
+        .unwrap();
+        db.execute(
+            "INSERT INTO tenant (id, name) VALUES (?, ?)",
+            vec!["tenant-1".into(), "Test Tenant".into()],
+        )
+        .await
+        .unwrap();
+        db.execute(
+            "INSERT INTO user_tenant (id, user_sub, tenant_id, role) VALUES (?, ?, ?, ?)",
+            vec![
+                "binding-1".into(),
+                "user-1".into(),
+                "tenant-1".into(),
+                "owner".into(),
+            ],
+        )
+        .await
+        .unwrap();
+
+        run_tenant_migrations(&db).await.unwrap();
+
+        let rows: Vec<UserTenantRow> = db
+            .query(
+                "SELECT joined_at FROM user_tenant WHERE id = ?",
+                vec!["binding-1".into()],
+            )
+            .await
+            .unwrap();
+        assert_eq!(rows.len(), 1);
+        assert!(!rows[0].joined_at.is_empty());
+    }
+
     #[tokio::test]
     async fn test_query_empty_result() {
         let db = EmbeddedTurso::new_in_memory().await.unwrap();
@@ -244,5 +315,21 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(affected, 1);
+    }
+
+    #[tokio::test]
+    async fn normalizes_file_url_paths() {
+        assert_eq!(
+            EmbeddedTurso::normalize_local_path("file:/tmp/test.db"),
+            "/tmp/test.db"
+        );
+        assert_eq!(
+            EmbeddedTurso::normalize_local_path("libsql://file:/tmp/test.db"),
+            "/tmp/test.db"
+        );
+        assert_eq!(
+            EmbeddedTurso::normalize_local_path("/tmp/test.db"),
+            "/tmp/test.db"
+        );
     }
 }

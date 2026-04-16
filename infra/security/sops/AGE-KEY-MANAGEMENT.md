@@ -65,7 +65,7 @@ just sops-edit web-bff dev
 just sops-edit outbox-relay-worker dev
 
 # Apply decrypted secrets to local k3s cluster
-just sops-reconcile-dev
+just sops-reconcile ENV=dev
 
 # Run binary with decrypted env vars (no cluster, quick inner loop)
 just sops-run web-bff

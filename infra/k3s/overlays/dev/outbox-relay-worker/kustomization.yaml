@@ -1,0 +1,49 @@
+# Kustomization — Dev outbox-relay-worker overlay
+# Independent worker pods must read from a shared libSQL/Turso database.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../../base/configmap-outbox-relay-worker.yaml
+  - ../../../base/deployment-outbox-relay-worker.yaml
+  - ../../../security/sops/dev/outbox-relay-worker.enc.yaml
+  - ../shared-counter-db/kustomization.yaml
+
+namespace: app
+
+commonLabels:
+  app.kubernetes.io/env: dev
+
+patches:
+  - target:
+      kind: Deployment
+      name: outbox-relay-worker
+    patch: |
+      - op: add
+        path: /spec/template/spec/containers/0/envFrom/-
+        value:
+          secretRef:
+            name: counter-shared-db-secrets
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: OUTBOX_DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: counter-shared-db-secrets
+              key: OUTBOX_DATABASE_URL
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: OUTBOX_TURSO_AUTH_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: counter-shared-db-secrets
+              key: OUTBOX_TURSO_AUTH_TOKEN
+  - target:
+      kind: Deployment
+      name: outbox-relay-worker
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 1

@@ -43,10 +43,10 @@ spec:
               containerPort: 3010
               protocol: TCP
           envFrom:
-            - configMapRef:
-                name: app-config
+            - secretRef:
+                name: web-bff-secrets
           env:
-            - name: WEB_BFF_DATABASE__URL
+            - name: APP_DATABASE_URL
               value: "file:/data/web-bff.db"
           resources:
             requests:

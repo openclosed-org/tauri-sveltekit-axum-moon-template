@@ -1,54 +1,40 @@
 # Outbox Relay Worker
 
-Reliable event delivery worker that polls the outbox table, publishes events to the event bus, and tracks checkpoints/deduplication.
+> 目的：说明 `outbox-relay` 作为默认异步发布链参考样例时，当前负责什么、入口在哪里，以及哪些部分仍未闭环。
 
-## Architecture
+## 状态
 
+- status: `reference`
+- 角色：默认 outbox -> relay -> publish 链路参考 worker
+- 说明：默认主路径已改为真实数据库 reader，并补上真实 NATS 发布 adapter；独立 dev overlay 现已接入 shared counter DB secret，但在无法解密核实 secret 真实值前，默认仍保持 replicas=0，避免伪造多 Pod 闭环
+
+## 责任
+
+1. 轮询 outbox 并提取待发布事件。
+2. 在发布前执行去重与幂等保护。
+3. 维护 checkpoint、失败记录与恢复顺序。
+4. 作为新增异步投递 worker 的默认结构参考。
+
+## 入口
+
+1. `src/main.rs`：主循环、health server、reader 选择逻辑。
+2. `src/polling/`：outbox 读取与批处理。
+3. `src/publish/`：事件发布逻辑。
+4. `src/checkpoint/` 与 `src/idempotency/`：checkpoint、幂等与恢复状态。
+5. `../../platform/model/deployables/outbox-relay-worker.yaml`：deployable 元数据入口。
+6. `../../infra/k3s/overlays/dev/outbox-relay-worker/kustomization.yaml`：独立 dev overlay 入口。
+7. `../../infra/gitops/flux/apps/outbox-relay-worker.yaml`：Flux GitOps 入口。
+
+## 验证
+
+```bash
+cargo check -p outbox-relay-worker
+cargo test -p outbox-relay-worker
 ```
-┌─────────────┐     ┌──────────┐     ┌─────────────┐
-│ OutboxPoller│────▶│ Dedup    │────▶│ Publisher   │
-│ (polling/)  │     │ (dedupe/)│     │ (publish/)  │
-└─────────────┘     └──────────┘     └─────────────┘
-       │                                    │
-       ▼                                    ▼
-┌─────────────┐                     ┌─────────────┐
-│ Checkpoint  │                     │ EventBus    │
-│ (checkpoint/)│                     │             │
-└─────────────┘                     └─────────────┘
-```
 
-## Pattern
+## 不要这样用
 
-1. **Poll** the outbox table for pending entries
-2. **Deduplicate** using an in-memory LRU cache
-3. **Publish** to the event bus
-4. **Checkpoint** the last processed sequence number
-
-## Required Strategies
-
-1. Idempotency: dedupe by event identity before publish
-2. Retry: tolerate at-least-once delivery and transient publish failures
-3. Checkpoint: persist relay progress so restart resumes from last safe offset
-4. Recovery order: restore checkpoint, then resume polling, then continue publish attempts
-
-## Health Checks
-
-- `GET /healthz` — Liveness probe (always returns ok unless panicked)
-- `GET /readyz` — Readiness probe (returns ready when initialized)
-
-## Configuration
-
-| Environment Variable | Default | Description |
-|---------------------|---------|-------------|
-| `POLL_INTERVAL_SECS` | `5` | Seconds between poll cycles |
-| `BATCH_SIZE` | `100` | Max entries per batch |
-| `HEALTH_PORT` | `3030` | Health check server port |
-
-## Current State
-
-This is a **skeleton implementation** with:
-- ✅ Polling, dedup, checkpoint, publish modules
-- ✅ In-memory event bus (production would use NATS)
-- ✅ Health check endpoints
-- ⬜ Real database reader (stub MemoryOutboxReader for now)
-- ⬜ NATS event bus integration
+1. 不要把当前 NATS 发布 adapter 写成“所有下游都已完成 broker 订阅”的最终形态。
+2. 不要跳过 checkpoint、幂等、恢复顺序这些 worker 硬约束。
+3. 不要把本地可运行误写成 NATS 与真实数据库链路已经完全闭环。
+4. 不要在 shared libSQL/Turso secret 仍指向本地 `file:` 路径，或 `just sops-verify-counter-shared-db ENV=dev` 仍未通过时，把 dev overlay 中的 `outbox-relay-worker` 直接扩到 1 个副本。

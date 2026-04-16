@@ -1,243 +1,178 @@
-# AGENTS.md — 仓库级 AI 协作协议（总控版）
+# AGENTS.md
 
-> **适用场景**：100% Agent 开发、维护、迭代的 Tauri 2 + SvelteKit + Axum 跨端项目。
-> **核心原则**：先读再改、最小改动、可验证结果。禁止猜测、禁止表面通过。
-> **架构模式**：Planner（总控） → Subagents（领域专家） → Gates（门禁验证） → Converge（收敛）。
+> 目标：为本仓库的 agent 协作提供最小但足够的总控协议。
+> 回答和汇报 **MUST** 使用中文
+> 当前默认上下文只关注后端主链，不把 `apps/**` 作为默认学习入口。
 
----
+## 1. 默认阅读顺序
 
-## 0. 总控协议（Planner Protocol）
+进入后端任务时，默认按以下顺序建立上下文：
 
-你是 **planner**——所有任务的顶级编排者。你的职责是：
+1. `AGENTS.md`
+2. `agent/codemap.yml`
+3. `agent/manifests/routing-rules.yml`
+4. `agent/manifests/gate-matrix.yml`
+5. `docs/architecture/repo-layout.md`
+6. `docs/operations/counter-service-reference-chain.md`
 
-1. 理解用户需求
-2. 审计影响面（哪些目录被触及）
-3. 根据路由规则决定派发哪些 subagent
-4. 按依赖顺序 dispatch
-5. 收敛结果
-6. 触发最终门禁
+如果任务是文档规划、审计、瘦身或 gate/CI 收敛，再继续读取：
 
-你 **不** 编写业务逻辑、端点处理器或领域代码。
+1. `docs/README.md`
+2. `docs/backend-infrastructure-audit-checklist.md`
+3. `docs/counter-service-reference-chain-checklist.md`
+4. `docs/document-pruning-ab-checklist.md`
+5. `docs/gate-ci-decoupling-checklist.md`
 
-### 0.1 每次会话必读文档（按顺序）
+## 2. 真理源优先级
 
-```
-1. AGENTS.md（本文）→ 总控协议
-2. agent/codemap.yml → 模块约束真理源
-3. agent/manifests/routing-rules.yml → 路径 → subagent 路由
-4. agent/manifests/gate-matrix.yml → subagent → 门禁映射
-```
+判断现状时，按以下优先级取证：
 
-### 0.2 文档优先级
+1. 代码、schema、validator、gate、脚本
+2. `agent/codemap.yml`
+3. `agent/manifests/routing-rules.yml`
+4. `agent/manifests/gate-matrix.yml`
+5. `docs/architecture/repo-layout.md`
+6. `docs/operations/counter-service-reference-chain.md`
+7. `docs/adr/**` 与 `.agents/skills/*/SKILL.md`
 
-| 优先级 | 文档 | 用途 |
-|-------|------|------|
-| **P0** | `agent/codemap.yml` | 模块级约束：路径、依赖、禁止、文件要求 |
-| **P0** | `agent/manifests/routing-rules.yml` | 路径到 subagent 的机器可读映射 |
-| **P0** | `agent/manifests/gate-matrix.yml` | subagent 到门禁的机器可读映射 |
-| **P1** | `docs/architecture/repo-layout.md` | 目录布局规则与目标态架构入口 |
-| **P2** | `docs/adr/` | 架构决策记录（001-008） |
-| **P2** | `.agents/skills/*/SKILL.md` | 各领域 subagent 的详细技能说明 |
+硬规则：
 
-**硬性规则**:
-- 遇到文档与代码冲突，**以代码为准**
-- 不得仅凭 codemap.yml 推断"文件应该存在"（未实现模块可能有 .gitkeep）
-- `repo-layout.md` 和 `codemap.yml` 描述的是目标态，缺失部分用 `.gitkeep` 占位
+1. 文档与代码冲突时，以代码和可执行验证为准。
+2. 不得仅凭目标态文档推断某个文件或模块一定存在。
+3. 对当前状态的结论必须能回指到真实文件、目录或命令输出。
 
----
+## 3. 总控职责
 
-## 1. Subagent 目录
+planner 负责：
 
-当任务涉及以下领域时，读取对应 subagent 的 skill，并在其边界内执行：
+1. 理解用户目标。
+2. 审计受影响目录。
+3. 根据 `routing-rules.yml` 决定是否派发 subagent。
+4. 按依赖顺序推进修改与验证。
+5. 收敛改动、风险、验证结果。
 
-| Subagent | Skill 路径 | 拥有目录 |
-|---|---|---|
-| **contract-agent** | `.agents/skills/contract-agent/SKILL.md` | `packages/contracts/**`, `docs/contracts/**` |
-| **app-shell-agent** | `.agents/skills/app-shell-agent/SKILL.md` | `apps/**`, `packages/ui/**` |
-| **server-agent** | `.agents/skills/server-agent/SKILL.md` | `servers/**` |
-| **service-agent** | `.agents/skills/service-agent/SKILL.md` | `services/**` |
-| **worker-agent** | `.agents/skills/worker-agent/SKILL.md` | `workers/**` |
-| **platform-ops-agent** | `.agents/skills/platform-ops-agent/SKILL.md` | `platform/model/**`, `infra/**`, `ops/**` |
+planner 不负责：
 
-### 1.1 路由规则摘要
+1. 凭空设计不存在的模块。
+2. 绕过边界直接把多域逻辑揉成一个补丁。
+3. 用散文替代 gate、schema、validator、script。
 
-完整规则见 `agent/manifests/routing-rules.yml`。摘要如下：
+## 4. 路由与边界
 
-```
-改 platform/model 或 schema → platform-ops-agent
-改 contracts               → contract-agent（优先），再决定 server/service/app
-改 apps / ui               → app-shell-agent
-改 servers                 → server-agent
-改 services                → service-agent
-改 workers                 → worker-agent
-改 infra / ops             → platform-ops-agent
-```
+路径到 subagent 的默认映射以 `agent/manifests/routing-rules.yml` 为准。高频摘要如下：
 
-### 1.2 派发顺序
+1. `platform/model/**`、`platform/schema/**`、`infra/**`、`ops/**` -> `platform-ops-agent`
+2. `packages/contracts/**`、`docs/contracts/**` -> `contract-agent`
+3. `services/**` -> `service-agent`
+4. `servers/**` -> `server-agent`
+5. `workers/**` -> `worker-agent`
+6. `apps/**`、`packages/ui/**` -> `app-shell-agent`
+7. `docs/architecture/**`、`AGENTS.md`、`agent/**`、根级配置 -> `planner`
 
-当多个域同时被修改时，按以下顺序 dispatch：
+多域同时变更时，默认派发顺序以 `routing-rules.yml` 为准：
 
-```
-platform/model → contracts → services → servers/workers → apps → total verify
-```
+1. `platform-ops-agent`
+2. `contract-agent`
+3. `service-agent`
+4. `server-agent` / `worker-agent`
+5. `app-shell-agent`
+6. 最终总验证
 
-**不要机械地每个任务都 fan-out 给所有 agent。** 只有当任务确实需要并行、上下文隔离或领域约束不同时才拆分。
+不要为了形式完整而机械 fan-out 给所有 agent。只有在目录边界、职责边界或验证边界真的不同的时候才拆分。
 
----
+## 5. 全局硬约束
 
-## 2. 全局硬约束
+1. 中文沟通；代码、命令、配置键、日志、协议字段保持原文。
+2. 先读再改，先证据后判断，先搜索后猜测。
+3. 优先最小闭环，不做无关重构，不顺手修 unrelated 问题。
+4. 未执行的验证不能声称通过。
+5. 不确定就明确标注，不把猜测包装成结论。
+6. 不允许通过删除、跳过、吞错、伪造成功状态来“解决”问题。
+7. 生成物目录只读，必须改源头再重新生成。
 
-1. **中文沟通**；代码、命令、配置键、日志、协议字段保持原文。
-2. **先读再改**：未审查现状就重写 = 制造回归风险。
-3. **先证据后判断**：遇到报错，先获取完整日志和复现步骤，再分析。
-4. **先搜索后猜测**：陌生 API / 新框架 → 查文档、issues、release notes，不要反复试过期写法。
-5. **先小后大**：优先最小闭环、局部改动、可回滚方案。
-6. **修改前先解释**：当前设计可能在保护什么？不要随意改变可观察行为、接口形状、错误语义、默认值。
-7. **未执行 ≠ 已执行**：未实际运行的验证步骤，不得声称通过。
-8. **不确定 = 明确说明**：标注不确定点、影响范围、后续验证方式。
-9. **禁止绕过问题**：注释/删除/跳过关键逻辑、吞掉错误、伪造成功状态，等同于制造 bug。
+## 6. 后端默认开发姿势
 
----
+当前仓库的默认开发轨道是后端优先，核心判断如下：
 
-## 3. 索引与缓存规则
+1. `apps/**` 不是默认上下文，除非任务明确涉及前端壳层。
+2. `counter-service` 是默认后端参考锚点，不是最小 demo。
+3. 新的后端能力默认应先对照 `counter-service` 参考链，再决定是否扩展新模式。
+4. 高价值生产链路不能因为业务简单而从默认路径消失。
 
-- **禁止依赖 CCC 索引**（`.cocoindex_code/`）作为文件存在性判断依据。该索引已被删除且不再使用。
-- **Agent 必须使用 `list_directory`、`glob`、`read_file` 直接读取文件系统**。
-- 如果需要搜索代码内容，使用 `grep_search`（ripgrep）直接搜索文件内容，而非依赖索引。
-- 本项目架构结构已稳定，**固定的项目结构本身即为 Agent 的最佳索引标准**。
+`counter-service` 当前承载两条并行链路：
 
----
+1. 业务主链：`service -> contracts -> server -> outbox -> relay -> projector`
+2. 工程横切链：`platform model -> secrets -> deploy -> GitOps -> promotion -> drift -> runbook`
 
-## 4. 工具使用原则
+如果某个生产能力尚未挂接到这条 reference chain，就还不能视为仓库默认工程惯性。
 
-### 4.1 优先使用
+## 7. 文档策略
 
-| 场景       | 工具                                            |
-| ---------- | ----------------------------------------------- |
-| 代码搜索   | `grep_search`（ripgrep）、`agent`（open-ended） |
-| 文件查找   | `glob`                                          |
-| 差异分析   | `git diff --stat`、`git log -- <path>`          |
-| 结构化处理 | `jq`、`yq`                                      |
+默认只保留两类文档进入主上下文：
 
-### 4.2 规则
+1. A 类：仓库级目标态、规则、边界、真理源、gate/CI 收敛规则。
+2. B 类：局部 owner 文档、reference chain、局部运行与验证说明。
 
-- 工具输出必须结合仓库上下文解释，不能机械照搬
-- 能用 tool 做的事不要手写（搜索用 `grep_search` 不用 shell `grep`）
-- 多个独立搜索可以并行执行
+执行规则：
 
----
+1. 不稳定、重复、未来态过强的架构散文不应占据默认入口。
+2. 删除或归档文档前，先确认其中的生产工具链信息已经进入 A 类文档、B 类 owner 文档，或 `counter-service` reference chain。
+3. 文档收敛的目标是减少漂移，不是隐藏复杂度。
 
-## 5. 标准工作流
+## 8. 目录与读写约束
 
-### 5.1 Planner 工作流
+重点目录职责以 `agent/codemap.yml` 为准。默认只记以下稳定边界：
 
-```
-1. 明确目标 → 用户需要什么？哪些域会受影响？
-2. 审查现状 → 读取受影响的文件，理解当前实现
-3. 路由决策 → 查 routing-rules.yml，确定 subagent 和派发顺序
-4. 派发执行 → 在 subagent 的可写边界内执行，读取其 SKILL.md
-5. 验证结果 → 运行 subagent 的 scoped gates + just verify
-6. 收敛输出 → 改了什么、为什么这样改、验证程度、剩余风险
-```
+1. `platform/**`：平台模型、schema、validator、generator、catalog
+2. `services/**`：业务能力与状态边界，service-local semantics 在 `services/<name>/model.yaml`
+3. `servers/**`：同步入口与协议适配
+4. `workers/**`：异步执行、projection、replay、恢复
+5. `packages/contracts/**`：共享协议真理源
+6. `infra/**`：基础设施声明、交付、GitOps、secrets
+7. `verification/**`：跨层验证
+8. `docs/**`：A/B 文档，不是业务逻辑实现层
 
-### 5.2 直接处理（无需 subagent）
+禁止手工编辑的生成物目录：
 
-以下情况 planner 直接处理，不派发 subagent：
+1. `packages/sdk/**`
+2. `infra/kubernetes/rendered/**`
+3. `docs/generated/**`
+4. `platform/catalog/**`
 
-- 纯文档修改（`docs/adr/`, `docs/architecture/`）
-- 根级配置变更（`Cargo.toml` 依赖版本升级）
-- 单文件修复且在 planner 可写范围内
-- 纯调查性任务（只读不改）
+默认不要读取或搜索以下目录：
 
-### 5.3 需要派发 subagent
+1. `node_modules/**`
+2. `target/**`
+3. `.moon/cache/**`
+4. `.cocoindex_code/**`
+5. `.jj/**`
 
-以下情况必须派发对应 subagent（读取其 `.agents/skills/*/SKILL.md`，在其可写边界内执行）：
+## 9. 工具使用原则
 
-- 修改 `packages/contracts/**` → contract-agent
-- 修改 `apps/**` → app-shell-agent
-- 修改 `servers/**` → server-agent
-- 修改 `services/**` → service-agent
-- 修改 `workers/**` → worker-agent
-- 修改 `platform/model/**`, `infra/**` → platform-ops-agent
+1. 优先直接读取文件系统，使用 `glob`、`read`、`grep` 获取证据。
+2. 不依赖已废弃索引或缓存目录判断文件是否存在。
+3. 搜索、diff、验证优先使用工具和脚本，不手写结论。
+4. 多个独立搜索可以并行，但不要为了省一句话牺牲可读性。
 
----
+## 10. 验证与风险升级
 
-## 6. 风险升级
+subagent 对应 gate 以 `agent/manifests/gate-matrix.yml` 为准，最终总验证默认落在 `just verify`。
 
-遇到以下情况必须显式提示风险，不得闷头推进：
+以下情况必须显式升级风险：
 
-1. 需求与现有架构明显冲突
-2. 改动影响多个核心模块或公共契约
-3. 需要新增关键依赖或改动关键链路
-4. 测试缺失导致无法可靠验证
-5. 技术债已使继续叠加改动风险过高
-6. 请求涉及 4+ 个 subagent 且有复杂依赖关系
-7. 请求与现有 ADR 冲突
+1. 需求与当前架构或 ADR 明显冲突。
+2. 改动横跨多个核心目录或公共契约。
+3. 需要新增关键依赖、改变默认交付路径或修改关键链路。
+4. 测试、gate 或脚本不足以验证本次修改。
+5. 任务涉及 4 个以上 subagent 且存在复杂依赖。
+6. `counter-service` reference chain 暴露出新的链路缺口，但本次又无法补齐。
 
----
+## 11. 辅助脚本
 
-## 7. 禁止读取的目录
+以下脚本用于路由、作用域门禁和交接验证：
 
-以下目录是构建产物或外部缓存，**永远不要读取或搜索其中的内容**：
+1. `bun run scripts/route-task.ts`
+2. `bun run scripts/run-scoped-gates.ts <subagent>`
+3. `bun run scripts/verify-handoff.ts <subagent>`
 
-| 目录               | 原因                          |
-| ------------------ | ----------------------------- |
-| `node_modules/`    | 第三方依赖，不修改            |
-| `target/`          | Rust 构建产物，随时可重新生成 |
-| `.moon/cache/`     | moon 缓存                     |
-| `.cocoindex_code/` | 索引缓存                      |
-| `.jj/`             | Jujutsu VCS 内部数据          |
-
----
-
-## 8. 生成物目录（只读）
-
-以下目录由生成器产出，**禁止手动编辑**：
-
-| 目录 | 生成源 |
-|---|---|
-| `packages/sdk/**` | contracts → ts-rs 生成 |
-| `infra/kubernetes/rendered/**` | platform/generators 生成 |
-| `docs/generated/**` | platform/generators 生成 |
-| `platform/catalog/**` | platform/generators 生成 |
-
-只能修改生成器源码或模型源头，然后重新生成。
-
----
-
-## 9. 工程偏置
-
-### 9.1 技术决策优先级
-
-满足需求 → 正确性 → 回归风险 → 复用现有模式 → 可测试性 → 交付速度 → 扩展性
-
-### 9.2 禁止
-
-- 非必要不引入新依赖、新增抽象层、修改目录结构、大规模重构
-- 不顺手修复无关问题（除非阻塞当前任务）
-- 不把猜测包装成结论，把未验证包装成完成
-
----
-
-## 10. 辅助脚本
-
-以下脚本辅助路由、门禁和交接验证：
-
-| 脚本 | 用途 |
-|---|---|
-| `scripts/route-task.ts` | 根据 touched paths 确定 subagent 路由 |
-| `scripts/run-scoped-gates.ts` | 运行特定 subagent 的作用域门禁 |
-| `scripts/verify-handoff.ts` | 验证 subagent 修改在边界内且门禁通过 |
-
-使用方式：
-```bash
-bun run scripts/route-task.ts                    # 分析 staged 变更的路由
-bun run scripts/run-scoped-gates.ts service-agent # 运行 service-agent 的门禁
-bun run scripts/verify-handoff.ts worker-agent    # 验证 worker-agent 的交接
-```
-
----
-
-## 11. 设计文档
-
-本次改造的完整设计见 `docs/agentic-monorepo-refactor.md`。
+这些脚本是总控协议的执行补充，但它们不替代阅读真实代码与 diff。

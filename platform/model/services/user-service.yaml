@@ -1,9 +1,9 @@
-name: user
+name: user-service
 kind: planned-service
 criticality: high
 tenant_scope: user
 logical_dependencies:
-  - auth
+  - auth-service
 status: stub
 description: >
   Planned user profile and identity-related capability placeholder.
