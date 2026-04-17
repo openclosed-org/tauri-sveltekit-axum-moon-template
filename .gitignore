@@ -61,3 +61,7 @@ apps/client/native/src-tauri/gen/
 
 # ts-rs intermediate output
 packages/contracts/*/bindings/
+
+# --- Local tool binaries ---
+tools/nats/nats-server
+tools/nats/nats-server.exe

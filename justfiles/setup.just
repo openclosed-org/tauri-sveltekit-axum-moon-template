@@ -4,6 +4,10 @@
 setup:
     mise install
 
+# 安装本地 NATS Server（用于本地开发和测试）
+setup-nats:
+    bash {{justfile_directory()}}/tools/nats/setup.sh
+
 # 安装 bun 依赖
 setup-deps:
     bun install
