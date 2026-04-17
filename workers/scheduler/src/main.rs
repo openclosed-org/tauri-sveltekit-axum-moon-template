@@ -70,12 +70,9 @@ async fn start_health_server(state: Arc<WorkerState>, addr: SocketAddr) -> anyho
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "scheduler_worker=info".into()),
-        )
-        .init();
+    let _observability =
+        observability::init_observability("scheduler-worker", "scheduler_worker=info")
+            .map_err(anyhow::Error::msg)?;
 
     info!("Scheduler worker starting");
 

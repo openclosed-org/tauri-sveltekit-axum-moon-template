@@ -37,11 +37,15 @@ impl EventConsumer for LoggingConsumer {
     }
 
     async fn consume(&self, envelope: &EventEnvelope) -> Result<Option<String>, ProjectorError> {
-        Ok(Some(format!(
-            "Consumed event from {} at {}",
-            envelope.source_service,
-            chrono::Utc::now().to_rfc3339()
-        )))
+        debug!(
+            source_service = %envelope.source_service,
+            event_type = %envelope.metadata.event_type,
+            correlation_id = ?envelope.metadata.correlation_id,
+            trace_id = ?envelope.metadata.trace_id,
+            span_id = ?envelope.metadata.span_id,
+            "observed event in logging consumer"
+        );
+        Ok(None)
     }
 }
 
@@ -112,6 +116,9 @@ impl EventConsumer for CounterStateConsumer {
             counter_key = %counter_changed.counter_key,
             new_value = counter_changed.new_value,
             version = counter_changed.version,
+            correlation_id = ?envelope.metadata.correlation_id,
+            trace_id = ?envelope.metadata.trace_id,
+            span_id = ?envelope.metadata.span_id,
             "projected counter state"
         );
 

@@ -5,6 +5,8 @@
 //! Otherwise falls back to embedded database.
 
 use crate::config::Config;
+use authz::MockAuthzAdapter;
+use counter_service::infrastructure::LibSqlCounterRepository;
 use moka::future::Cache;
 use std::sync::Arc;
 use storage_turso::EmbeddedTurso;
@@ -32,25 +34,36 @@ pub struct BffState {
 
     /// Shared HTTP client for external service calls.
     pub http_client: reqwest::Client,
+
+    /// Authorization adapter — mock for dev, OpenFGA for prod.
+    pub authz: MockAuthzAdapter,
 }
 
 impl BffState {
     pub async fn new(config: Config) -> anyhow::Result<Self> {
         // Database initialization — prefer remote Turso if configured
         let db = if let (Some(url), Some(token)) = (&config.turso_url, &config.turso_auth_token) {
-            let db = TursoCloud::new(url, token).await.ok();
-            if let Some(ref db) = db {
-                storage_turso::remote::run_tenant_migrations(db).await.ok();
-            }
-            db.map(DatabaseBackend::Remote)
+            let db = TursoCloud::new(url, token)
+                .await
+                .map_err(anyhow::Error::msg)?;
+            storage_turso::remote::run_tenant_migrations(&db)
+                .await
+                .map_err(anyhow::Error::msg)?;
+            LibSqlCounterRepository::new(db.clone())
+                .migrate()
+                .await
+                .map_err(anyhow::Error::msg)?;
+            Some(DatabaseBackend::Remote(db))
         } else if let Some(url) = &config.database_url {
-            let db = EmbeddedTurso::new(url).await.ok();
-            if let Some(ref db) = db {
-                storage_turso::embedded::run_tenant_migrations(db)
-                    .await
-                    .ok();
-            }
-            db.map(DatabaseBackend::Embedded)
+            let db = EmbeddedTurso::new(url).await.map_err(anyhow::Error::msg)?;
+            storage_turso::embedded::run_tenant_migrations(&db)
+                .await
+                .map_err(anyhow::Error::msg)?;
+            LibSqlCounterRepository::new(db.clone())
+                .migrate()
+                .await
+                .map_err(anyhow::Error::msg)?;
+            Some(DatabaseBackend::Embedded(db))
         } else {
             None
         };
@@ -71,6 +84,7 @@ impl BffState {
             db,
             counter_cache,
             http_client,
+            authz: MockAuthzAdapter::new(),
         })
     }
 
@@ -91,6 +105,7 @@ impl BffState {
                 .time_to_live(std::time::Duration::from_secs(300))
                 .build(),
             http_client,
+            authz: MockAuthzAdapter::new(),
         }
     }
 }

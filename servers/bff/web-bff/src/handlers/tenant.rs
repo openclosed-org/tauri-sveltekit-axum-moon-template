@@ -3,7 +3,6 @@
 //! POST /api/tenant/init — ensure tenant exists for user (auto-create on first login).
 
 use axum::{Json, Router, extract::State, routing::post};
-use data::ports::lib_sql::LibSqlPort;
 use serde_json::{Value, json};
 
 use contracts_api::InitTenantRequest;
@@ -54,9 +53,6 @@ pub async fn init_tenant(
     match state.db.clone() {
         Some(DatabaseBackend::Embedded(db)) => {
             let repo = LibSqlTenantRepository::new(db);
-            repo.migrate().await.map_err(|e| {
-                BffError::Internal(format!("Failed to run tenant migrations: {}", e))
-            })?;
             let service = TenantService::new(repo);
             let result = service
                 .init_tenant_for_user(&request_context.user_sub, &body.user_name)
@@ -70,9 +66,6 @@ pub async fn init_tenant(
         }
         Some(DatabaseBackend::Remote(db)) => {
             let repo = LibSqlTenantRepository::new(db);
-            repo.migrate().await.map_err(|e| {
-                BffError::Internal(format!("Failed to run tenant migrations: {}", e))
-            })?;
             let service = TenantService::new(repo);
             let result = service
                 .init_tenant_for_user(&request_context.user_sub, &body.user_name)

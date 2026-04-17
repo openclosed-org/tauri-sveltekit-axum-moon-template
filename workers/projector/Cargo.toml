@@ -15,6 +15,7 @@ event-bus = { path = "../../packages/messaging" }
 runtime = { path = "../../packages/runtime" }
 storage_turso = { path = "../../packages/data-adapters/turso" }
 data = { path = "../../packages/data" }
+observability = { workspace = true }
 
 # Core
 serde = { workspace = true }

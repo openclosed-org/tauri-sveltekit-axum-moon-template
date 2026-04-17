@@ -297,6 +297,15 @@ impl<R: CounterRepository> RepositoryBackedCounterService<R> {
             envelope.metadata.span_id = Some(span_id.clone());
         }
 
+        debug!(
+            event_type = event_type_name(&envelope.event),
+            correlation_id = %correlation_id,
+            trace_id = ?envelope.metadata.trace_id,
+            span_id = ?envelope.metadata.span_id,
+            tenant_id = %event.tenant_id,
+            "counter outbox event prepared"
+        );
+
         let payload =
             serde_json::to_string(&envelope).map_err(|e| CounterError::Database(Box::new(e)))?;
 
@@ -610,6 +619,15 @@ impl<R: CounterRepository> TenantScopedCounterService<R> {
         if let Some(span_id) = &context.span_id {
             envelope.metadata.span_id = Some(span_id.clone());
         }
+
+        debug!(
+            event_type = event_type_name(&envelope.event),
+            correlation_id = %correlation_id,
+            trace_id = ?envelope.metadata.trace_id,
+            span_id = ?envelope.metadata.span_id,
+            tenant_id = %event.tenant_id,
+            "counter outbox event prepared"
+        );
 
         let payload =
             serde_json::to_string(&envelope).map_err(|e| CounterError::Database(Box::new(e)))?;

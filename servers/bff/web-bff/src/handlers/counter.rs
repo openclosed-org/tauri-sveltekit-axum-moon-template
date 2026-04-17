@@ -3,6 +3,7 @@
 //! These handlers use the counter-service implementation via its repository.
 //! All responses use contract DTOs from `contracts_api` and `contracts_errors`.
 
+use authz::ports::AuthzPort;
 use axum::{
     Json, Router,
     extract::{Extension, State},
@@ -53,6 +54,16 @@ async fn increment(
 ) -> Result<(StatusCode, Json<CounterResponse>), (StatusCode, Json<ErrorResponse>)> {
     let request_context = extract_request_context(request_context)?;
     let tenant_id = resolve_tenant_id(&state, &request_context).await?;
+
+    // Authz check: user must have can_write on the counter resource
+    check_authz(
+        &state,
+        &request_context.user_sub,
+        "can_write",
+        &format!("counter:{}", tenant_id.as_str()),
+    )
+    .await?;
+
     let command_context = build_command_context(request_context);
     let service = build_service(&state)?;
 
@@ -87,6 +98,15 @@ async fn decrement(
 ) -> Result<(StatusCode, Json<CounterResponse>), (StatusCode, Json<ErrorResponse>)> {
     let request_context = extract_request_context(request_context)?;
     let tenant_id = resolve_tenant_id(&state, &request_context).await?;
+
+    check_authz(
+        &state,
+        &request_context.user_sub,
+        "can_write",
+        &format!("counter:{}", tenant_id.as_str()),
+    )
+    .await?;
+
     let command_context = build_command_context(request_context);
     let service = build_service(&state)?;
 
@@ -121,6 +141,15 @@ async fn reset(
 ) -> Result<(StatusCode, Json<CounterResponse>), (StatusCode, Json<ErrorResponse>)> {
     let request_context = extract_request_context(request_context)?;
     let tenant_id = resolve_tenant_id(&state, &request_context).await?;
+
+    check_authz(
+        &state,
+        &request_context.user_sub,
+        "can_write",
+        &format!("counter:{}", tenant_id.as_str()),
+    )
+    .await?;
+
     let command_context = build_command_context(request_context);
     let service = build_service(&state)?;
 
@@ -157,6 +186,15 @@ async fn get_value(
     let tenant_id = resolve_tenant_id(&state, &request_context).await?;
     let cache_key = format!("counter:{}", tenant_id.as_str());
 
+    // Authz check: user must have can_read on the counter resource
+    check_authz(
+        &state,
+        &request_context.user_sub,
+        "can_read",
+        &format!("counter:{}", tenant_id.as_str()),
+    )
+    .await?;
+
     // Cache-first: check cache before hitting database
     if let Some(cached) = state.counter_cache.get(&cache_key).await {
         return Ok((StatusCode::OK, Json(CounterResponse { value: cached })));
@@ -176,6 +214,47 @@ async fn get_value(
 }
 
 // ── Helpers ──────────────────────────────────────────────────
+
+/// Perform an authorization check against the authz adapter.
+/// Returns 403 Forbidden if the check fails.
+async fn check_authz(
+    state: &BffState,
+    user: &str,
+    relation: &str,
+    object: &str,
+) -> Result<(), (StatusCode, Json<ErrorResponse>)> {
+    let user_key = format!("user:{user}");
+    state
+        .authz
+        .check(&user_key, relation, object)
+        .await
+        .map_err(|e| {
+            tracing::warn!(error = %e, "authz check failed");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    ErrorCode::InternalError,
+                    "Authorization check failed",
+                )),
+            )
+        })?
+        .then_some(())
+        .ok_or_else(|| {
+            tracing::warn!(
+                user = user,
+                relation = relation,
+                object = object,
+                "authz: permission denied"
+            );
+            (
+                StatusCode::FORBIDDEN,
+                Json(ErrorResponse::new(
+                    ErrorCode::Unauthorized,
+                    format!("Permission denied: user {user} cannot {relation} {object}"),
+                )),
+            )
+        })
+}
 
 /// Build a boxed CounterService from the BFF state.
 /// Abstracts over embedded and remote database backends.
@@ -220,12 +299,16 @@ fn extract_request_context(
 }
 
 fn build_command_context(request_context: RequestContext) -> CounterCommandContext {
+    let trace_context = observability::current_trace_context();
+
     CounterCommandContext {
         correlation_id: request_context.request_id.clone(),
         causation_id: request_context.request_id.clone(),
         actor: Some(request_context.actor.clone()),
-        trace_id: None,
-        span_id: None,
+        trace_id: trace_context
+            .as_ref()
+            .map(|context| context.trace_id.clone()),
+        span_id: trace_context.map(|context| context.span_id),
     }
 }
 

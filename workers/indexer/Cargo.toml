@@ -13,6 +13,7 @@ path = "src/main.rs"
 runtime = { path = "../../packages/runtime" }
 contracts_events = { path = "../../packages/contracts/events" }
 data = { workspace = true }
+observability = { workspace = true }
 
 # Core
 serde = { workspace = true }

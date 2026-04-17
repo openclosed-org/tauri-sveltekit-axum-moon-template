@@ -45,9 +45,10 @@ impl LiveEventSubscriber {
         &mut self,
         wait: Duration,
     ) -> Result<Option<event_bus::ports::EventEnvelope>, ProjectorError> {
-        let next = timeout(wait, self.subscriber.next())
-            .await
-            .map_err(|e| ProjectorError::Source(format!("wait for live event: {e}")))?;
+        let next = match timeout(wait, self.subscriber.next()).await {
+            Ok(message) => message,
+            Err(_) => return Ok(None),
+        };
 
         let Some(message) = next else {
             return Ok(None);

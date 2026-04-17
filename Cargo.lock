@@ -630,6 +630,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "authz"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "autocfg"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4156,6 +4169,7 @@ dependencies = [
  "chrono",
  "contracts_events",
  "data",
+ "observability",
  "runtime",
  "serde",
  "serde_json",
@@ -5620,6 +5634,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "observability"
+version = "0.1.0"
+dependencies = [
+ "adapter-telemetry-otel",
+ "adapter-telemetry-tracing",
+ "opentelemetry",
+ "opentelemetry_sdk",
+ "tracing",
+ "tracing-opentelemetry",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "observability-validator"
 version = "0.1.0"
 dependencies = [
@@ -5819,6 +5846,7 @@ dependencies = [
  "data",
  "event-bus",
  "figment",
+ "observability",
  "runtime",
  "serde",
  "serde_json",
@@ -6847,6 +6875,7 @@ dependencies = [
  "event-bus",
  "figment",
  "futures-util",
+ "observability",
  "runtime",
  "serde",
  "serde_json",
@@ -7998,6 +8027,7 @@ dependencies = [
  "axum 0.8.8",
  "chrono",
  "cron",
+ "observability",
  "runtime",
  "serde",
  "serde_json",
@@ -9095,6 +9125,7 @@ dependencies = [
  "async-trait",
  "axum 0.8.8",
  "chrono",
+ "observability",
  "runtime",
  "serde",
  "serde_json",
@@ -10343,6 +10374,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "tracing-opentelemetry"
+version = "0.28.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "97a971f6058498b5c0f1affa23e7ea202057a7301dbff68e968b2d578bcbd053"
+dependencies = [
+ "js-sys",
+ "once_cell",
+ "opentelemetry",
+ "opentelemetry_sdk",
+ "smallvec",
+ "tracing",
+ "tracing-core",
+ "tracing-log",
+ "tracing-subscriber",
+ "web-time",
+]
+
+[[package]]
 name = "tracing-subscriber"
 version = "0.3.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -11247,6 +11296,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
+ "authz",
  "axum 0.8.8",
  "axum-extra",
  "base64 0.22.1",
@@ -11264,6 +11314,7 @@ dependencies = [
  "jsonwebtoken",
  "kernel",
  "moka",
+ "observability",
  "reqwest 0.13.2",
  "serde",
  "serde_json",

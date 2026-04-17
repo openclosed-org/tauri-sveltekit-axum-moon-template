@@ -11,6 +11,7 @@ path = "src/main.rs"
 [dependencies]
 # Internal
 runtime = { path = "../../packages/runtime" }
+observability = { workspace = true }
 
 # Core
 serde = { workspace = true }

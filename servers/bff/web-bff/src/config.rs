@@ -13,6 +13,17 @@ pub struct Config {
     pub server_port: u16,
     pub cors_allowed_origins: Vec<String>,
     pub jwt_secret: String,
+    /// Zitadel issuer URL (e.g., "https://zitadel.example.com").
+    /// When set, the middleware validates JWTs against Zitadel's OIDC discovery.
+    /// Dev fallback: empty string → uses `jwt_secret` for HS256 validation.
+    pub zitadel_issuer: String,
+    /// Expected audience in JWT `aud` claim.
+    /// Dev fallback: empty string → audience check skipped.
+    pub zitadel_audience: String,
+    /// OpenFGA API endpoint (e.g., "http://localhost:8081").
+    /// When set, the BFF uses the real OpenFGA adapter for authorization.
+    /// Dev fallback: empty string → uses MockAuthzAdapter (allow-all).
+    pub openfga_endpoint: String,
     /// Embedded Turso database URL (e.g., "file:path.db" or "memory").
     /// Used when turso_url is not set.
     pub database_url: Option<String>,
@@ -41,6 +52,9 @@ impl Default for Config {
             server_port: 3010,
             cors_allowed_origins: vec![],
             jwt_secret: "dev-secret-change-in-production".to_string(),
+            zitadel_issuer: String::new(),
+            zitadel_audience: String::new(),
+            openfga_endpoint: String::new(),
             database_url: None,
             turso_url: None,
             turso_auth_token: None,

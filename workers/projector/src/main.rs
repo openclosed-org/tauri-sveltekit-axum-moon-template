@@ -144,12 +144,8 @@ impl Default for Projector {
 async fn main() -> anyhow::Result<()> {
     let config = Config::from_env()?;
 
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            tracing_subscriber::EnvFilter::try_new(&config.rust_log)
-                .unwrap_or_else(|_| "projector_worker=info".into()),
-        )
-        .init();
+    let _observability = observability::init_observability("projector-worker", &config.rust_log)
+        .map_err(anyhow::Error::msg)?;
 
     info!("Projector worker starting");
     info!("Database: {}", config.database_url);

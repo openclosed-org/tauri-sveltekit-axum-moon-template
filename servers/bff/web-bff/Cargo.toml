@@ -18,6 +18,8 @@ contracts_events = { workspace = true }
 kernel = { workspace = true }
 data = { workspace = true }
 storage_turso = { workspace = true }
+observability = { workspace = true }
+authz = { workspace = true }
 
 # Axum HTTP framework
 axum = { workspace = true }

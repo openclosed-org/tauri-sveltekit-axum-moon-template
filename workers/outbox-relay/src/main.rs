@@ -99,13 +99,8 @@ async fn main() -> anyhow::Result<()> {
     // Load configuration from SOPS-encrypted environment variables
     let config = Config::from_env()?;
 
-    // Initialize tracing with config
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            tracing_subscriber::EnvFilter::try_new(&config.rust_log)
-                .unwrap_or_else(|_| "outbox_relay_worker=info".into()),
-        )
-        .init();
+    let _observability = observability::init_observability("outbox-relay-worker", &config.rust_log)
+        .map_err(anyhow::Error::msg)?;
 
     info!("Outbox relay worker starting");
     info!("Database: {}", config.database_url);

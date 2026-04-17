@@ -59,6 +59,15 @@ impl<E: EventBus, P: PubSub> OutboxPublisher<E, P> {
             envelope = envelope.with_correlation_id(correlation_id);
         }
 
+        debug!(
+            entry_id = %entry.id,
+            event_type = %entry.event_type,
+            correlation_id = ?envelope.metadata.correlation_id,
+            trace_id = ?envelope.metadata.trace_id,
+            span_id = ?envelope.metadata.span_id,
+            "publishing outbox entry"
+        );
+
         // Publish to event bus (for service-to-service communication)
         self.event_bus
             .publish(envelope.clone())
