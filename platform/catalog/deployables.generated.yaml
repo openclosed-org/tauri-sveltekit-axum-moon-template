@@ -1,14 +1,3 @@
-- name: admin-bff
-  type: bff
-  version: 0.1.0
-  description: |
-    Backend-for-Frontend for the admin dashboard. Aggregates multi-service views (tenants, counters, agents, metrics) into admin-optimized responses. Handles admin-specific authentication and authorization with elevated privilege checks.
-  services:
-  - admin
-  resources:
-  - cache
-  ports:
-  - 3020
 - name: edge-gateway
   type: gateway
   version: 1.0.0
@@ -30,25 +19,23 @@
   ports:
   - 3040
 - name: outbox-relay-worker
-  type: worker
+  type: relay
   version: 1.0.0
   description: |
-    Outbox pattern consumer. Polls the outbox table for pending events, publishes them to the external message broker (NATS), and marks them as delivered. Provides reliable event delivery with deduplication and checkpoint tracking.
-  services:
-  - event-bus
+    Reference outbox relay worker. Polls pending outbox records, publishes them to the message backbone, and records delivery progress.
+  services: []
   resources:
   - turso
   - nats
   ports:
   - 3030
 - name: projector-worker
-  type: worker
+  type: projector
   version: 0.1.0
   description: |
-    Event-driven read model projector. Consumes domain events and builds denormalized read models optimized for query patterns. Maintains projection state with checkpoint tracking per event stream. Supports projection rebuild from arbitrary point.
+    Reference event-driven projector. Consumes domain events and builds denormalized read models that must remain replayable and rebuildable.
   services: []
   resources:
-  - nats
   - turso
   ports:
   - 3050
@@ -76,15 +63,10 @@
   type: bff
   version: 1.0.0
   description: |
-    Backend-for-Frontend for the web application (SvelteKit). Aggregates service APIs into view-optimized endpoints, handles server-side rendering data fetching, and manages web-specific auth/session concerns.
+    Web backend-for-frontend for user-facing surfaces. Aggregates reference services into view-oriented APIs and exposes the primary synchronous reference entrypoints.
   services:
-  - counter
-  - user
-  - tenant
-  - settings
-  - agent
-  - chat
-  - auth
+  - counter-service
+  - tenant-service
   resources:
   - cache
   ports:

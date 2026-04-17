@@ -1,254 +1,40 @@
-- name: admin
-  domain: admin
-  version: 1.0.0
+- name: auth-service
   description: |
-    Admin dashboard and platform management service. Provides system-wide analytics, tenant overview, platform health metrics, and administrative operations. Composition layer for multi-service views.
-  status: active
-  deployable: admin-bff
-  ports:
-  - description: Dashboard state and cached metrics
-    name: dashboard_repository
-    type: repository
-  - description: Publish admin analytics events
-    name: analytics_publisher
-    type: publisher
-  events:
-  - name: DashboardRefreshed
-    schema: packages/contracts/events/dashboard_refreshed.json
-  - name: AdminActionLogged
-    schema: packages/contracts/events/admin_action_logged.json
-  dependencies:
-  - packages/core/kernel
-  - packages/contracts/api
-  - packages/features/admin
-  - services/event-bus
-- name: agent
-  domain: agent
-  version: 1.0.0
-  description: |
-    AI agent orchestration service. Manages AI agent lifecycles, tool calling, conversation management, and LLM provider integration. Handles prompt templates, agent configuration, and session state.
-  status: active
-  deployable: web-bff
-  ports:
-  - description: Agent configuration and state persistence
-    name: agent_repository
-    type: repository
-  - description: Conversation history storage
-    name: conversation_repository
-    type: repository
-  - description: LLM provider integration (OpenAI, Anthropic, etc.)
-    name: llm_client
-    type: external_api
-  - description: External tool calling interface
-    name: tool_registry
-    type: external_api
-  - description: Publish agent-related events
-    name: event_publisher
-    type: publisher
-  events:
-  - name: AgentCreated
-    schema: packages/contracts/events/agent_created.json
-  - name: ConversationStarted
-    schema: packages/contracts/events/conversation_started.json
-  - name: ToolCalled
-    schema: packages/contracts/events/tool_called.json
-  dependencies:
-  - packages/core/kernel
-  - packages/core/domain
-  - packages/contracts/api
-  - packages/features/agent
-  - services/event-bus
-- name: auth
-  domain: auth
-  version: 0.1.0
-  description: |
-    Authentication service — OAuth flow, session management, token handling. Manages user authentication lifecycle including JWT generation, OAuth provider integration, session management, and token refresh.
-  status: active
-  deployable: web-bff
-  ports:
-  - description: OAuth provider integration (Google, etc.)
-    name: oauth_provider
-    type: external_api
-  - description: User session state persistence
-    name: session_repository
-    type: repository
-  - description: Token state persistence (JWT, refresh tokens)
-    name: token_repository
-    type: repository
-  events: []
-  dependencies:
-  - packages/core/kernel
-  - packages/contracts/api
-  - packages/contracts/auth
-  - services/event-bus
-- name: chat
-  domain: chat
-  version: 0.1.0
-  description: |
-    Real-time messaging service. Manages chat sessions, message delivery, read receipts, and real-time push notifications. Supports both direct messages and group conversations.
+    Planned authentication-related capability. Not part of the first-wave reference modules; kept as a future domain placeholder.
   status: stub
-  deployable: web-bff
-  ports:
-  - description: Message persistence
-    name: message_repository
-    type: repository
-  - description: Chat session/conversation state
-    name: session_repository
-    type: repository
-  - description: Session participant management
-    name: participant_repository
-    type: repository
-  - description: Real-time message push via WebSocket/SSE
-    name: push_publisher
-    type: publisher
-  - description: Publish chat-related events
-    name: event_publisher
-    type: publisher
-  events:
-  - name: MessageSent
-    schema: packages/contracts/events/message_sent.json
-  - name: SessionCreated
-    schema: packages/contracts/events/session_created.json
-  - name: MessageRead
-    schema: packages/contracts/events/message_read.json
-  dependencies:
-  - packages/core/kernel
-  - packages/core/domain
-  - packages/contracts/api
-  - packages/features/chat
-  - services/event-bus
-- name: counter
-  domain: counter
-  version: 1.0.0
-  description: |
-    Tenant-scoped counter management service. Provides counter CRUD, increment/decrement operations, and analytics. Golden example of Clean Architecture service structure.
-  status: active
-  deployable: web-bff
-  ports:
-  - description: Counter state persistence (SQLite/Turso)
-    name: counter_repository
-    type: repository
-  - description: Publish counter events to event bus
-    name: event_publisher
-    type: publisher
-  events:
-  - name: CounterIncremented
-    schema: packages/contracts/events/counter_incremented.json
-  - name: CounterDecremented
-    schema: packages/contracts/events/counter_decremented.json
-  - name: CounterReset
-    schema: packages/contracts/events/counter_reset.json
-  dependencies:
-  - packages/core/kernel
-  - packages/core/domain
-  - packages/contracts/api
-  - packages/features/counter
-  - services/event-bus
-- name: event-bus
-  domain: infrastructure
-  version: 1.0.0
-  description: |
-    Shared event bus providing in-memory event distribution and Outbox pattern implementation. Handles event publishing, subscription, and reliable delivery with deduplication and checkpoint tracking.
-  status: active
-  deployable: outbox-relay-worker
-  ports:
-  - description: Publish events to the bus
-    name: event_publisher
-    type: publisher
-  - description: Subscribe to events by type
-    name: event_subscriber
-    type: publisher
-  - description: Outbox message persistence
-    name: outbox_repository
-    type: repository
-  - description: Consumer checkpoint storage
-    name: checkpoint_store
-    type: repository
+  deployable: null
+  ports: []
   events: []
-  dependencies:
-  - packages/core/kernel
-  - packages/contracts/events
-- name: settings
-  domain: settings
-  version: 1.0.0
+  dependencies: null
+- name: counter-service
   description: |
-    User-level preferences and configuration service. Manages API keys, base URLs, model configurations, and other user-scoped settings with tenant isolation.
-  status: active
-  deployable: web-bff
-  ports:
-  - description: Settings persistence
-    name: settings_repository
-    type: repository
-  - description: Settings cache for fast reads
-    name: cache
-    type: cache
-  events:
-  - name: SettingsUpdated
-    schema: packages/contracts/events/settings_updated.json
-  dependencies:
-  - packages/core/kernel
-  - packages/core/domain
-  - packages/contracts/api
-  - packages/features/settings
-  - services/event-bus
-- name: tenant
-  domain: tenant
-  version: 1.0.0
+    Reference service for the smallest end-to-end business chain. Covers single aggregate ownership, CAS-style versioning, event publication, projection, and replay-oriented design.
+  status: reference
+  deployable: null
+  ports: []
+  events: []
+  dependencies: null
+- name: indexing-service
   description: |
-    Multi-tenant isolation and member management service. Handles tenant lifecycle, member invitations, tenant-scoped resource isolation, and tenant-level configuration.
-  status: active
-  deployable: web-bff
-  ports:
-  - description: Tenant state persistence
-    name: tenant_repository
-    type: repository
-  - description: Tenant member management
-    name: member_repository
-    type: repository
-  - description: Publish tenant lifecycle events
-    name: event_publisher
-    type: publisher
-  events:
-  - name: TenantCreated
-    schema: packages/contracts/events/tenant_created.json
-  - name: TenantUpdated
-    schema: packages/contracts/events/tenant_updated.json
-  - name: TenantDeleted
-    schema: packages/contracts/events/tenant_deleted.json
-  - name: MemberInvited
-    schema: packages/contracts/events/member_invited.json
-  dependencies:
-  - packages/core/kernel
-  - packages/core/domain
-  - packages/contracts/api
-  - services/event-bus
-- name: user
-  domain: user
-  version: 1.0.0
+    Planned indexing and search capability placeholder. Reserved as a future derived-data boundary, not a first-wave reference module.
+  status: stub
+  deployable: null
+  ports: []
+  events: []
+  dependencies: null
+- name: tenant-service
   description: |
-    User domain service — user lifecycle management, OAuth integration, and tenant binding. Handles user registration, profile management, and authentication logic.
-  status: active
-  deployable: web-bff
-  ports:
-  - description: User state persistence
-    name: user_repository
-    type: repository
-  - description: OAuth provider integration (Google, etc.)
-    name: oauth_client
-    type: external_api
-  - description: Publish user lifecycle events
-    name: event_publisher
-    type: publisher
-  events:
-  - name: UserCreated
-    schema: packages/contracts/events/user_created.json
-  - name: UserUpdated
-    schema: packages/contracts/events/user_updated.json
-  - name: UserDeleted
-    schema: packages/contracts/events/user_deleted.json
-  dependencies:
-  - packages/core/kernel
-  - packages/core/domain
-  - packages/contracts/api
-  - packages/contracts/auth
-  - services/event-bus
+    Reference service for multi-tenant isolation, multi-entity ownership, onboarding workflows, member management, and compensation-aware state transitions.
+  status: reference
+  deployable: null
+  ports: []
+  events: []
+  dependencies: null
+- name: user-service
+  description: |
+    Planned user profile and identity-related capability placeholder. Not part of the first-wave reference modules.
+  status: stub
+  deployable: null
+  ports: []
+  events: []
+  dependencies: null

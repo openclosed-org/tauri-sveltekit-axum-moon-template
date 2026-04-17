@@ -141,7 +141,6 @@ jobs:
       - name: Rust clippy (secondary backend)
         run: >-
           cargo clippy ${SECONDARY_PACKAGES}
-          --exclude native-tauri
           --all-targets
           -- -D warnings
 

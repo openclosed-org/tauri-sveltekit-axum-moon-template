@@ -1,12 +1,10 @@
 - name: cache
   type: cache
   description: |
-    In-memory cache layer for frequently accessed data. Supports multiple backends (Moka for in-process, Valkey/Dragonfly for distributed). Used for settings, session data, and hot paths.
+    In-memory cache layer for frequently accessed data. Supports multiple backends (Moka for in-process, Valkey/Dragonfly for distributed). Used for session data and hot paths.
   technology: moka/valkey
   required_by:
-  - settings
   - web-bff
-  - admin-bff
 - name: nats
   type: message_broker
   description: |
@@ -16,7 +14,6 @@
   - event-bus
   - outbox-relay-worker
   - indexer-worker
-  - projector-worker
 - name: observability
   type: observability
   description: |
@@ -24,7 +21,6 @@
   technology: otel/vector/openobserve
   required_by:
   - web-bff
-  - admin-bff
   - edge-gateway
 - name: turso
   type: database
@@ -32,9 +28,7 @@
     SQLite-compatible distributed database (libSQL). Primary data store for all services with multi-tenant isolation via row-level security. Local development uses embedded SQLite.
   technology: turso/libsql
   required_by:
-  - counter
-  - user
-  - tenant
-  - settings
-  - agent
-  - chat
+  - counter-service
+  - user-service
+  - tenant-service
+  - auth-service

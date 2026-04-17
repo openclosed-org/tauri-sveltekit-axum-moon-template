@@ -18,21 +18,25 @@ publish = false
 ahash = { version = "0.8", features = ["serde"] }
 anstream = { version = "1" }
 arrayvec = { version = "0.7" }
+base64ct = { version = "1", default-features = false, features = ["std"] }
 blake2 = { version = "0.10" }
-bytemuck = { version = "1", default-features = false, features = ["derive", "extern_crate_alloc"] }
+bytemuck = { version = "1", default-features = false, features = ["derive"] }
 bytes = { version = "1", features = ["serde"] }
 chrono = { version = "0.4", features = ["serde"] }
-cookie = { version = "0.18", default-features = false, features = ["percent-encode"] }
 crossbeam-channel = { version = "0.5" }
+crossbeam-epoch = { version = "0.9" }
 crossbeam-utils = { version = "0.8" }
 crypto-common = { version = "0.1", default-features = false, features = ["getrandom", "std"] }
+deranged = { version = "0.5", features = ["powerfmt", "serde"] }
 digest = { version = "0.10", features = ["mac", "std"] }
 either = { version = "1", features = ["use_std"] }
 env_filter = { version = "1", default-features = false, features = ["regex"] }
 env_logger = { version = "0.11" }
+event-listener = { version = "5" }
 fastrand = { version = "2" }
-flate2 = { version = "1", features = ["zlib-ng"] }
+figment = { version = "0.10", default-features = false, features = ["env", "toml"] }
 form_urlencoded = { version = "1" }
+futures = { version = "0.3" }
 futures-channel = { version = "0.3", features = ["sink"] }
 futures-core = { version = "0.3" }
 futures-executor = { version = "0.3" }
@@ -41,18 +45,16 @@ futures-sink = { version = "0.3" }
 futures-task = { version = "0.3", default-features = false, features = ["std"] }
 futures-util = { version = "0.3", features = ["channel", "io", "sink"] }
 getrandom = { version = "0.3", default-features = false, features = ["std"] }
-half = { version = "2" }
 hashbrown-582f2526e08bb6a0 = { package = "hashbrown", version = "0.14", default-features = false, features = ["ahash", "inline-more", "raw"] }
 hashbrown-986da7b5efc2b80e = { package = "hashbrown", version = "0.16" }
+http = { version = "1" }
 hyper = { version = "1", features = ["full"] }
 hyper-util = { version = "0.1", features = ["client-legacy", "server-auto", "service"] }
 idna = { version = "1" }
-indexmap-dff4ba8e3ae991db = { package = "indexmap", version = "1", default-features = false, features = ["serde-1"] }
-indexmap-f595c2ba2a3f28df = { package = "indexmap", version = "2", features = ["serde"] }
+indexmap = { version = "2", features = ["serde"] }
 lock_api = { version = "0.4", features = ["arc_lock"] }
-log = { version = "0.4", default-features = false, features = ["kv_unstable", "std"] }
+log = { version = "0.4", default-features = false, features = ["std"] }
 memchr = { version = "2" }
-miniz_oxide = { version = "0.8", features = ["simd"] }
 num-bigint = { version = "0.4" }
 num-complex = { version = "0.4", default-features = false, features = ["std"] }
 num-integer = { version = "0.1", features = ["i128"] }
@@ -60,9 +62,7 @@ num-traits = { version = "0.2", features = ["i128", "libm"] }
 parking_lot = { version = "0.12", features = ["arc_lock", "send_guard"] }
 percent-encoding = { version = "2" }
 petgraph = { version = "0.7" }
-phf_shared-594e8ee84c453af0 = { package = "phf_shared", version = "0.13", default-features = false, features = ["std", "unicase"] }
-phf_shared-a6292c17cd707f01 = { package = "phf_shared", version = "0.11" }
-proc-macro2 = { version = "1", features = ["span-locations"] }
+phf_shared = { version = "0.13", default-features = false, features = ["std", "unicase"] }
 rand = { version = "0.8", features = ["small_rng"] }
 rand_core = { version = "0.6", default-features = false, features = ["std"] }
 regex = { version = "1" }
@@ -70,82 +70,48 @@ regex-automata = { version = "0.4", default-features = false, features = ["dfa",
 regex-syntax = { version = "0.8" }
 roaring = { version = "0.11", features = ["serde"] }
 rust_decimal = { version = "1", features = ["maths", "serde-str"] }
-schemars = { version = "0.8", features = ["preserve_order", "url", "uuid1"] }
 semver = { version = "1", features = ["serde"] }
 serde = { version = "1", features = ["alloc", "derive", "rc"] }
 serde_core = { version = "1", features = ["alloc", "rc"] }
-serde_json = { version = "1", features = ["alloc", "raw_value", "unbounded_depth"] }
-simd-adler32 = { version = "0.3" }
+serde_json = { version = "1", features = ["raw_value"] }
+signature = { version = "2", default-features = false, features = ["digest", "std"] }
 slab = { version = "0.4" }
 smallvec = { version = "1", default-features = false, features = ["const_new", "serde"] }
-stable_deref_trait = { version = "1" }
 subtle = { version = "2" }
 sync_wrapper = { version = "1", default-features = false, features = ["futures"] }
-tauri = { version = "2", features = ["tray-icon", "unstable"] }
-tauri-runtime-wry = { version = "2", default-features = false, features = ["common-controls-v6", "unstable", "x11"] }
-tauri-utils = { version = "2", default-features = false, features = ["build", "compression", "resources"] }
-time = { version = "0.3", features = ["formatting", "local-offset", "macros", "parsing"] }
+time = { version = "0.3", features = ["macros", "serde-well-known"] }
 tokio = { version = "1", features = ["full", "test-util"] }
 tokio-stream = { version = "0.1", features = ["net"] }
 tokio-util = { version = "0.7", features = ["codec", "compat", "io"] }
-toml_parser = { version = "1" }
 tower = { version = "0.5", default-features = false, features = ["log", "make", "util"] }
 tracing = { version = "0.1", features = ["log", "release_max_level_debug"] }
 tracing-core = { version = "0.1" }
 tracing-log = { version = "0.2" }
-url = { version = "2", features = ["serde"] }
 utoipa = { version = "5", features = ["axum_extras"] }
 uuid = { version = "1", features = ["serde", "v4", "v5", "v7"] }
-winnow = { version = "1" }
 zerocopy = { version = "0.8", default-features = false, features = ["derive", "simd"] }
 
 [build-dependencies]
-bytes = { version = "1", features = ["serde"] }
 cc = { version = "1", default-features = false, features = ["parallel"] }
 chrono = { version = "0.4", features = ["serde"] }
-crypto-common = { version = "0.1", default-features = false, features = ["getrandom", "std"] }
-digest = { version = "0.10", features = ["mac", "std"] }
 either = { version = "1", features = ["use_std"] }
 fastrand = { version = "2" }
-flate2 = { version = "1", features = ["zlib-ng"] }
-form_urlencoded = { version = "1" }
 hashbrown-986da7b5efc2b80e = { package = "hashbrown", version = "0.16" }
-idna = { version = "1" }
-indexmap-dff4ba8e3ae991db = { package = "indexmap", version = "1", default-features = false, features = ["serde-1"] }
-indexmap-f595c2ba2a3f28df = { package = "indexmap", version = "2", features = ["serde"] }
-lock_api = { version = "0.4", features = ["arc_lock"] }
-log = { version = "0.4", default-features = false, features = ["kv_unstable", "std"] }
+indexmap = { version = "2", features = ["serde"] }
 memchr = { version = "2" }
-miniz_oxide = { version = "0.8", features = ["simd"] }
 num-traits = { version = "0.2", features = ["i128", "libm"] }
-parking_lot = { version = "0.12", features = ["arc_lock", "send_guard"] }
-percent-encoding = { version = "2" }
-phf_shared-594e8ee84c453af0 = { package = "phf_shared", version = "0.13", default-features = false, features = ["std", "unicase"] }
-phf_shared-a6292c17cd707f01 = { package = "phf_shared", version = "0.11" }
-proc-macro2 = { version = "1", features = ["span-locations"] }
+phf_shared = { version = "0.13", default-features = false, features = ["std", "unicase"] }
 rand = { version = "0.8", features = ["small_rng"] }
 rand_core = { version = "0.6", default-features = false, features = ["std"] }
 regex = { version = "1" }
 regex-automata = { version = "0.4", default-features = false, features = ["dfa", "hybrid", "meta", "nfa", "perf", "std", "unicode"] }
 regex-syntax = { version = "0.8" }
-schemars = { version = "0.8", features = ["preserve_order", "url", "uuid1"] }
 semver = { version = "1", features = ["serde"] }
 serde = { version = "1", features = ["alloc", "derive", "rc"] }
 serde_core = { version = "1", features = ["alloc", "rc"] }
-serde_json = { version = "1", features = ["alloc", "raw_value", "unbounded_depth"] }
-simd-adler32 = { version = "0.3" }
-smallvec = { version = "1", default-features = false, features = ["const_new", "serde"] }
-stable_deref_trait = { version = "1" }
-subtle = { version = "2" }
-syn-dff4ba8e3ae991db = { package = "syn", version = "1", features = ["extra-traits", "fold", "full", "visit"] }
-syn-f595c2ba2a3f28df = { package = "syn", version = "2", features = ["extra-traits", "fold", "full", "visit", "visit-mut"] }
-tauri-build = { version = "2" }
-tauri-utils = { version = "2", default-features = false, features = ["build", "compression", "resources"] }
-toml_parser = { version = "1" }
-url = { version = "2", features = ["serde"] }
+syn = { version = "2", features = ["extra-traits", "fold", "full", "visit", "visit-mut"] }
+time-macros = { version = "0.2", default-features = false, features = ["formatting", "parsing", "serde"] }
 utoipa-gen = { version = "5", default-features = false, features = ["axum_extras"] }
-uuid = { version = "1", features = ["serde", "v4", "v5", "v7"] }
-winnow = { version = "1" }
 zerocopy = { version = "0.8", default-features = false, features = ["derive", "simd"] }
 
 ### END HAKARI SECTION

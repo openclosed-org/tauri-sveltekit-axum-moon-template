@@ -21,12 +21,18 @@ struct Args {
 #[derive(Debug, Serialize, Deserialize)]
 struct ServiceModel {
     name: String,
-    domain: String,
-    version: String,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    domain: Option<String>,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    version: Option<String>,
     description: Option<String>,
     status: Option<String>,
     deployable: Option<String>,
+    #[serde(default)]
     ports: Vec<serde_json::Value>,
+    #[serde(default)]
     events: Vec<serde_json::Value>,
     dependencies: Option<Vec<String>>,
 }

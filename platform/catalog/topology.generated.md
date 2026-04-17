@@ -12,7 +12,6 @@ K3s Kubernetes staging environment. Mirrors production topology with reduced rep
 ### Deployables
 
 - ✅ web-bff (×2)
-- ✅ admin-bff (×1)
 - ✅ edge-gateway (×1)
 - ✅ outbox-relay-worker (×1)
 - ✅ indexer-worker (×1)
@@ -32,9 +31,12 @@ Local development topology. All deployables run on localhost with embedded or do
 ### Deployables
 
 - ✅ web-bff (×1)
-- ✅ admin-bff (×1)
 - ✅ edge-gateway (×1)
 - ⏸️ outbox-relay-worker (×1)
+- ⏸️ indexer-worker (×1)
+- ⏸️ projector-worker (×1)
+- ⏸️ scheduler-worker (×1)
+- ⏸️ sync-reconciler-worker (×1)
 
 ---
 
@@ -48,7 +50,6 @@ Single VPS deployment topology. All services run on a single machine with Docker
 ### Deployables
 
 - ✅ web-bff (×1)
-- ✅ admin-bff (×1)
 - ✅ edge-gateway (×1)
 - ✅ outbox-relay-worker (×1)
 - ✅ indexer-worker (×1)
