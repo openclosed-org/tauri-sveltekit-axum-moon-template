@@ -97,6 +97,5 @@ jobs:
           ${PRIMARY_PACKAGES}
           ${SECONDARY_PACKAGES}
           ${ALTERNATIVE_PACKAGES}
-          --exclude native-tauri
           --all-targets
           -- -D warnings
