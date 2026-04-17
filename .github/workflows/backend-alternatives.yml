@@ -12,8 +12,7 @@ on:
       - 'Cargo.toml'
       - 'Cargo.lock'
       - 'rust-toolchain.toml'
-      - 'packages/adapters/storage/surrealdb/**'
-      - 'packages/core/domain/**'
+      - 'packages/data-adapters/surrealdb/**'
       - 'services/tenant-service/**'
   push:
     branches: [main, develop]
@@ -26,8 +25,7 @@ on:
       - 'Cargo.toml'
       - 'Cargo.lock'
       - 'rust-toolchain.toml'
-      - 'packages/adapters/storage/surrealdb/**'
-      - 'packages/core/domain/**'
+      - 'packages/data-adapters/surrealdb/**'
       - 'services/tenant-service/**'
   workflow_dispatch:
 
@@ -41,7 +39,6 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
   ALTERNATIVE_PACKAGES: >-
-    -p domain
     -p tenant-service
     -p storage_surrealdb
 

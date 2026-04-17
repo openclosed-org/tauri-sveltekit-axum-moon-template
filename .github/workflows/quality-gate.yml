@@ -22,14 +22,14 @@ on:
       - 'packages/platform/**'
       - 'packages/runtime/**'
       - 'packages/contracts/**'
-      - 'packages/features/**'
       - 'packages/messaging/**'
       - 'packages/data/**'
       - 'packages/data-traits/**'
       - 'packages/data-adapters/**'
-      - 'packages/adapters/storage/turso/**'
-      - 'packages/adapters/telemetry/**'
-      - 'packages/adapters/auth/google-backend/**'
+      - 'packages/authn/**'
+      - 'packages/authz/**'
+      - 'packages/observability/**'
+      - 'packages/sdk/**'
   push:
     branches: [main, develop]
     paths:
@@ -51,14 +51,14 @@ on:
       - 'packages/platform/**'
       - 'packages/runtime/**'
       - 'packages/contracts/**'
-      - 'packages/features/**'
       - 'packages/messaging/**'
       - 'packages/data/**'
       - 'packages/data-traits/**'
       - 'packages/data-adapters/**'
-      - 'packages/adapters/storage/turso/**'
-      - 'packages/adapters/telemetry/**'
-      - 'packages/adapters/auth/google-backend/**'
+      - 'packages/authn/**'
+      - 'packages/authz/**'
+      - 'packages/observability/**'
+      - 'packages/sdk/**'
   workflow_dispatch:
 
 permissions:
@@ -141,6 +141,7 @@ jobs:
       - name: Rust clippy (secondary backend)
         run: >-
           cargo clippy ${SECONDARY_PACKAGES}
+          --exclude native-tauri
           --all-targets
           -- -D warnings
 

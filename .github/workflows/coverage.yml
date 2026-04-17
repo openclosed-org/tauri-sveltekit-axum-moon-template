@@ -20,14 +20,14 @@ on:
       - 'packages/platform/**'
       - 'packages/runtime/**'
       - 'packages/contracts/**'
-      - 'packages/features/**'
       - 'packages/messaging/**'
       - 'packages/data/**'
       - 'packages/data-traits/**'
       - 'packages/data-adapters/**'
-      - 'packages/adapters/storage/turso/**'
-      - 'packages/adapters/telemetry/**'
-      - 'packages/adapters/auth/google-backend/**'
+      - 'packages/authn/**'
+      - 'packages/authz/**'
+      - 'packages/observability/**'
+      - 'packages/sdk/**'
   workflow_dispatch:
 
 permissions:
@@ -40,7 +40,6 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
   PRIMARY_PACKAGES: >-
-    -p domain
     -p kernel
     -p platform
     -p runtime
@@ -48,19 +47,22 @@ env:
     -p contracts_auth
     -p contracts_events
     -p contracts_errors
-    # shared-utils removed — contents merged into kernel
     -p adapter-telemetry-otel
     -p adapter-telemetry-tracing
     -p storage_turso
     -p adapter-google-backend
-    -p feature-auth
-    -p feature-counter
     -p user-service
     -p tenant-service
     -p auth-service
     -p counter-service
     -p event-bus
     -p web-bff
+    -p data
+    -p authz
+    -p observability
+    -p sdk-counter
+    -p sdk-counter-embedded
+    -p sdk-counter-http
 
 jobs:
   coverage:

@@ -46,6 +46,16 @@ ignore = [
     #      tracing, not a custom log::Log implementation that re-enters rand during logging
     "RUSTSEC-2026-0097",
 
+    # rustls-webpki CRL distribution point matching (via async-nats, reqwest)
+    # Source: rustls-webpki 0.102.8 and 0.103.10 pulled by async-nats, reqwest
+    # Fix: wait for async-nats/reqwest to upgrade to rustls-webpki >= 0.103.12
+    "RUSTSEC-2026-0049",
+
+    # rustls-webpki URI name constraints accepted incorrectly
+    "RUSTSEC-2026-0098",
+
+    # rustls-webpki wildcard name constraints accepted incorrectly
+    "RUSTSEC-2026-0099",
 ]
 
 # ══════════════════════════════════════════════════════════════

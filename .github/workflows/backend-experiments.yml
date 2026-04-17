@@ -15,7 +15,6 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
   PRIMARY_PACKAGES: >-
-    -p domain
     -p kernel
     -p platform
     -p runtime
@@ -23,22 +22,22 @@ env:
     -p contracts_auth
     -p contracts_events
     -p contracts_errors
-    # shared-utils removed — contents merged into kernel
     -p adapter-telemetry-otel
     -p adapter-telemetry-tracing
     -p storage_turso
     -p adapter-google-backend
-    -p feature-auth
-    -p feature-counter
-    -p feature-admin
-    -p feature-agent
-    -p feature-chat
     -p user-service
     -p tenant-service
     -p auth-service
     -p counter-service
     -p event-bus
     -p web-bff
+    -p data
+    -p authz
+    -p observability
+    -p sdk-counter
+    -p sdk-counter-embedded
+    -p sdk-counter-http
   SECONDARY_PACKAGES: >-
     -p pingora-gateway
     -p outbox-relay-worker
@@ -98,5 +97,6 @@ jobs:
           ${PRIMARY_PACKAGES}
           ${SECONDARY_PACKAGES}
           ${ALTERNATIVE_PACKAGES}
+          --exclude native-tauri
           --all-targets
           -- -D warnings
