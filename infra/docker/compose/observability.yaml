@@ -5,6 +5,7 @@
 #
 # Provides local-dev observability:
 #   - OpenObserve: logs/metrics/traces UI (single binary, replaces Loki+Grafana+Tempo)
+#   - OTel Collector: unified OTLP ingress for Rust tracing
 #   - Vector: log routing + transformation (ships logs from containers to OpenObserve)
 #
 # This stack is intentionally lightweight. Production uses the k3s-native stack.
@@ -23,7 +24,7 @@ services:
     ports:
       - "5080:5080"
     environment:
-      - ZO_ROOT_USER_EMAIL=admin@localhost
+      - ZO_ROOT_USER_EMAIL=admin@localhost.com
       - ZO_ROOT_USER_PASSWORD=admin
       - ZO_DATA_DIR=/data
     volumes:
@@ -36,6 +37,21 @@ services:
       start_period: 10s
     restart: unless-stopped
 
+  # ── OTel Collector ──────────────────────────────────────────
+  # Receives OTLP traces from Rust services and forwards them to OpenObserve.
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.110.0
+    command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+    volumes:
+      - ../../../ops/observability/otel/otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml:ro
+    depends_on:
+      openobserve:
+        condition: service_healthy
+    restart: unless-stopped
+
   # ── Vector (Log Router) ────────────────────────────────────
   # Collects Podman container logs and forwards them to OpenObserve.
   # Config: ops/observability/vector/
@@ -44,7 +60,7 @@ services:
   # or via journald. For dev simplicity, we use the podman-events
   # source + direct container log streaming.
   vector:
-    image: timberio/vector:0.46.0-alpine
+    image: ghcr.io/vectordotdev/vector:0.46.0-alpine
     volumes:
       # Podman socket (rootless or rootful)
       - /run/podman/podman.sock:/run/podman/podman.sock:ro

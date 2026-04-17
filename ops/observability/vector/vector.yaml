@@ -33,7 +33,7 @@ transforms:
   add_metadata:
     type: remap
     inputs:
-      - docker_logs
+      - podman_logs
     source: |
       .environment = "dev"
       .service = .container_name ?? "unknown"
@@ -63,7 +63,7 @@ sinks:
     method: post
     auth:
       strategy: basic
-      user: "admin@localhost"
+      user: "admin@localhost.com"
       password: "admin"
     encoding:
       codec: json

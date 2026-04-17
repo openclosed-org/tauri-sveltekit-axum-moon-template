@@ -35,7 +35,7 @@ exporters:
     endpoint: "http://openobserve:5080/api/default"
     headers:
       Organization: default
-      Authorization: "Basic YWRtaW5AbG9jYWxob3N0OmFkbWlu"  # admin@localhost:admin (base64)
+      Authorization: "Basic YWRtaW5AbG9jYWxob3N0LmNvbTphZG1pbg=="  # admin@localhost.com:admin (base64)
 
   # Debug exporter (for development troubleshooting)
   debug:
