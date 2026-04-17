@@ -5093,11 +5093,11 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "chrono",
- "counter-service",
  "data",
  "dotenvy",
- "kernel",
  "log",
+ "sdk-counter",
+ "sdk-counter-embedded",
  "serde",
  "serde_json",
  "storage_turso",
@@ -8111,6 +8111,28 @@ dependencies = [
  "pbkdf2",
  "salsa20",
  "sha2",
+]
+
+[[package]]
+name = "sdk-counter"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "kernel",
+ "serde",
+ "thiserror 2.0.18",
+]
+
+[[package]]
+name = "sdk-counter-embedded"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "counter-service",
+ "kernel",
+ "sdk-counter",
+ "storage_turso",
 ]
 
 [[package]]

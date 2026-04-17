@@ -27,6 +27,9 @@ members = [
     "packages/authn/adapters/google-backend",
     # AuthZ
     "packages/authz",
+    # SDK
+    "packages/sdk/rust/counter",
+    "packages/sdk/rust/counter-embedded",
     # Services
     "services/user-service",
     "services/tenant-service",
@@ -95,6 +98,8 @@ adapter-google-backend = { path = "packages/authn/adapters/google-backend" }
 authz = { path = "packages/authz" }
 workspace-hack = { path = "packages/workspace-hack" }
 observability = { path = "packages/observability" }
+sdk-counter = { path = "packages/sdk/rust/counter" }
+sdk-counter-embedded = { path = "packages/sdk/rust/counter-embedded" }
 counter-service = { path = "services/counter-service" }
 tenant-service = { path = "services/tenant-service" }
 user-service = { path = "services/user-service" }

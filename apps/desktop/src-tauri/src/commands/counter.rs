@@ -1,32 +1,25 @@
-//! Counter Tauri commands — bridge to CounterService.
+//! Counter Tauri commands — bridge to SDK CounterService.
+//!
+//! Uses `sdk_counter_embedded::EmbeddedCounterClient` so the desktop app
+//! never imports `counter-service` directly.
 
-use counter_service::application::TenantScopedCounterService;
-use counter_service::domain::CounterId;
-use kernel::TenantId;
+use sdk_counter::{CounterId, CounterService};
+use sdk_counter_embedded::EmbeddedCounterClient;
 use storage_turso::EmbeddedTurso;
 use tauri::Manager;
 
-fn build_turso_counter_service(
-    db: EmbeddedTurso,
-) -> TenantScopedCounterService<
-    counter_service::infrastructure::LibSqlCounterRepository<EmbeddedTurso>,
-> {
-    let repo = counter_service::infrastructure::LibSqlCounterRepository::new(db);
-    TenantScopedCounterService::new(repo)
-}
-
-/// Default tenant for desktop — in production this would come from auth context.
-fn desktop_tenant_id() -> TenantId {
-    TenantId("desktop-default".into())
+/// Default counter ID for desktop — in production this would come from auth context.
+fn desktop_counter_id() -> CounterId {
+    CounterId::new("desktop-default")
 }
 
 #[tauri::command]
 pub async fn counter_increment(app: tauri::AppHandle) -> Result<i64, String> {
     let db = app.state::<EmbeddedTurso>().inner().clone();
-    let service = build_turso_counter_service(db);
-    let tenant = desktop_tenant_id();
-    service
-        .increment(&tenant, None)
+    let client = EmbeddedCounterClient::new(db).await?;
+    let counter_id = desktop_counter_id();
+    client
+        .increment(&counter_id, None)
         .await
         .map_err(|e| e.to_string())
 }
@@ -34,10 +27,10 @@ pub async fn counter_increment(app: tauri::AppHandle) -> Result<i64, String> {
 #[tauri::command]
 pub async fn counter_decrement(app: tauri::AppHandle) -> Result<i64, String> {
     let db = app.state::<EmbeddedTurso>().inner().clone();
-    let service = build_turso_counter_service(db);
-    let tenant = desktop_tenant_id();
-    service
-        .decrement(&tenant, None)
+    let client = EmbeddedCounterClient::new(db).await?;
+    let counter_id = desktop_counter_id();
+    client
+        .decrement(&counter_id, None)
         .await
         .map_err(|e| e.to_string())
 }
@@ -45,10 +38,10 @@ pub async fn counter_decrement(app: tauri::AppHandle) -> Result<i64, String> {
 #[tauri::command]
 pub async fn counter_reset(app: tauri::AppHandle) -> Result<i64, String> {
     let db = app.state::<EmbeddedTurso>().inner().clone();
-    let service = build_turso_counter_service(db);
-    let tenant = desktop_tenant_id();
-    service
-        .reset(&tenant, None)
+    let client = EmbeddedCounterClient::new(db).await?;
+    let counter_id = desktop_counter_id();
+    client
+        .reset(&counter_id, None)
         .await
         .map_err(|e| e.to_string())
 }
@@ -56,7 +49,10 @@ pub async fn counter_reset(app: tauri::AppHandle) -> Result<i64, String> {
 #[tauri::command]
 pub async fn counter_get_value(app: tauri::AppHandle) -> Result<i64, String> {
     let db = app.state::<EmbeddedTurso>().inner().clone();
-    let service = build_turso_counter_service(db);
-    let tenant = desktop_tenant_id();
-    service.get_value(&tenant).await.map_err(|e| e.to_string())
+    let client = EmbeddedCounterClient::new(db).await?;
+    let counter_id = desktop_counter_id();
+    client
+        .get_value(&counter_id)
+        .await
+        .map_err(|e| e.to_string())
 }

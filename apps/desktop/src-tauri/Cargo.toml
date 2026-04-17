@@ -44,8 +44,8 @@ thiserror = { workspace = true }
 
 # Internal crates
 data = { workspace = true }
-kernel = { workspace = true }
-counter-service = { workspace = true }
+sdk-counter = { path = "../../../packages/sdk/rust/counter" }
+sdk-counter-embedded = { path = "../../../packages/sdk/rust/counter-embedded" }
 workspace-hack = { version = "0.1", path = "../../../packages/workspace-hack" }
 
 [features]

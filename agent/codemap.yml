@@ -266,8 +266,6 @@ rules:
       from: apps/**
       disallow:
         - services/**
-      except:
-        - "apps/desktop/src-tauri:services/counter-service"  # Tauri 桌面端离线嵌入式架构
 
     - name: apps-cannot-import-workers
       from: apps/**
