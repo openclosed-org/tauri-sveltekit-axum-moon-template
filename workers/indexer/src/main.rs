@@ -233,6 +233,47 @@ impl Default for Indexer {
     }
 }
 
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let _observability = observability::init_observability("indexer-worker", "indexer_worker=info")
+        .map_err(anyhow::Error::msg)?;
+
+    info!("Indexer worker starting");
+
+    let state = Arc::new(WorkerState::new());
+
+    // Health server
+    let health_addr: SocketAddr = "0.0.0.0:3031".parse()?;
+    let health_state = state.clone();
+    tokio::spawn(async move {
+        if let Err(e) = start_health_server(health_state, health_addr).await {
+            warn!(error = %e, "health server failed");
+        }
+    });
+
+    // Build indexer with runtime ports (memory adapters for now)
+    let mut indexer = Indexer::default();
+    indexer.add_source(Box::new(sources::MemoryEventSource::new(Vec::new())));
+    indexer.add_transformer(Box::new(transforms::PassthroughTransform));
+    indexer.add_sink(Box::new(MemoryEventSink::new()));
+
+    info!("Indexer worker running (memory adapter mode)");
+
+    // Main loop
+    let mut interval = tokio::time::interval(std::time::Duration::from_secs(30));
+    loop {
+        interval.tick().await;
+        match indexer.run_cycle().await {
+            Ok(count) => {
+                state.record_indexed(count).await;
+            }
+            Err(e) => {
+                warn!(error = %e, "indexing cycle failed");
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
@@ -312,46 +353,5 @@ mod tests {
             events[0].metadata.correlation_id.as_deref(),
             Some("req-idx-1")
         );
-    }
-}
-
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
-    let _observability = observability::init_observability("indexer-worker", "indexer_worker=info")
-        .map_err(anyhow::Error::msg)?;
-
-    info!("Indexer worker starting");
-
-    let state = Arc::new(WorkerState::new());
-
-    // Health server
-    let health_addr: SocketAddr = "0.0.0.0:3031".parse()?;
-    let health_state = state.clone();
-    tokio::spawn(async move {
-        if let Err(e) = start_health_server(health_state, health_addr).await {
-            warn!(error = %e, "health server failed");
-        }
-    });
-
-    // Build indexer with runtime ports (memory adapters for now)
-    let mut indexer = Indexer::default();
-    indexer.add_source(Box::new(sources::MemoryEventSource::new(Vec::new())));
-    indexer.add_transformer(Box::new(transforms::PassthroughTransform));
-    indexer.add_sink(Box::new(MemoryEventSink::new()));
-
-    info!("Indexer worker running (memory adapter mode)");
-
-    // Main loop
-    let mut interval = tokio::time::interval(std::time::Duration::from_secs(30));
-    loop {
-        interval.tick().await;
-        match indexer.run_cycle().await {
-            Ok(count) => {
-                state.record_indexed(count).await;
-            }
-            Err(e) => {
-                warn!(error = %e, "indexing cycle failed");
-            }
-        }
     }
 }
