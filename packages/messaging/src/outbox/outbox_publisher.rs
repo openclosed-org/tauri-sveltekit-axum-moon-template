@@ -2,6 +2,11 @@
 //!
 //! This runs in a background task, periodically querying for unprocessed
 //! outbox entries and publishing them to the EventBus.
+//!
+//! This is the packages/messaging-owned publisher. The outbox-relay worker
+//! has its own relay-specific publisher at `workers/outbox-relay/src/publish/`
+//! that also dispatches to PubSub — both read from the same unified
+//! `event_outbox` table.
 
 use std::time::Duration;
 
@@ -53,10 +58,11 @@ impl Default for OutboxPublisherConfig {
     }
 }
 
-/// Raw row from the outbox table.
+/// Raw row from the event_outbox table.
 #[derive(Debug, Deserialize)]
 struct OutboxRow {
-    id: String,
+    sequence: i64,
+    event_id: String,
     event_type: String,
     event_payload: String,
     source_service: String,
@@ -113,21 +119,21 @@ impl<S: OutboxStore, E: EventBus> OutboxPublisher<S, E> {
             match self.process_entry(&row).await {
                 Ok(()) => {
                     self.store
-                        .execute(MARK_PUBLISHED_SQL, vec![row.id.clone()])
+                        .execute(MARK_PUBLISHED_SQL, vec![row.event_id.clone()])
                         .await?;
-                    debug!(entry_id = %row.id, "outbox entry published");
+                    debug!(sequence = row.sequence, event_id = %row.event_id, "outbox entry published");
                 }
                 Err(e) => {
-                    warn!(entry_id = %row.id, error = %e, "failed to publish outbox entry");
+                    warn!(event_id = %row.event_id, error = %e, "failed to publish outbox entry");
                     if row.retry_count as u32 >= self.config.max_retries {
                         error!(
-                            entry_id = %row.id,
+                            event_id = %row.event_id,
                             retries = row.retry_count,
                             "outbox entry exceeded max retries, dropping"
                         );
                     } else {
                         self.store
-                            .execute(MARK_FAILED_SQL, vec![row.id.clone()])
+                            .execute(MARK_FAILED_SQL, vec![row.event_id.clone()])
                             .await?;
                     }
                 }

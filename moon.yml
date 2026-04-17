@@ -283,7 +283,25 @@ tasks:
     options:
       runFromWorkspaceRoot: true
 
+  # ==========================================================================
+  # GATE TASKS (default verification coverage)
+  # ==========================================================================
+
+  gate-existence:
+    script: 'just gate-existence strict'
+
+  validate-state:
+    script: 'just validate-state strict'
+
+  validate-workflows:
+    script: 'just validate-workflows strict'
+
+  verify-replay:
+    script: 'just verify-replay strict'
+
   # Main quality gate (runs all checks in parallel where possible)
+  # Covers: fmt, lint, typecheck, contracts, unit tests, boundary, and
+  # the default event-chain gates (existence, state, workflows, replay).
   verify:
     deps:
       - 'fmt'
@@ -292,6 +310,10 @@ tasks:
       - 'contracts-check'
       - 'test-unit'
       - '~:boundary-check'
+      - '~:gate-existence'
+      - '~:validate-state'
+      - '~:validate-workflows'
+      - '~:verify-replay'
 
   # ==========================================================================
   # CODEGEN TASKS

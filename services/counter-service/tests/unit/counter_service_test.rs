@@ -89,6 +89,7 @@ impl CounterRepository for MockCounterRepository {
 
     async fn write_outbox(
         &self,
+        event_id: &str,
         event_type: &str,
         payload: &str,
         _source_service: &str,

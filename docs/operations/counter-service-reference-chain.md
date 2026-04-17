@@ -73,7 +73,7 @@ client/request
   -> web-bff handler
   -> counter-service application service
   -> repository + CAS + idempotency + outbox write
-  -> counter_outbox table
+  -> event_outbox table (unified, service-agnostic)
   -> outbox-relay worker
   -> event backbone
   -> projector worker / indexer / downstream consumers
@@ -156,7 +156,7 @@ counter 链路要求：
 1. 当前 counter-service 主要以内嵌库的方式由 `web-bff` 组合使用。
 2. 因此它目前更适合做“server 如何组合 service”的样例，而不是“service 已经独立进程化”的最终样例。
 
-### 5.5 持久化、CAS、Idempotency、Outbox 样例
+### 5.5 持久化、CAS、Idempotency、统一 Outbox 样例
 
 主要路径：
 
@@ -168,8 +168,9 @@ counter 链路要求：
 
 1. mutation 前先做 idempotency check。
 2. mutation 通过 CAS/版本校验防止并发覆盖。
-3. 成功写主状态后写 outbox event。
-4. idempotency、主状态、outbox 属于同一条参考链上的核心数据结构。
+3. 成功写主状态后写统一 event_outbox（不再是 counter_outbox）。
+4. idempotency、主状态、event_outbox 属于同一条参考链上的核心数据结构。
+5. event_outbox 的 schema 由 packages/messaging 拥有，所有 service 共用。
 
 ## 6. 异步链路
 
@@ -194,7 +195,7 @@ counter 链路要求：
 当前真实状态：
 
 1. 已具备相当明确的 worker 结构。
-2. 默认 reader 已改为真实 `counter_outbox` 数据库读取，不再把数据库失败静默降级为 in-memory stub。
+2. 默认 reader 已改为统一 `event_outbox` 数据库读取，不再把数据库失败静默降级为 in-memory stub。
 3. 事件发布侧已切到真实 NATS adapter，不再仅停留在内存 event bus / pubsub。
 4. 已补到独立的 dev secret / kustomize / Flux 落点，并可通过 `counter-shared-db` secret 接入 shared libSQL/Turso；但当前默认仍保持 `replicas=0`，直到已加密 secret 的真实值被核实后再启用。
 
@@ -222,7 +223,7 @@ counter 链路要求：
 
 当前真实状态：
 
-1. projector 已从纯骨架升级为真实 `counter_outbox` replay source。
+1. projector 已从纯骨架升级为统一 `event_outbox` replay source。
 2. 已具备持久化 `counter_projection` read model 与磁盘 checkpoint。
 3. 当配置 `PROJECTOR_NATS_URL` 时，可从 `events.counter.changed` subject 继续做 live tail，并默认通过 queue group 降低多副本重复消费。
 4. 已补到独立的 dev secret / kustomize / Flux 落点，并可通过 `counter-shared-db` secret 接入 shared libSQL/Turso；但当前默认仍保持 `replicas=0`，直到已加密 secret 的真实值被核实后再启用。
@@ -429,3 +430,19 @@ counter 链路要求：
 `counter-service` 现在不是“已经完工的终态模板”，而是“必须继续优先补齐、并最终承载完整后端生产工具链默认路径的参考锚点”。
 
 后续新增后端能力、精简文档、收敛 gate/CI，都应优先围绕这条链路推进，而不是绕开它另起炉灶。
+
+
+## 13. 新增 service 默认路径
+
+新增后端 service 时，默认按以下路径执行，不给 agent 摇摆空间：
+
+1. 建立  作为 service-local semantics 真理源。
+2. 默认按 counter-service 的 DDD 分层：, , , 。
+3. 默认持久化走 ，不引入额外存储抽象。
+4. mutation 成功后写统一 （schema 由  拥有），不创建私有  表。
+5. service 不直接碰 broker（EventBus / PubSub），只写 outbox。
+6. outbox-relay 负责从  异步发布到 EventBus + PubSub。
+7. projection 必须 replayable / rebuildable，从  做 checkpoint。
+8. 跨 service 长事务必须 workflow 化。
+9. stub / future 包必须在  和  中标记 。
+10. 默认完成后至少通过 （含 , , , ）。

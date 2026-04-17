@@ -1,33 +1,27 @@
-//! Event Bus — inter-service communication via events.
+//! Event Bus — unified outbox and inter-service communication.
 //!
 //! ## Architecture
 //! ```text
-//! ┌──────────────────────────────────────┐
-//! │  ports/       (EventBus trait)       │  ← What services depend on
-//! ├──────────────────────────────────────┤
-//! │  adapters/    (InMemoryEventBus)     │  ← Phase 1 implementation
-//! │               (NatsEventBus)         │  ← Phase 2 (future)
-//! ├──────────────────────────────────────┤
-//! │  outbox/      (OutboxEntry +         │  ← Guaranteed delivery
-//! │               OutboxPublisher)       │
-//! └──────────────────────────────────────┘
+//! ┌────────────────────────────────────────────┐
+//! │  ports/         (EventBus trait)            │  ← Services depend on this
+//! ├────────────────────────────────────────────┤
+//! │  adapters/      (InMemoryEventBus)         │  ← In-process
+//! │                 (NatsEventBus)              │  ← Distributed
+//! ├────────────────────────────────────────────┤
+//! │  outbox/        (event_outbox schema +     │  ← Unified outbox truth source
+//! │                  OutboxEntry +              │
+//! │                  OutboxPublisher)           │
+//! └────────────────────────────────────────────┘
 //! ```
+//!
+//! ## Outbox
+//! The `event_outbox` table is the **single** event persistence surface for
+//! all services. No per-service private outbox tables. See `outbox::outbox_entry`
+//! for the schema definition.
 //!
 //! ## Feature flags
 //! - `memory` (default) — in-memory event bus via tokio broadcast channels
 //! - `nats` (future) — NATS JetStream implementation for production
-//!
-//! ## Usage
-//! ```ignore
-//! use event_bus::ports::{EventBus, EventEnvelope};
-//! use event_bus::adapters::memory_bus::InMemoryEventBus;
-//!
-//! let bus = InMemoryEventBus::new();
-//! bus.publish(EventEnvelope::new(
-//!     AppEvent::CounterChanged(CounterChanged { ... }),
-//!     "counter-service",
-//! )).await?;
-//! ```
 
 pub mod adapters;
 pub mod application;

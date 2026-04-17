@@ -1,6 +1,7 @@
 //! Outbox poller — queries the database for pending outbox entries.
 //!
 //! Provides both in-memory (testing) and libsql-backed (production) readers.
+//! Both read from the unified `event_outbox` table.
 
 use std::time::Duration;
 
@@ -56,20 +57,22 @@ impl MemoryOutboxReader {
     }
 }
 
-/// Row shape from the counter_outbox table.
+/// Row shape from the unified event_outbox table.
 #[derive(Debug, Deserialize)]
 struct OutboxRow {
-    id: i64,
+    sequence: i64,
+    event_id: String,
     event_type: String,
-    payload: String,
+    event_payload: String,
     source_service: String,
     correlation_id: Option<String>,
+    retry_count: i64,
 }
 
 /// LibSQL-backed outbox reader for production use.
 ///
-/// Reads from the `counter_outbox` table where `published = 0`,
-/// ordered by `id ASC` (FIFO).
+/// Reads from the unified `event_outbox` table where `status` is pending or failed,
+/// ordered by `sequence ASC` (FIFO with checkpoint support).
 pub struct LibSqlOutboxReader<P: LibSqlPort> {
     port: P,
 }
@@ -90,10 +93,10 @@ impl<P: LibSqlPort> OutboxReader for LibSqlOutboxReader<P> {
         let rows: Vec<OutboxRow> = self
             .port
             .query(
-                "SELECT id, event_type, payload, source_service, correlation_id \
-                 FROM counter_outbox \
-                 WHERE published = 0 AND id > ? \
-                 ORDER BY id ASC \
+                "SELECT sequence, event_id, event_type, event_payload, source_service, correlation_id, retry_count \
+                 FROM event_outbox \
+                 WHERE status IN ('pending', 'failed') AND sequence > ? AND retry_count < 5 \
+                 ORDER BY sequence ASC \
                  LIMIT ?",
                 vec![since_sequence.to_string(), limit.to_string()],
             )
@@ -102,13 +105,13 @@ impl<P: LibSqlPort> OutboxReader for LibSqlOutboxReader<P> {
         let entries = rows
             .into_iter()
             .map(|r| PendingOutboxEntry {
-                id: r.id.to_string(),
-                sequence: r.id as u64,
+                id: r.event_id,
+                sequence: r.sequence as u64,
                 event_type: r.event_type,
-                payload: r.payload,
+                payload: r.event_payload,
                 source_service: r.source_service,
                 correlation_id: r.correlation_id.filter(|value| !value.is_empty()),
-                retry_count: 0,
+                retry_count: r.retry_count as u32,
             })
             .collect();
 
@@ -125,7 +128,7 @@ impl<P: LibSqlPort> OutboxReader for LibSqlOutboxReader<P> {
 
         let placeholders: Vec<String> = entry_ids.iter().map(|_| "?".to_string()).collect();
         let sql = format!(
-            "UPDATE counter_outbox SET published = 1 WHERE id IN ({})",
+            "UPDATE event_outbox SET status = 'published', published_at = datetime('now') WHERE event_id IN ({})",
             placeholders.join(", ")
         );
 

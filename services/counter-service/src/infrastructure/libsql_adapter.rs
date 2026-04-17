@@ -4,7 +4,7 @@
 //! concrete SQL operations. It handles:
 //! - Counter upsert with CAS version check (optimistic locking)
 //! - Atomic increment/decrement/reset with version field
-//! - Outbox table writes for event-driven architecture
+//! - Unified event_outbox writes (no per-service private outbox)
 //! - Timestamp management via datetime('now')
 
 use async_trait::async_trait;
@@ -248,6 +248,7 @@ impl<P: LibSqlPort> CounterRepository for LibSqlCounterRepository<P> {
 
     async fn write_outbox(
         &self,
+        event_id: &str,
         event_type: &str,
         payload: &str,
         source_service: &str,
@@ -255,9 +256,10 @@ impl<P: LibSqlPort> CounterRepository for LibSqlCounterRepository<P> {
     ) -> Result<(), RepositoryError> {
         self.port
             .execute(
-                "INSERT INTO counter_outbox (event_type, payload, source_service, correlation_id) \
-                 VALUES (?, ?, ?, ?)",
+                "INSERT INTO event_outbox (event_id, event_type, event_payload, source_service, correlation_id, status) \
+                 VALUES (?, ?, ?, ?, ?, 'pending')",
                 vec![
+                    event_id.to_string(),
                     event_type.to_string(),
                     payload.to_string(),
                     source_service.to_string(),

@@ -1,4 +1,4 @@
-//! Projection source — reads replayable events from the counter outbox.
+//! Projection source — reads replayable events from the unified event_outbox.
 
 use contracts_events::{AppEvent, CounterChanged, EventEnvelope};
 use data::ports::lib_sql::LibSqlPort;
@@ -14,11 +14,15 @@ pub struct ProjectionEvent {
 
 #[derive(Debug, Deserialize)]
 struct OutboxRow {
-    id: i64,
-    payload: String,
+    sequence: i64,
+    event_payload: String,
     source_service: String,
 }
 
+/// Reads from the unified event_outbox table for projection replay.
+///
+/// All services write to this table, so a single source can replay
+/// events from any service — no per-service outbox source needed.
 pub struct CounterOutboxSource<P: LibSqlPort> {
     port: P,
 }
@@ -36,21 +40,21 @@ impl<P: LibSqlPort> CounterOutboxSource<P> {
         let rows: Vec<OutboxRow> = self
             .port
             .query(
-                "SELECT id, payload, source_service \
-                 FROM counter_outbox \
-                 WHERE id > ? \
-                 ORDER BY id ASC \
+                "SELECT sequence, event_payload, source_service \
+                 FROM event_outbox \
+                 WHERE sequence > ? \
+                 ORDER BY sequence ASC \
                  LIMIT ?",
                 vec![since_sequence.to_string(), limit.to_string()],
             )
             .await
-            .map_err(|e| ProjectorError::Source(format!("query counter_outbox: {e}")))?;
+            .map_err(|e| ProjectorError::Source(format!("query event_outbox: {e}")))?;
 
         rows.into_iter()
             .map(|row| {
-                let envelope = deserialize_envelope(&row.payload)?;
+                let envelope = deserialize_envelope(&row.event_payload)?;
                 Ok(ProjectionEvent {
-                    sequence: row.id as u64,
+                    sequence: row.sequence as u64,
                     envelope: event_bus::ports::EventEnvelope {
                         source_service: row.source_service,
                         ..envelope

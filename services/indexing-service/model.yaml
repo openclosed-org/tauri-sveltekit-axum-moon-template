@@ -2,6 +2,7 @@ apiVersion: platform/v1
 kind: ServiceSemantics
 metadata:
   name: indexing-service
+  status: stub
 spec:
   owns_entities:
     - name: search-index-snapshot

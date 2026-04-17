@@ -11,17 +11,20 @@ pub mod schema {
             version INTEGER NOT NULL DEFAULT 0,\
             updated_at TEXT NOT NULL DEFAULT (datetime('now'))\
         );\
-        CREATE TABLE IF NOT EXISTS counter_outbox (\
-            id INTEGER PRIMARY KEY AUTOINCREMENT,\
+        CREATE TABLE IF NOT EXISTS event_outbox (\
+            sequence INTEGER PRIMARY KEY AUTOINCREMENT,\
+            event_id TEXT NOT NULL UNIQUE,\
             event_type TEXT NOT NULL,\
-            payload TEXT NOT NULL,\
-            source_service TEXT NOT NULL DEFAULT 'counter-service',\
+            event_payload TEXT NOT NULL,\
+            source_service TEXT NOT NULL,\
             correlation_id TEXT,\
+            status TEXT NOT NULL DEFAULT 'pending',\
+            retry_count INTEGER NOT NULL DEFAULT 0,\
             created_at TEXT NOT NULL DEFAULT (datetime('now')),\
-            published INTEGER NOT NULL DEFAULT 0\
+            published_at TEXT\
         );\
-        CREATE INDEX IF NOT EXISTS idx_counter_outbox_pending \
-            ON counter_outbox(published, id);\
+        CREATE INDEX IF NOT EXISTS idx_event_outbox_pending \
+            ON event_outbox(status, sequence);\
         CREATE TABLE IF NOT EXISTS counter_idempotency (\
             idempotency_key TEXT PRIMARY KEY,\
             result_value INTEGER NOT NULL,\

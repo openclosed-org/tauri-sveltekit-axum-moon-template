@@ -311,6 +311,7 @@ impl<R: CounterRepository> RepositoryBackedCounterService<R> {
 
         self.repo
             .write_outbox(
+                &envelope.id.to_string(),
                 event_type_name(&envelope.event),
                 &payload,
                 &envelope.source_service,
@@ -634,6 +635,7 @@ impl<R: CounterRepository> TenantScopedCounterService<R> {
 
         self.repo
             .write_outbox(
+                &envelope.id.to_string(),
                 event_type_name(&envelope.event),
                 &payload,
                 &envelope.source_service,
