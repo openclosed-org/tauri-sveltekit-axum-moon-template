@@ -172,7 +172,7 @@ jobs:
 
       - name: Test web-bff /scalar endpoint
         run: |
-          ./target/release/web-bff &
+          APP_DATABASE_URL=:memory: ./target/release/web-bff &
           WEB_BFF_PID=$!
 
           sleep 2
@@ -219,7 +219,7 @@ jobs:
 
       - name: Run baseline load test
         run: |
-          ./target/release/web-bff &
+          APP_DATABASE_URL=:memory: ./target/release/web-bff &
           WEB_BFF_PID=$!
 
           # Wait for server to be ready
