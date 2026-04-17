@@ -6,8 +6,13 @@ publish = false
 description = "Observability layer — aggregation crate for telemetry adapters"
 
 [dependencies]
-# This is an aggregation crate — it re-exports from its adapter subcrates
-# No direct dependencies needed here
+adapter_telemetry_otel = { workspace = true }
+adapter_telemetry_tracing = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+tracing-opentelemetry = { workspace = true }
+opentelemetry = { workspace = true }
+opentelemetry_sdk = { workspace = true }
 
 [lints]
 workspace = true

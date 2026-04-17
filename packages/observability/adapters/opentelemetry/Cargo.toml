@@ -6,6 +6,6 @@ description = "OpenTelemetry adapter for distributed tracing and metrics"
 
 [dependencies]
 tracing = { workspace = true }
-opentelemetry = "0.27"
-opentelemetry_sdk = { version = "0.27", features = ["rt-tokio"] }
-opentelemetry-otlp = { version = "0.27", features = ["trace", "metrics"] }
+opentelemetry = { workspace = true }
+opentelemetry_sdk = { workspace = true }
+opentelemetry-otlp = { workspace = true }

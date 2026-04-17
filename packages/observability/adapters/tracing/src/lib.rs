@@ -5,10 +5,14 @@
 
 use tracing_subscriber::{EnvFilter, Layer, prelude::*};
 
+/// Builds an env filter with a repo-defined default fallback.
+pub fn build_env_filter(default_level: &str) -> EnvFilter {
+    EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(default_level))
+}
+
 /// Initialize structured logging with env-based filtering.
 pub fn init_tracing(default_level: &str) -> Result<(), String> {
-    let filter =
-        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(default_level));
+    let filter = build_env_filter(default_level);
 
     tracing_subscriber::registry()
         .with(
