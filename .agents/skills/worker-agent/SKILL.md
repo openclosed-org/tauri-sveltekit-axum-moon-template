@@ -27,7 +27,7 @@ You maintain **async execution and state progression** — relays, projectors, s
 ```
 AGENTS.md                                     → global protocol
 agent/codemap.yml                             → module constraints (workers layer)
-docs/architecture/repo-layout.md              → repo layout target state
+agent/codemap.yml              → repo layout target state
 platform/model/README.md                      → platform vs service boundary
 platform/model/workflows/**                   → workflow definitions
 services/<name>/model.yaml                    → event, query, and ownership context

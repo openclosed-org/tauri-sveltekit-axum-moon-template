@@ -16,7 +16,9 @@ All developer and operational commands live here.
 | `processes.just` | Cross-platform process management (ps, stop, ports) |
 | `clean.just` | cargo clean, sweep, coverage cleanup |
 | `skills.just` | AI agent skills integration |
-| `llm-infiniloom.just` | Code analysis via infiniloom tool |
+| `platform.just` | Platform generation, validation, golden baselines |
+| `gates.just` | Gate orchestration and verification |
+| `sops.just` | SOPS encryption, decryption, key management |
 
 ## Usage
 
@@ -26,7 +28,3 @@ just setup        # Install all dependencies
 just dev          # Start full-stack dev
 just verify       # Run all quality checks
 ```
-
-## Philosophy
-
-See [ADR-003](../docs/architecture/ADR-003-just-only-command-surface.md) for why we use `just` instead of shell scripts.

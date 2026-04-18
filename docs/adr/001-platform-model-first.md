@@ -55,7 +55,7 @@ We adopted a **Platform Model First** approach where:
 - **Cons**: Learning curve, upfront investment in generators/validators
 
 ## References
-- `docs/architecture/repo-layout.md` - Repository layout specification
+- `agent/codemap.yml` - Repository layout specification
 - `agent/codemap.yml` - Module constraints and dependency rules
 - `platform/schema/*.schema.json` - Model schemas
 - `platform/model/` - Platform model definitions

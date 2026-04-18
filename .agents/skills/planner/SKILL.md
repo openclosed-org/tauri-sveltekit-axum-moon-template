@@ -31,7 +31,7 @@ AGENTS.md                                                   → global protocol
 agent/codemap.yml                                           → module constraints truth source
 agent/manifests/routing-rules.yml                           → path → subagent mapping
 agent/manifests/gate-matrix.yml                             → subagent → gate mapping
-docs/architecture/repo-layout.md                            → target structure
+agent/codemap.yml                            → target structure
 ```
 
 ---

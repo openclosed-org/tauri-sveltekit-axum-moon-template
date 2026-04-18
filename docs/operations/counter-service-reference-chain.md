@@ -6,33 +6,15 @@
 >
 > 状态声明：当前这条链路已经具备较完整的参考价值，但仍有未闭环部分。本文档只描述已确认的事实、明确的目标态，以及这些目标态当前缺失在哪里。
 
-## 1. 如何使用这份文档
+## 1. How to Use This Document
 
-这份文档面向两类任务：
+Reading order follows `AGENTS.md` §2. This is a Class B reference chain doc — use it to judge whether a backend capability has entered the default production chain.
 
-1. agent 或开发者需要快速理解本仓库后端应如何新增 service/server/worker。
-2. agent 或开发者需要判断某个后端能力是否已经进入默认生产链路。
+## 2. Core Positioning
 
-阅读顺序建议：
+`counter-service` is the default backend reference anchor, carrying both the business main chain and the engineering cross-cutting chain. See `AGENTS.md` §7 for the full positioning rationale.
 
-1. `AGENTS.md`
-2. `agent/codemap.yml`
-3. `docs/architecture/repo-layout.md`
-4. 本文档
-5. 对应代码与 platform/model 文件
-
-## 2. 核心定位
-
-`counter-service` 是本仓库的默认后端参考锚点，承载两条链路：
-
-1. 业务主链：最小业务能力如何按 DDD、contracts、server、worker、projection 实现。
-2. 工程横切链：一个后端能力如何进入 secrets、deploy、GitOps、promotion、runbook、gate、CI 等生产轨道。
-
-这意味着：
-
-1. counter 的业务逻辑可以保持简单。
-2. 但它不能因为简单，就省略后续新服务几乎必经的生产工具链。
-3. 如果某个高价值横切能力尚未通过 counter 链路显式落地，它就还不能算仓库的默认工程惯性。
+This document describes confirmed facts, target state, and current gaps.
 
 ## 3. 当前事实状态
 
@@ -426,20 +408,6 @@ counter 链路要求：
 3. 继续把 `verify-counter-delivery` 从当前 dev + runbook admission 扩到更完整的 promotion/drift/rollback 闭环。
 4. 修正 platform model / schema / ownership 的命名漂移。
 5. 明确 counter-service 从嵌入式库到独立 deployable 的演进路径，并让该路径受 gate 约束。
-
-## 11. 这份文档不做什么
-
-本文档不承担以下职责：
-
-1. 不替代 `AGENTS.md` 与 `codemap.yml` 的仓库级规则说明。
-2. 不替代局部 README 的 owner 说明。
-3. 不把未实现能力包装成既成事实。
-4. 不要求 counter 业务本身承载所有复杂性。
-
-它只负责一件事：
-
-1. 明确告诉 agent 与开发者，当前仓库后端的默认参考锚点在哪里。
-2. 明确这条锚点链路已实现了什么、还缺什么、横切生产工具链如何挂在这条链上。
 
 ## 12. 一句话结论
 

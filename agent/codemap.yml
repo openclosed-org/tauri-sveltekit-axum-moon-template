@@ -569,5 +569,9 @@ validation:
     - just verify-resilience
 
 entry_rules:
-  - 变更顺序：先改 platform/schema，再改 platform/model 与 services/*/model.yaml
-  - 变更顺序：先改 packages/contracts，再改 servers/* 与 workers/*
+  - 变更顺序：先确认是否需要改 platform/schema
+  - 变更顺序：再改 platform/model 或 services/<name>/model.yaml
+  - 变更顺序：再改 packages/contracts
+  - 变更顺序：再改 services/**
+  - 变更顺序：再改 servers/** 和 workers/**
+  - 变更顺序：最后改 infra/**、生成物和补充文档

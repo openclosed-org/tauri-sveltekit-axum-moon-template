@@ -1,58 +1,62 @@
 # Docs Index
 
-> 目标：把 `docs/` 收敛成 agent 与开发者都能快速进入后端开发轨道的唯一文档入口。
->
-> 本仓库当前只关注后端默认学习路径，不把 `apps/**` 作为默认上下文。
+> Entry point for `docs/`. For agent coordination rules, see `AGENTS.md`.
+> For machine-readable directory boundaries, see `agent/codemap.yml`.
 
-## 1. 默认入口
+## Project Status
 
-默认阅读顺序直接跟随 `AGENTS.md`，本文只补 `docs/` 内部入口：
+This is an **experimental architecture template** — a semantic-first, topology-late, agent-native backend design for Axum. Functional but not production-hardened. Before deploying to production, address:
 
-1. `docs/architecture/repo-layout.md`
-2. `docs/operations/counter-service-reference-chain.md`
-3. 按任务需要再读对应 owner 文档，例如 `services/*/README.md`、`workers/*/README.md`、`ops/runbooks/**`
+1. **Documentation drift**: some docs are in Chinese, some in English, some describe target-state rather than current-state. Always verify against code.
+2. **Generated artifacts**: `deployables.generated.yaml` and `architecture.generated.md` may drift after structural changes. Run `just commit-golden-baseline` to resync.
+3. **Secrets**: SOPS templates use `minioadmin` defaults. Production must use proper secret injection (SOPS/Kustomize/Flux), not `.env` files.
+4. **Stubs**: `auth-service`, `indexing-service`, `scheduler-worker`, `sync-reconciler-worker` are stubs — not production-ready.
 
-文档与代码冲突时，以代码、schema、validator、gate 为准。
+## Default Reading Order
 
-## 2. 文档分层
+1. `docs/operations/counter-service-reference-chain.md` — primary backend reference
+2. Task-specific: `services/*/README.md`, `workers/*/README.md`, `ops/runbooks/**`
+3. `docs/adr/**` — architecture decision records
 
-A 类：仓库级事实与边界
+When docs conflict with code, trust code, schemas, validators, and gates.
 
-1. `AGENTS.md`
-2. `agent/codemap.yml`
-3. `agent/manifests/routing-rules.yml`
-4. `agent/manifests/gate-matrix.yml`
-5. `docs/architecture/repo-layout.md`
+## Default Backend Anchor
 
-B 类：局部 owner 文档与 reference chain
+`counter-service` is the default backend reference anchor — not a minimal demo. It carries two chains:
 
-1. `docs/operations/counter-service-reference-chain.md`
-2. `packages/contracts/STRUCTURE.md`
-3. `services/*/README.md`
-4. `workers/*/README.md`
-5. `infra/local/README.md`
-6. `ops/runbooks/**`
+1. **Business main chain**: `service → contracts → server → outbox → relay → projector`
+2. **Engineering cross-cutting chain**: `platform model → secrets → deploy → GitOps → promotion → drift → runbook`
 
-不进入默认上下文的内容：未来态散文、和当前代码脱节的说明、未挂接到 `counter-service` 参考链的独立工具链描述。
+New backend capabilities should align with `counter-service` first. Detailed status → `docs/operations/counter-service-reference-chain.md`.
 
-## 3. 默认锚点
+## Documentation Strategy
 
-`counter-service` 是默认后端参考锚点，不是最小 demo。
+Two types of docs enter the main context:
 
-它同时承载两条链：
+- **Class A**: repo-level rules, boundaries, source of truth — `AGENTS.md`, `agent/codemap.yml`, `agent/manifests/routing-rules.yml`, `agent/manifests/gate-matrix.yml`
+- **Class B**: reference chains, owner docs, runbooks — `docs/operations/`, `services/*/README.md`, `ops/runbooks/`
 
-1. 业务主链：`service -> contracts -> server -> outbox -> relay -> projector`
-2. 工程横切链：`platform model -> secrets -> deploy -> GitOps -> promotion -> drift -> runbook`
+Before deleting/archiving docs, confirm their toolchain info has entered Class A or B.
 
-如果一个横切能力没有挂接到这条 reference chain，它就还不是默认开发惯性。
+## Helper Scripts
 
-## 4. 当前收敛原则
+These scripts support agent routing, scoped gates, and handoff verification:
 
-1. 文档只保留当前稳定事实、关键概念、默认变更顺序和入口路径。
-2. 规则优先下沉到 schema、validator、scripts、gate，不继续膨胀散文。
-3. 新文档如果不能帮助 agent 更稳定地改代码，就不应进入默认入口。
-4. 高漂移、低价值、历史性内容进入 `docs/archive/`。
+| Script | Purpose |
+|--------|---------|
+| `scripts/route-task.ts` | Route tasks to subagents |
+| `scripts/run-scoped-gates.ts <subagent>` | Run scoped verification gates |
+| `scripts/verify-handoff.ts <subagent>` | Verify handoff between agents |
 
-## 5. 一句话结论
+For all available commands: `just --list`
 
-`docs/README.md` 只负责告诉 agent 和开发者：默认读什么、默认别读什么、后端参考锚点在哪里。更细的规则回到 `AGENTS.md`、`codemap.yml` 和真实代码。
+## Future Direction: Macro-Based Boilerplate Reduction
+
+A key area for future improvement — reducing per-service boilerplate through declarative macros:
+
+1. **Derive macros for CAS + idempotency + outbox**: auto-generate `commit_mutation` wrappers from `model.yaml` declarations.
+2. **Handler generation from contracts**: auto-generate Axum stubs from `packages/contracts` API definitions.
+3. **Worker scaffolding macros**: generate retry, checkpoint, dedup, and metrics from `model.yaml`.
+4. **Platform model codegen**: emit Rust types and drift checks from `platform/schema`.
+
+This is deliberately deferred — the semantic model must be validated by real usage before encoding it in macros.

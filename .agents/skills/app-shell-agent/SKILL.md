@@ -29,7 +29,7 @@ You maintain the **frontend shell** — web app, desktop app, and shared UI comp
 ```
 AGENTS.md                                → global protocol
 agent/codemap.yml                        → module constraints (apps layer)
-docs/architecture/repo-layout.md         → repo layout target state
+agent/codemap.yml         → repo layout target state
 apps/web/package.json                    → frontend dependencies
 apps/desktop/src-tauri/tauri.conf.json   → Tauri configuration
 ```

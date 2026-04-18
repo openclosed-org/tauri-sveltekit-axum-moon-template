@@ -28,7 +28,7 @@ You maintain the **protocol truth source** for the monorepo.
 ```
 AGENTS.md                                → global protocol
 agent/codemap.yml                        → module constraints
-docs/architecture/repo-layout.md         → repo layout target state
+agent/codemap.yml         → repo layout target state
 services/<name>/model.yaml               → commands/events/queries source context
 platform/model/workflows/**              → workflow-driven protocol context
 docs/contracts/**                        → existing contract documentation

@@ -64,7 +64,7 @@ services/<name>/
 - **Cons**: More boilerplate, indirection, learning curve
 
 ## References
-- `docs/architecture/repo-layout.md` Section 3.6 - Services rules
+- `agent/codemap.yml` Section 3.6 - Services rules
 - `services/auth-service/` - Reference implementation
 - `servers/web-bff/` - Example service consumer
 - `workers/` - Example async service consumer

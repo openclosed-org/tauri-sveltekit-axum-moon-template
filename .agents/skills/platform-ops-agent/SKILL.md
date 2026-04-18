@@ -30,7 +30,7 @@ You maintain the **platform control plane** — schema, platform-level model, to
 ```
 AGENTS.md                                    → global protocol
 agent/codemap.yml                            → module constraints (platform-model + infra)
-docs/architecture/repo-layout.md             → repo layout target state
+agent/codemap.yml             → repo layout target state
 platform/model/README.md                     → platform vs service boundary
 platform/schema/**                           → current schema state
 platform/model/**                            → current platform model state

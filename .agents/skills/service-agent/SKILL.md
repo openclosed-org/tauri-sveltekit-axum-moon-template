@@ -30,7 +30,7 @@ You maintain **business capability libraries and their service-local distributed
 ```
 AGENTS.md                                     → global protocol
 agent/codemap.yml                             → module constraints (services layer)
-docs/architecture/repo-layout.md              → target repo layout
+agent/codemap.yml              → target repo layout
 platform/model/README.md                      → platform vs service boundary
 services/<name>/model.yaml                    → service-local semantics truth source
 Individual service Cargo.toml and README.md

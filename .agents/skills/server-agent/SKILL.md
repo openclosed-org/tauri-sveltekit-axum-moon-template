@@ -27,7 +27,7 @@ You maintain **server entrypoints** — HTTP handlers, routes, middleware, and A
 ```
 AGENTS.md                                → global protocol
 agent/codemap.yml                        → module constraints (servers layer)
-docs/architecture/repo-layout.md         → repo layout target state
+agent/codemap.yml         → repo layout target state
 services/<name>/model.yaml               → service commands / queries / consistency expectations
 packages/contracts/**                    → protocol truth source
 ```
