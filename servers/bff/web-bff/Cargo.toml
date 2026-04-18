@@ -20,6 +20,7 @@ data = { workspace = true }
 storage_turso = { workspace = true }
 observability = { workspace = true }
 authz = { workspace = true }
+platform = { workspace = true }
 
 # Axum HTTP framework
 axum = { workspace = true }
@@ -38,9 +39,6 @@ validator = { workspace = true }
 # Error handling
 thiserror = { workspace = true }
 anyhow = { workspace = true }
-
-# Configuration
-figment = { workspace = true }
 
 # Auth
 jsonwebtoken = { workspace = true }

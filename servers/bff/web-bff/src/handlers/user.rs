@@ -9,12 +9,11 @@ use axum::{
     http::StatusCode,
     routing::get,
 };
-use user_service::infrastructure::{LibSqlUserRepository, LibSqlUserTenantRepository};
 use user_service::ports::{TenantRepository, UserRepository, UserTenantRepository};
 use utoipa::OpenApi;
 
 use crate::middleware::tenant::RequestContext;
-use crate::state::{BffState, DatabaseBackend};
+use crate::state::BffState;
 
 pub fn router() -> Router<BffState> {
     Router::new()
@@ -44,21 +43,11 @@ async fn get_user_profile(
         Err(e) => return e,
     };
 
-    let db = match state.db.clone() {
-        Some(db) => db,
+    let user_repo = match state.user_profile_repository() {
+        Some(repo) => repo,
         None => return db_not_ready(),
     };
-
-    let result = match db {
-        DatabaseBackend::Embedded(db) => {
-            let user_repo = LibSqlUserRepository::new(db);
-            user_repo.find_by_sub(&user_sub).await
-        }
-        DatabaseBackend::Remote(db) => {
-            let user_repo = LibSqlUserRepository::new(db);
-            user_repo.find_by_sub(&user_sub).await
-        }
-    };
+    let result = user_repo.find_by_sub(&user_sub).await;
 
     match result {
         Ok(Some(user)) => (
@@ -104,74 +93,36 @@ async fn get_user_tenants(
         Err(e) => return e,
     };
 
-    let db = match state.db.clone() {
-        Some(db) => db,
+    let (binding_repo, tenant_repo) = match state.user_read_repositories() {
+        Some(repos) => repos,
         None => return db_not_ready(),
     };
 
-    match db {
-        DatabaseBackend::Embedded(db) => {
-            let binding_repo = LibSqlUserTenantRepository::new(db.clone());
-            let tenant_repo = user_service::infrastructure::LibSqlTenantRepository::new(db);
-
-            match binding_repo.find_user_tenant(&user_sub).await {
-                Ok(Some(binding)) => match tenant_repo.find_by_id(&binding.tenant_id).await {
-                    Ok(Some(tenant_info)) => (
-                        StatusCode::OK,
-                        Json(serde_json::json!([{
-                            "tenant_id": tenant_info.id,
-                            "tenant_name": tenant_info.name,
-                            "role": binding.role,
-                            "joined_at": binding.joined_at.to_rfc3339(),
-                        }])),
-                    ),
-                    Ok(None) | Err(_) => (
-                        StatusCode::OK,
-                        Json(serde_json::json!([{
-                            "tenant_id": binding.tenant_id,
-                            "role": binding.role,
-                            "joined_at": binding.joined_at.to_rfc3339(),
-                        }])),
-                    ),
-                },
-                Ok(None) => (StatusCode::OK, Json(serde_json::json!([]))),
-                Err(e) => (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(serde_json::json!({ "error": e.to_string() })),
-                ),
-            }
-        }
-        DatabaseBackend::Remote(db) => {
-            let binding_repo = LibSqlUserTenantRepository::new(db.clone());
-            let tenant_repo = user_service::infrastructure::LibSqlTenantRepository::new(db);
-
-            match binding_repo.find_user_tenant(&user_sub).await {
-                Ok(Some(binding)) => match tenant_repo.find_by_id(&binding.tenant_id).await {
-                    Ok(Some(tenant_info)) => (
-                        StatusCode::OK,
-                        Json(serde_json::json!([{
-                            "tenant_id": tenant_info.id,
-                            "tenant_name": tenant_info.name,
-                            "role": binding.role,
-                            "joined_at": binding.joined_at.to_rfc3339(),
-                        }])),
-                    ),
-                    Ok(None) | Err(_) => (
-                        StatusCode::OK,
-                        Json(serde_json::json!([{
-                            "tenant_id": binding.tenant_id,
-                            "role": binding.role,
-                            "joined_at": binding.joined_at.to_rfc3339(),
-                        }])),
-                    ),
-                },
-                Ok(None) => (StatusCode::OK, Json(serde_json::json!([]))),
-                Err(e) => (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(serde_json::json!({ "error": e.to_string() })),
-                ),
-            }
-        }
+    match binding_repo.find_user_tenant(&user_sub).await {
+        Ok(Some(binding)) => match tenant_repo.find_by_id(&binding.tenant_id).await {
+            Ok(Some(tenant_info)) => (
+                StatusCode::OK,
+                Json(serde_json::json!([{
+                    "tenant_id": tenant_info.id,
+                    "tenant_name": tenant_info.name,
+                    "role": binding.role,
+                    "joined_at": binding.joined_at.to_rfc3339(),
+                }])),
+            ),
+            Ok(None) | Err(_) => (
+                StatusCode::OK,
+                Json(serde_json::json!([{
+                    "tenant_id": binding.tenant_id,
+                    "role": binding.role,
+                    "joined_at": binding.joined_at.to_rfc3339(),
+                }])),
+            ),
+        },
+        Ok(None) => (StatusCode::OK, Json(serde_json::json!([]))),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({ "error": e.to_string() })),
+        ),
     }
 }
 

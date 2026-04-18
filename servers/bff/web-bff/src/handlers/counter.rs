@@ -12,20 +12,15 @@ use axum::{
 };
 use contracts_api::CounterResponse;
 use contracts_errors::{ErrorCode, ErrorResponse};
-use counter_service::application::RepositoryBackedCounterService;
 use counter_service::contracts::service::CounterCommandContext;
 use counter_service::contracts::service::{CounterError, CounterService};
 use counter_service::domain::CounterId;
-use counter_service::infrastructure::LibSqlCounterRepository;
 use user_service::infrastructure::LibSqlUserTenantRepository;
 use user_service::ports::UserTenantRepository;
 use utoipa::OpenApi;
 
 use crate::middleware::tenant::RequestContext;
-use crate::state::{BffState, DatabaseBackend};
-
-/// Boxed counter service trait object for handler use.
-type BoxedCounterService = Box<dyn CounterService + Send + Sync>;
+use crate::state::BffState;
 
 pub fn router() -> Router<BffState> {
     Router::new()
@@ -260,26 +255,16 @@ async fn check_authz(
 /// Abstracts over embedded and remote database backends.
 fn build_service(
     state: &BffState,
-) -> Result<BoxedCounterService, (StatusCode, Json<ErrorResponse>)> {
-    match state.db.clone() {
-        Some(DatabaseBackend::Embedded(db)) => {
-            let repo = LibSqlCounterRepository::new(db);
-            let service = RepositoryBackedCounterService::new(repo);
-            Ok(Box::new(service))
-        }
-        Some(DatabaseBackend::Remote(db)) => {
-            let repo = LibSqlCounterRepository::new(db);
-            let service = RepositoryBackedCounterService::new(repo);
-            Ok(Box::new(service))
-        }
-        None => Err((
+) -> Result<impl CounterService + Send + Sync + 'static, (StatusCode, Json<ErrorResponse>)> {
+    state.counter_service().ok_or_else(|| {
+        (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse::new(
                 ErrorCode::InternalError,
                 "Embedded database not initialized",
             )),
-        )),
-    }
+        )
+    })
 }
 
 fn extract_request_context(
@@ -299,16 +284,12 @@ fn extract_request_context(
 }
 
 fn build_command_context(request_context: RequestContext) -> CounterCommandContext {
-    let trace_context = observability::current_trace_context();
-
     CounterCommandContext {
         correlation_id: request_context.request_id.clone(),
         causation_id: request_context.request_id.clone(),
         actor: Some(request_context.actor.clone()),
-        trace_id: trace_context
-            .as_ref()
-            .map(|context| context.trace_id.clone()),
-        span_id: trace_context.map(|context| context.span_id),
+        trace_id: request_context.trace_id.clone(),
+        span_id: request_context.span_id.clone(),
     }
 }
 
@@ -317,35 +298,22 @@ async fn resolve_tenant_id(
     request_context: &RequestContext,
 ) -> Result<kernel::TenantId, (StatusCode, Json<ErrorResponse>)> {
     let user_sub = &request_context.user_sub;
-    let tenant_id = match state.db.clone() {
-        Some(DatabaseBackend::Embedded(db)) => {
-            let binding_repo = LibSqlUserTenantRepository::new(db);
-            binding_repo
-                .find_user_tenant(user_sub)
-                .await
-                .map_err(map_tenant_resolution_error)?
-                .map(|binding| binding.tenant_id)
-        }
-        Some(DatabaseBackend::Remote(db)) => {
-            let binding_repo = LibSqlUserTenantRepository::new(db);
-            binding_repo
-                .find_user_tenant(user_sub)
-                .await
-                .map_err(map_tenant_resolution_error)?
-                .map(|binding| binding.tenant_id)
-        }
-        None => {
-            return Err((
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new(
-                    ErrorCode::InternalError,
-                    "Embedded database not initialized",
-                )),
-            ));
-        }
-    };
+    let binding_repo = state.user_tenant_repository().ok_or_else(|| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse::new(
+                ErrorCode::InternalError,
+                "Database not initialized",
+            )),
+        )
+    })?;
+    let tenant_id = binding_repo
+        .find_user_tenant(user_sub)
+        .await
+        .map_err(map_tenant_resolution_error)?
+        .map(|binding| binding.tenant_id);
 
-    tenant_id.map(kernel::TenantId).ok_or_else(|| {
+    let resolved = tenant_id.map(kernel::TenantId).ok_or_else(|| {
         (
             StatusCode::UNAUTHORIZED,
             Json(ErrorResponse::new(
@@ -353,7 +321,27 @@ async fn resolve_tenant_id(
                 "No tenant binding found for authenticated user",
             )),
         )
-    })
+    })?;
+
+    if let Some(claim_tenant_id) = request_context.tenant_id.as_deref()
+        && claim_tenant_id != resolved.as_str()
+    {
+        tracing::warn!(
+            user_sub = %request_context.user_sub,
+            claim_tenant_id,
+            resolved_tenant_id = %resolved,
+            "tenant claim does not match persisted tenant binding"
+        );
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(ErrorResponse::new(
+                ErrorCode::Unauthorized,
+                "Tenant claim does not match authenticated user binding",
+            )),
+        ));
+    }
+
+    Ok(resolved)
 }
 
 fn map_tenant_resolution_error(

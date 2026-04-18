@@ -6,11 +6,20 @@
 
 use crate::config::Config;
 use authz::MockAuthzAdapter;
-use counter_service::infrastructure::LibSqlCounterRepository;
+use counter_service::{
+    application::RepositoryBackedCounterService, contracts::service::CounterService,
+    infrastructure::LibSqlCounterRepository,
+};
 use moka::future::Cache;
-use std::sync::Arc;
-use storage_turso::EmbeddedTurso;
-use storage_turso::TursoCloud;
+use storage_turso::{EmbeddedTurso, TursoBackend, TursoCloud};
+use tenant_service::{
+    application::TenantService,
+    infrastructure::libsql_adapter::LibSqlTenantRepository as TenantServiceRepository,
+};
+use user_service::infrastructure::{
+    LibSqlTenantRepository as UserTenantInfoRepository, LibSqlUserRepository,
+    LibSqlUserTenantRepository,
+};
 
 /// Database backend — either embedded or remote Turso.
 #[derive(Clone)]
@@ -107,5 +116,48 @@ impl BffState {
             http_client,
             authz: MockAuthzAdapter::new(),
         }
+    }
+
+    pub fn turso_backend(&self) -> Option<TursoBackend> {
+        match self.db.clone() {
+            Some(DatabaseBackend::Embedded(db)) => Some(TursoBackend::Embedded(db)),
+            Some(DatabaseBackend::Remote(db)) => Some(TursoBackend::Remote(db)),
+            None => None,
+        }
+    }
+
+    pub fn counter_service(&self) -> Option<impl CounterService + Send + Sync + 'static> {
+        let backend = self.turso_backend()?;
+        let repo = LibSqlCounterRepository::new(backend);
+        Some(RepositoryBackedCounterService::new(repo))
+    }
+
+    pub fn user_profile_repository(&self) -> Option<LibSqlUserRepository<TursoBackend>> {
+        let backend = self.turso_backend()?;
+        Some(LibSqlUserRepository::new(backend))
+    }
+
+    pub fn user_tenant_repository(&self) -> Option<LibSqlUserTenantRepository<TursoBackend>> {
+        let backend = self.turso_backend()?;
+        Some(LibSqlUserTenantRepository::new(backend))
+    }
+
+    pub fn user_read_repositories(
+        &self,
+    ) -> Option<(
+        LibSqlUserTenantRepository<TursoBackend>,
+        UserTenantInfoRepository<TursoBackend>,
+    )> {
+        let backend = self.turso_backend()?;
+        Some((
+            LibSqlUserTenantRepository::new(backend.clone()),
+            UserTenantInfoRepository::new(backend),
+        ))
+    }
+
+    pub fn tenant_service(&self) -> Option<TenantService<TenantServiceRepository<TursoBackend>>> {
+        let backend = self.turso_backend()?;
+        let repo = TenantServiceRepository::new(backend);
+        Some(TenantService::new(repo))
     }
 }

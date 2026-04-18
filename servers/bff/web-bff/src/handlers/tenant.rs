@@ -6,13 +6,12 @@ use axum::{Json, Router, extract::State, routing::post};
 use serde_json::{Value, json};
 
 use contracts_api::InitTenantRequest;
-use tenant_service::application::{TenantService, TenantServiceTrait};
-use tenant_service::infrastructure::libsql_adapter::LibSqlTenantRepository;
+use tenant_service::application::TenantServiceTrait;
 use validator::Validate;
 
 use crate::error::{BffError, BffResult};
 use crate::middleware::tenant::RequestContext;
-use crate::state::{BffState, DatabaseBackend};
+use crate::state::BffState;
 
 pub fn router() -> Router<BffState> {
     Router::<BffState>::new().route("/api/tenant/init", post(init_tenant))
@@ -50,33 +49,16 @@ pub async fn init_tenant(
         ));
     }
 
-    match state.db.clone() {
-        Some(DatabaseBackend::Embedded(db)) => {
-            let repo = LibSqlTenantRepository::new(db);
-            let service = TenantService::new(repo);
-            let result = service
-                .init_tenant_for_user(&request_context.user_sub, &body.user_name)
-                .await
-                .map_err(|e| BffError::Internal(format!("Failed to initialize tenant: {}", e)))?;
-            Ok(Json(json!({
-                "tenant_id": result.tenant_id,
-                "role": result.role,
-                "created": result.created,
-            })))
-        }
-        Some(DatabaseBackend::Remote(db)) => {
-            let repo = LibSqlTenantRepository::new(db);
-            let service = TenantService::new(repo);
-            let result = service
-                .init_tenant_for_user(&request_context.user_sub, &body.user_name)
-                .await
-                .map_err(|e| BffError::Internal(format!("Failed to initialize tenant: {}", e)))?;
-            Ok(Json(json!({
-                "tenant_id": result.tenant_id,
-                "role": result.role,
-                "created": result.created,
-            })))
-        }
-        None => Err(BffError::Internal("Database not initialized".to_string())),
-    }
+    let service = state
+        .tenant_service()
+        .ok_or_else(|| BffError::Internal("Database not initialized".to_string()))?;
+    let result = service
+        .init_tenant_for_user(&request_context.user_sub, &body.user_name)
+        .await
+        .map_err(|e| BffError::Internal(format!("Failed to initialize tenant: {}", e)))?;
+    Ok(Json(json!({
+        "tenant_id": result.tenant_id,
+        "role": result.role,
+        "created": result.created,
+    })))
 }

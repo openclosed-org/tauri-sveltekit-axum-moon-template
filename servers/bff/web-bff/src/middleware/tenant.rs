@@ -10,6 +10,7 @@
 use axum::{extract::Request, http::StatusCode, middleware::Next, response::Response};
 use contracts_events::ActorRef;
 use jsonwebtoken::{Algorithm, DecodingKey, Validation, dangerous::insecure_decode, decode};
+use observability::current_trace_context;
 use serde::Deserialize;
 
 /// JWT claims — extracts Zitadel-compatible identity fields from the token.
@@ -36,6 +37,8 @@ pub struct RequestContext {
     pub tenant_id: Option<String>,
     pub roles: Vec<String>,
     pub request_id: Option<String>,
+    pub trace_id: Option<String>,
+    pub span_id: Option<String>,
     pub actor: ActorRef,
 }
 
@@ -92,6 +95,7 @@ pub async fn tenant_middleware(mut req: Request, next: Next) -> Result<Response,
         .get("x-request-id")
         .and_then(|value| value.to_str().ok())
         .map(str::to_owned);
+    let trace_context = current_trace_context();
 
     // 4. Inject authenticated request context for downstream handlers.
     req.extensions_mut().insert(RequestContext {
@@ -99,6 +103,10 @@ pub async fn tenant_middleware(mut req: Request, next: Next) -> Result<Response,
         tenant_id,
         roles,
         request_id,
+        trace_id: trace_context
+            .as_ref()
+            .map(|context| context.trace_id.clone()),
+        span_id: trace_context.map(|context| context.span_id),
         actor: ActorRef {
             actor_id: subject.clone(),
             actor_type: "user".to_string(),

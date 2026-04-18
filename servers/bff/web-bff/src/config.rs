@@ -1,9 +1,5 @@
 //! BFF 配置 — 环境变量 + figment 加载。
 
-use figment::{
-    Figment,
-    providers::{Env, Serialized},
-};
 use serde::{Deserialize, Serialize};
 
 /// Web BFF 应用配置。
@@ -37,11 +33,7 @@ pub struct Config {
 impl Config {
     /// 从环境变量加载配置（APP_ 前缀）。
     pub fn from_env() -> anyhow::Result<Self> {
-        let config: Config = Figment::new()
-            .merge(Serialized::defaults(Self::default()))
-            .merge(Env::prefixed("APP_").global())
-            .extract()?;
-        Ok(config)
+        platform::load_config(Self::default(), "APP_", Some("APP_CONFIG_FILE")).map_err(Into::into)
     }
 }
 
