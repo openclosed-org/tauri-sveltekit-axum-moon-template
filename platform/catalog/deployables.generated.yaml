@@ -1,3 +1,14 @@
+- name: counter-service
+  type: server
+  version: 1.0.0
+  description: |
+    Reference counter service — independently deployable unit. Hosts the counter aggregate with CAS versioning, idempotency cache, and unified event outbox. Can be deployed standalone or embedded in a BFF (web-bff).
+  services:
+  - counter-service
+  resources:
+  - turso
+  ports:
+  - 3010
 - name: edge-gateway
   type: gateway
   version: 1.0.0
