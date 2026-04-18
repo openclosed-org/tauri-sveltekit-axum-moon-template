@@ -323,6 +323,9 @@ rules:
         - packages/observability/adapters/**
         - infra/**
         - ops/**
+      except:
+        # Integration tests need concrete adapters (dev-dependencies only).
+        - "services/counter-service:packages/data-adapters/turso"
 
     - name: servers-can-import-services-and-packages
       from: servers/**
