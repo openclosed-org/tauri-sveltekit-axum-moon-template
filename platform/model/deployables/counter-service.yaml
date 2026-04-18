@@ -1,0 +1,47 @@
+name: counter-service
+type: service
+version: 1.0.0
+description: >
+  Reference counter service — independently deployable unit.
+  Hosts the counter aggregate with CAS versioning, idempotency cache,
+  and unified event outbox. Can be deployed standalone or embedded
+  in a BFF (web-bff).
+
+services:
+  - counter-service
+
+runtime_profile: http-latency-sensitive
+statefulness: stateful
+required_identity: stable
+required_storage: local-turso
+scaling_axis:
+  - cpu
+  - request_rate
+  - write_throughput
+failure_domain: counter-primary
+
+resources:
+  - turso
+
+entry_point: servers/bff/web-bff/src/main.rs
+package: web-bff
+
+health_check:
+  path: /healthz
+  port: 3010
+  interval_seconds: 10
+
+ports:
+  - 3010
+
+observability:
+  health_check:
+    endpoint: /healthz
+    interval: 10s
+  readiness_check:
+    endpoint: /readyz
+    interval: 10s
+
+independent_deploy: true
+embedded_in:
+  - web-bff

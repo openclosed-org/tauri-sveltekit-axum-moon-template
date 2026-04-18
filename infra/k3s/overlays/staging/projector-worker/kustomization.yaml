@@ -1,0 +1,40 @@
+# Kustomization — Staging projector-worker overlay
+# Production-like configuration. Requires staging SOPS secrets before deploy.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../../base/configmap-projector-worker.yaml
+  - ../../../base/deployment-projector-worker.yaml
+  # TODO: Create staging SOPS secrets before first deploy
+  # - ../../../security/sops/staging/projector-worker.enc.yaml
+
+namespace: app
+
+commonLabels:
+  app.kubernetes.io/env: staging
+
+patches:
+  - target:
+      kind: Deployment
+      name: projector-worker
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 1
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: PROJECTOR_DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: counter-shared-db-staging
+              key: PROJECTOR_DATABASE_URL
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: PROJECTOR_TURSO_AUTH_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: counter-shared-db-staging
+              key: PROJECTOR_TURSO_AUTH_TOKEN

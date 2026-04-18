@@ -61,6 +61,10 @@ validate-topology:
 verify-replay MODE='warn':
     bun run scripts/verify-replay.ts --mode {{MODE}}
 
+# Verify counter delivery admission path remains executable
+verify-counter-delivery MODE='warn':
+    bun run scripts/verify-counter-delivery.ts --mode {{MODE}}
+
 # ── Security Validation ──────────────────────────────────────
 
 # Validate security configuration
@@ -137,7 +141,10 @@ platform-doctor:
     @echo "10. Generating catalog..."
     just gen-platform || (echo "Catalog generation failed"; exit 1)
     @echo ""
-    @echo "11. Verifying golden baseline..."
+    @echo "11. Verifying counter delivery admission..."
+    just verify-counter-delivery strict || (echo "Counter delivery verification failed"; exit 1)
+    @echo ""
+    @echo "12. Verifying golden baseline..."
     just verify-generated || true
     @echo ""
     @echo "Platform health check passed"

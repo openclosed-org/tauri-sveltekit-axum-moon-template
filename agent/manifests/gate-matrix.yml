@@ -86,6 +86,11 @@ gates:
     label: "Replay verification"
     scope: worker
 
+  verify_counter_delivery:
+    command: ["just", "verify-counter-delivery", "strict"]
+    label: "Counter delivery verification"
+    scope: platform
+
   validate_platform:
     command: ["just", "validate-platform"]
     label: "Platform validation"
@@ -166,6 +171,7 @@ subagent_gates:
       - validate_state
       - validate_workflows
       - validate_topology
+      - verify_counter_delivery
       - verify_generated
       - validate_deps
       - boundary_check

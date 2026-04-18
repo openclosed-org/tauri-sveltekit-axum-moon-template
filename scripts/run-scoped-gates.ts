@@ -82,6 +82,7 @@ const SUBAGENT_GATES: Record<string, SubagentGates> = {
       { label: 'State validation', cmd: 'just', args: ['validate-state', 'strict'] },
       { label: 'Workflow validation', cmd: 'just', args: ['validate-workflows', 'strict'] },
       { label: 'Topology validation', cmd: 'just', args: ['validate-topology'] },
+      { label: 'Counter delivery verification', cmd: 'just', args: ['verify-counter-delivery', 'strict'] },
       { label: 'Generated drift checks', cmd: 'just', args: ['verify-generated'] },
       { label: 'Boundary check', cmd: 'just', args: ['boundary-check'] },
     ],
