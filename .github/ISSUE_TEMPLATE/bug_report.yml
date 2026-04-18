@@ -1,5 +1,5 @@
 name: Bug report
-description: Report a reproducible problem in this template
+description: Report a reproducible problem in the repository
 title: "bug: "
 labels:
   - bug
@@ -24,7 +24,7 @@ body:
       label: Reproduction steps
       description: How can we reproduce it?
       placeholder: |
-        1. Clone template
+        1. Clone repository
         2. Run ...
         3. Observe ...
     validations:

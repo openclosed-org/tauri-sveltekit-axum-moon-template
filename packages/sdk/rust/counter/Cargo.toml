@@ -3,7 +3,7 @@ name = "sdk-counter"
 version = "0.1.0"
 edition = "2024"
 description = "SDK Counter — client-side counter interface (trait + types)"
-license = "MIT"
+license = "Apache-2.0"
 rust-version.workspace = true
 publish = false
 

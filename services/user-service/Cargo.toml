@@ -3,7 +3,7 @@ name = "user-service"
 version = "0.1.0"
 edition = "2024"
 description = "User service — tenant initialization, authentication logic, and user lifecycle management"
-license = "MIT"
+license = "Apache-2.0"
 rust-version.workspace = true
 
 [dependencies]

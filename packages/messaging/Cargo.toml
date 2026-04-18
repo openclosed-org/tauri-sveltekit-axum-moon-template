@@ -3,7 +3,7 @@ name = "event-bus"
 version = "0.1.0"
 edition = "2024"
 description = "Shared event bus: in-memory adapter + Outbox pattern"
-license = "MIT"
+license = "Apache-2.0"
 rust-version.workspace = true
 
 [dependencies]

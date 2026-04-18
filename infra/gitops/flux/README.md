@@ -41,7 +41,7 @@ curl -s https://fluxcd.io/install.sh | sudo bash
 # Bootstrap with GitHub repository
 flux bootstrap github \
   --owner=<your-github-org> \
-  --repository=tauri-sveltekit-axum-moon-template \
+  --repository=axum-harness \
   --branch=main \
   --path=infra/gitops/flux \
   --read-write-key \

@@ -1,5 +1,5 @@
 name: Feature request
-description: Suggest an improvement for this template
+description: Suggest an improvement for the repository
 title: "feat: "
 labels:
   - enhancement
@@ -7,14 +7,14 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for the suggestion. Keep it minimal and template-oriented.
+        Thanks for the suggestion. Keep it focused, evidence-based, and aligned with the repository boundaries.
 
   - type: textarea
     id: problem
     attributes:
       label: Problem statement
       description: What problem does this solve?
-      placeholder: Describe the gap in current template behavior.
+      placeholder: Describe the gap in current repository behavior.
     validations:
       required: true
 
@@ -37,7 +37,7 @@ body:
     attributes:
       label: Scope checks
       options:
-        - label: This is generic enough for a public template.
+        - label: This is generic enough for a public reference repository.
           required: true
         - label: This does not add product-specific business logic.
           required: true

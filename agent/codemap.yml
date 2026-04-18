@@ -1,6 +1,6 @@
 version: 2
 repo:
-  name: boilerplate
+  name: axum-harness
   mode: agent-first-distributed-harness
   purpose: >
     为后端优先的 agent 协作提供稳定目录边界、真理源分层与默认参考锚点，

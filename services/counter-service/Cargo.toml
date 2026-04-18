@@ -3,7 +3,7 @@ name = "counter-service"
 version = "0.1.0"
 edition = "2024"
 description = "Counter domain service: counting, statistics, analytics"
-license = "MIT"
+license = "Apache-2.0"
 rust-version.workspace = true
 
 [dependencies]
