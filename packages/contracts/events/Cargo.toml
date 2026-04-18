@@ -10,6 +10,8 @@ uuid = { workspace = true, features = ["v7", "serde"] }
 serde = { workspace = true }
 utoipa = { workspace = true }
 ts-rs = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
 workspace-hack = { version = "0.1", path = "../../workspace-hack" }
 
 [lints]

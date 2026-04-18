@@ -215,6 +215,34 @@ impl EventEnvelope {
         self.metadata = self.metadata.with_causation_id(causation_id);
         self
     }
+
+    /// Decode a canonical envelope or a legacy bare event payload.
+    pub fn decode(
+        payload: &str,
+        source_service: impl Into<String>,
+    ) -> Result<Self, EventEnvelopeError> {
+        let source_service = source_service.into();
+
+        serde_json::from_str::<EventEnvelope>(payload).or_else(|envelope_error| {
+            serde_json::from_str::<AppEvent>(payload)
+                .map(|event| EventEnvelope::new(event, source_service.clone()))
+                .map_err(|app_event_error| EventEnvelopeError::Deserialize {
+                    envelope_error: envelope_error.to_string(),
+                    app_event_error: app_event_error.to_string(),
+                })
+        })
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum EventEnvelopeError {
+    #[error(
+        "failed to deserialize event envelope: envelope={envelope_error}; app_event={app_event_error}"
+    )]
+    Deserialize {
+        envelope_error: String,
+        app_event_error: String,
+    },
 }
 
 /// Unified application event envelope.
