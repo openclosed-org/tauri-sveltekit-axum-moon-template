@@ -112,6 +112,15 @@
       "type": "array",
       "items": { "type": "integer" },
       "description": "Network ports exposed by this deployable"
+    },
+    "independent_deploy": {
+      "type": "boolean",
+      "description": "Whether this deployable can be deployed independently from its parent"
+    },
+    "embedded_in": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Parent deployables this deployable can be embedded in"
     }
   },
   "additionalProperties": false

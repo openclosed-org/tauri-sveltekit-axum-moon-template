@@ -1,5 +1,5 @@
 name: counter-service
-type: service
+type: server
 version: 1.0.0
 description: >
   Reference counter service — independently deployable unit.
@@ -13,7 +13,7 @@ services:
 runtime_profile: http-latency-sensitive
 statefulness: stateful
 required_identity: stable
-required_storage: local-turso
+required_storage: persistent
 scaling_axis:
   - cpu
   - request_rate
