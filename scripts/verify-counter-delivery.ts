@@ -182,9 +182,9 @@ function main(): number {
   );
   requireContent(
     'platform/model/deployables/counter-service.yaml',
-    /independent_deploy:\s*true/,
+    /current_status:\s*embedded[\s\S]*target_status:\s*independent[\s\S]*embedded_in:\s*\n\s*-\s*web-bff/,
     failures,
-    'counter-service deployable must declare independent_deploy',
+    'counter-service deployable must distinguish current embedded status from independent target status',
   );
   requireContent(
     'platform/model/deployables/projector-worker.yaml',

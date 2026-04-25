@@ -7,10 +7,13 @@ use axum::{
     body::Body,
     http::{self, Request, StatusCode},
 };
+use chrono::Utc;
 use counter_service::infrastructure::LibSqlCounterRepository;
 use http_body_util::BodyExt;
+use mockito::Server;
 use storage_turso::EmbeddedTurso;
 use tower::ServiceExt;
+use user_service::{domain::User, infrastructure::LibSqlUserRepository, ports::UserRepository};
 use web_bff::{create_router, state::BffState};
 
 /// Helper: build test AppState with embedded Turso
@@ -36,6 +39,49 @@ async fn build_test_state() -> BffState {
         .expect("Failed to run counter migration");
 
     BffState::new_with_db(db).await
+}
+
+async fn build_oidc_test_state(issuer: &str, audience: &str) -> BffState {
+    let mut state = build_test_state().await;
+    state.config.jwt_secret = "unused-when-zitadel-is-enabled".to_string();
+    state.config.zitadel_issuer = issuer.to_string();
+    state.config.zitadel_audience = audience.to_string();
+    state
+}
+
+async fn build_introspection_test_state(
+    issuer: &str,
+    audience: &str,
+    client_id: &str,
+    client_secret: &str,
+) -> BffState {
+    let mut state = build_oidc_test_state(issuer, audience).await;
+    state.config.zitadel_introspection_client_id = client_id.to_string();
+    state.config.zitadel_introspection_client_secret = client_secret.to_string();
+    state
+}
+
+async fn build_dev_headers_state() -> BffState {
+    let mut state = build_test_state().await;
+    state.config.auth_mode = "dev_headers".to_string();
+    state
+}
+
+async fn create_user_profile(state: &BffState, user_sub: &str, display_name: &str, email: &str) {
+    let repo = state
+        .user_profile_repository()
+        .expect("user profile repository should be available");
+
+    repo.create_user(&User {
+        id: uuid::Uuid::new_v4().to_string(),
+        user_sub: user_sub.to_string(),
+        display_name: display_name.to_string(),
+        email: Some(email.to_string()),
+        created_at: Utc::now(),
+        last_login_at: Some(Utc::now()),
+    })
+    .await
+    .expect("failed to create test user profile");
 }
 
 /// Extract JSON body from an axum Response
@@ -64,6 +110,48 @@ fn make_test_token(sub: &str) -> String {
             exp: 9999999999,
         },
         &EncodingKey::from_secret(b"test-secret"),
+    )
+    .unwrap()
+}
+
+const TEST_RSA_PRIVATE_KEY: &str = "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDPgCpR4svx5LYk\nyK6M7jAGNu8CtM7Rlq12pnog2ePTZPdj+E9tfhaIHHR9HZgaVfZyfRFcdA4yBN6O\nyOdgN7hSlANEJeUhBRIetkvzGOEpvLiPGisGc1DkYeA4bzTUPizbL77amz2STbMq\n1dSNptv9sr7dB+VSpEfUV66L9Kjvm6x28YqwDDfVwE8mxXzIR3cZOXFJTM/nYhf3\nUZ8oYfqGL8JmCTqai/nkOcpM7qj8CWrtXneSn+FRYMM/TnF3E4tlRYTg/FVOog5+\n8DfIjw9Thf8y8XbVKJPQJt0UCxc/a5Hb/7UTxDl5MVN68BCEvLdbHIHjMV61bn3v\nQUwYVkulAgMBAAECggEAFdAx4rjWWsAB290S6HLTrpuQxbaPNV5DLwFyPkjZl+v5\ny9MbOnXyVW20W0DEsCQQS9nU/OSgZ2a2pMj+9dD1ugygSUY4j5+SV5MvacdYSER0\nHGsSUdPGkbOuWBBsu9ErcwFSbXW7Y8lyR9MBzMBZSRLE2MSPOYBWor5y9XiLV+DT\nky5ri59rRpK8suJLmbvl8PyY6LwC9mrsXAFffe1rJLnFRR3grthXTramvksWPi4T\njUYYCZFEQphZqoMm2/ffwF/22QDACpC/aqxqhdep+I9JPDY13jSLStyKHb7LWwBb\nCZGR2BDP82BZAcbUeQXud1A6LIo35Arn+luomDOWcQKBgQD1cu10c3+130GxZJD4\nd9C4Ou5rUhNbzrICoQuefHiEpQMngOffS9Pl3A3UnIQWrddjG4cUlVcefbNzzljA\nGishXSegzMT0J8CaVtRgFQhw0xWjJnBA+q4zmpU/6SaqkyitewvsqOtMwSOVBPXr\n3v1rPf9gs4SrcTiQWF4L4acfDQKBgQDYa6GXVyMAVmYeeCsGCCLH0+MrqzO+D+K4\nKn4hP3g8x+23HufObupibupEGDRzFTOoKXka8984XNw2a6Jjrf8cC+FaL9bz7sxs\nSDgv1JbrfBm2+Xta4m7gIRBXlCCGGLe3JETwbnbmusFQd/Paq90BasRNzZTdsPFH\nJiBu6Gd4+QKBgC9vyMiq0dHalh2sq//5WBNjAFUphahGqEytx0sYD0rDgXqPBUE4\nrHlOMDYZEcY4TtpOpaqqui2gaaBGDw0BgbhvAounR6FQVX7+rQjsx7bWdOYVNbi5\nOhWrGJFDhD+PNVth3oock21AHppcXRL7A8tILiUITOm9dgsfqP1u3Re5AoGALuAp\nMPGDuEf+eG0IzJaoieXAF65OV8VzEvbJOQRZU7juKTK9fL4TcFyby0H+4kpeVPce\nrxLRb5DVdcgcdUCzt+xu1Cz2fwFjL7T4zotaYQkRPMuOx2GyKEOhGYcRAFqMOFPX\nxsf2YwViZ76DiAKfrPXmLP/xVY9Ew2djsQIPn2kCgYEAhhR9JAqyruqOjCobZsBy\n9NCOYY8g6qmfdwcKDPslXa43d24RYJXXk33b51EQLgHT7/1jB+Y87GgBHLNsLk4Q\njF1oOS7bOdeloMElpj8oqDTIScrC1lT6y/bE4Wn3Kv8nRBegLZCtHVRll8yejwn7\nAsDT6h7HYx8KBJmjJnRTBBo=\n-----END PRIVATE KEY-----\n";
+
+const TEST_JWKS: &str = r#"{
+  "keys": [
+    {
+      "kty": "RSA",
+      "kid": "zitadel-test-key",
+      "alg": "RS256",
+      "use": "sig",
+      "n": "z4AqUeLL8eS2JMiujO4wBjbvArTO0ZatdqZ6INnj02T3Y_hPbX4WiBx0fR2YGlX2cn0RXHQOMgTejsjnYDe4UpQDRCXlIQUSHrZL8xjhKby4jxorBnNQ5GHgOG801D4s2y--2ps9kk2zKtXUjabb_bK-3QflUqRH1Feui_So75usdvGKsAw31cBPJsV8yEd3GTlxSUzP52IX91GfKGH6hi_CZgk6mov55DnKTO6o_Alq7V53kp_hUWDDP05xdxOLZUWE4PxVTqIOfvA3yI8PU4X_MvF21SiT0CbdFAsXP2uR2_-1E8Q5eTFTevAQhLy3WxyB4zFetW5970FMGFZLpQ",
+      "e": "AQAB"
+    }
+  ]
+}"#;
+
+fn make_zitadel_test_token(sub: &str, issuer: &str, audience: &str) -> String {
+    use jsonwebtoken::{Algorithm, EncodingKey, Header, encode};
+
+    #[derive(serde::Serialize)]
+    struct Claims {
+        sub: String,
+        exp: usize,
+        iss: String,
+        aud: String,
+    }
+
+    let mut header = Header::new(Algorithm::RS256);
+    header.kid = Some("zitadel-test-key".to_string());
+
+    encode(
+        &header,
+        &Claims {
+            sub: sub.to_string(),
+            exp: 9_999_999_999,
+            iss: issuer.to_string(),
+            aud: audience.to_string(),
+        },
+        &EncodingKey::from_rsa_pem(TEST_RSA_PRIVATE_KEY.as_bytes()).unwrap(),
     )
     .unwrap()
 }
@@ -150,6 +238,9 @@ async fn api_route_without_auth_returns_401() {
         .unwrap();
 
     assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+    let body: serde_json::Value = body_to_json(response).await;
+    assert_eq!(body.get("code").unwrap(), "Unauthorized");
+    assert_eq!(body.get("message").unwrap(), "Missing bearer token");
 }
 
 #[tokio::test]
@@ -171,6 +262,9 @@ async fn api_route_with_invalid_jwt_returns_401() {
         .unwrap();
 
     assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+    let body: serde_json::Value = body_to_json(response).await;
+    assert_eq!(body.get("code").unwrap(), "Unauthorized");
+    assert_eq!(body.get("message").unwrap(), "Invalid bearer token");
 }
 
 #[tokio::test]
@@ -193,6 +287,358 @@ async fn api_route_with_valid_jwt_and_missing_fields_returns_400() {
         .unwrap();
 
     assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+}
+
+#[tokio::test]
+async fn api_route_accepts_zitadel_jwks_token() {
+    let mut oidc = Server::new_async().await;
+    let discovery_body = serde_json::json!({
+        "jwks_uri": format!("{}/oauth/v2/keys", oidc.url()),
+    });
+    let _discovery = oidc
+        .mock("GET", "/.well-known/openid-configuration")
+        .with_status(200)
+        .with_header("content-type", "application/json")
+        .with_body(discovery_body.to_string())
+        .create();
+    let _jwks = oidc
+        .mock("GET", "/oauth/v2/keys")
+        .with_status(200)
+        .with_header("content-type", "application/json")
+        .with_body(TEST_JWKS)
+        .create();
+
+    let audience = "web-bff-local";
+    let state = build_oidc_test_state(&oidc.url(), audience).await;
+    let app = create_router(state);
+    let token = make_zitadel_test_token("zitadel-user", &oidc.url(), audience);
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/tenant/init")
+                .method(http::Method::POST)
+                .header(http::header::AUTHORIZATION, format!("Bearer {token}"))
+                .header(http::header::CONTENT_TYPE, "application/json")
+                .body(Body::from(
+                    r#"{"user_sub":"zitadel-user","user_name":"Zitadel User"}"#,
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn api_route_rejects_zitadel_token_with_wrong_audience() {
+    let mut oidc = Server::new_async().await;
+    let discovery_body = serde_json::json!({
+        "jwks_uri": format!("{}/oauth/v2/keys", oidc.url()),
+    });
+    let _discovery = oidc
+        .mock("GET", "/.well-known/openid-configuration")
+        .with_status(200)
+        .with_header("content-type", "application/json")
+        .with_body(discovery_body.to_string())
+        .create();
+    let _jwks = oidc
+        .mock("GET", "/oauth/v2/keys")
+        .with_status(200)
+        .with_header("content-type", "application/json")
+        .with_body(TEST_JWKS)
+        .create();
+
+    let state = build_oidc_test_state(&oidc.url(), "expected-aud").await;
+    let app = create_router(state);
+    let token = make_zitadel_test_token("zitadel-user", &oidc.url(), "wrong-aud");
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/tenant/init")
+                .method(http::Method::POST)
+                .header(http::header::AUTHORIZATION, format!("Bearer {token}"))
+                .header(http::header::CONTENT_TYPE, "application/json")
+                .body(Body::from(
+                    r#"{"user_sub":"zitadel-user","user_name":"Zitadel User"}"#,
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn api_route_accepts_opaque_token_via_zitadel_introspection() {
+    let mut oidc = Server::new_async().await;
+    let _introspect = oidc
+        .mock("POST", "/oauth/v2/introspect")
+        .match_header("authorization", "Basic YXBpLWNsaWVudDphcGktc2VjcmV0")
+        .match_body(mockito::Matcher::AllOf(vec![
+            mockito::Matcher::UrlEncoded("token".into(), "opaque-token".into()),
+            mockito::Matcher::UrlEncoded("token_type_hint".into(), "access_token".into()),
+        ]))
+        .with_status(200)
+        .with_header("content-type", "application/json")
+        .with_body(
+            serde_json::json!({
+                "active": true,
+                "sub": "opaque-user",
+                "iss": oidc.url(),
+                "aud": ["web-bff-local"],
+            })
+            .to_string(),
+        )
+        .create();
+
+    let state =
+        build_introspection_test_state(&oidc.url(), "web-bff-local", "api-client", "api-secret")
+            .await;
+    let app = create_router(state);
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/tenant/init")
+                .method(http::Method::POST)
+                .header(http::header::AUTHORIZATION, "Bearer opaque-token")
+                .header(http::header::CONTENT_TYPE, "application/json")
+                .body(Body::from(
+                    r#"{"user_sub":"opaque-user","user_name":"Opaque User"}"#,
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn api_route_accepts_dev_headers_without_bearer_token() {
+    let state = build_dev_headers_state().await;
+    let app = create_router(state);
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/tenant/init")
+                .method(http::Method::POST)
+                .header("x-dev-user-sub", "dev-header-user")
+                .header(http::header::CONTENT_TYPE, "application/json")
+                .body(Body::from(
+                    r#"{"user_sub":"dev-header-user","user_name":"Dev Header User"}"#,
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn counter_endpoints_work_with_dev_headers_after_tenant_init() {
+    let state = build_dev_headers_state().await;
+    let app = create_router(state);
+
+    let init_response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/tenant/init")
+                .method(http::Method::POST)
+                .header("x-dev-user-sub", "dev-counter-user")
+                .header(http::header::CONTENT_TYPE, "application/json")
+                .body(Body::from(
+                    r#"{"user_sub":"dev-counter-user","user_name":"Dev Counter User"}"#,
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(init_response.status(), StatusCode::OK);
+
+    let increment_response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/counter/increment")
+                .method(http::Method::POST)
+                .header("x-dev-user-sub", "dev-counter-user")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(increment_response.status(), StatusCode::OK);
+
+    let value_response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/counter/value")
+                .method(http::Method::GET)
+                .header("x-dev-user-sub", "dev-counter-user")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(value_response.status(), StatusCode::OK);
+    let value_body: serde_json::Value = body_to_json(value_response).await;
+    assert_eq!(value_body.get("value").unwrap(), 1);
+}
+
+#[tokio::test]
+async fn user_me_requires_authenticated_request_context() {
+    let state = build_test_state().await;
+    let app = create_router(state);
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/user/me")
+                .method(http::Method::GET)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+    let body: serde_json::Value = body_to_json(response).await;
+    assert_eq!(body.get("code").unwrap(), "Unauthorized");
+    assert_eq!(body.get("message").unwrap(), "Missing bearer token");
+}
+
+#[tokio::test]
+async fn user_me_returns_not_found_when_profile_does_not_exist() {
+    let state = build_dev_headers_state().await;
+    let app = create_router(state);
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/user/me")
+                .method(http::Method::GET)
+                .header("x-dev-user-sub", "missing-profile-user")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    let body: serde_json::Value = body_to_json(response).await;
+    assert_eq!(body.get("code").unwrap(), "NotFound");
+    assert_eq!(body.get("message").unwrap(), "User not found");
+}
+
+#[tokio::test]
+async fn user_me_returns_profile_when_user_exists() {
+    let state = build_dev_headers_state().await;
+    create_user_profile(
+        &state,
+        "existing-profile-user",
+        "Existing Profile User",
+        "existing@example.com",
+    )
+    .await;
+    let app = create_router(state);
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/user/me")
+                .method(http::Method::GET)
+                .header("x-dev-user-sub", "existing-profile-user")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body: serde_json::Value = body_to_json(response).await;
+    assert_eq!(body.get("user_sub").unwrap(), "existing-profile-user");
+    assert_eq!(body.get("display_name").unwrap(), "Existing Profile User");
+    assert_eq!(body.get("email").unwrap(), "existing@example.com");
+    assert!(body.get("created_at").is_some());
+    assert!(body.get("last_login_at").is_some());
+}
+
+#[tokio::test]
+async fn user_tenants_returns_empty_array_without_binding() {
+    let state = build_dev_headers_state().await;
+    let app = create_router(state);
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/user/tenants")
+                .method(http::Method::GET)
+                .header("x-dev-user-sub", "no-binding-user")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body: serde_json::Value = body_to_json(response).await;
+    assert_eq!(body, serde_json::json!([]));
+}
+
+#[tokio::test]
+async fn user_tenants_returns_binding_after_tenant_init() {
+    let state = build_dev_headers_state().await;
+    let app = create_router(state);
+
+    let init_response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/tenant/init")
+                .method(http::Method::POST)
+                .header("x-dev-user-sub", "tenant-reader-user")
+                .header(http::header::CONTENT_TYPE, "application/json")
+                .body(Body::from(
+                    r#"{"user_sub":"tenant-reader-user","user_name":"Tenant Reader User"}"#,
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(init_response.status(), StatusCode::OK);
+    let init_body: serde_json::Value = body_to_json(init_response).await;
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/user/tenants")
+                .method(http::Method::GET)
+                .header("x-dev-user-sub", "tenant-reader-user")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body: serde_json::Value = body_to_json(response).await;
+    let items = body.as_array().expect("expected tenants array");
+    assert_eq!(items.len(), 1);
+    assert_eq!(
+        items[0].get("tenant_id").unwrap(),
+        init_body.get("tenant_id").unwrap()
+    );
+    assert_eq!(items[0].get("tenant_name").unwrap(), "Tenant Reader User");
+    assert_eq!(items[0].get("role").unwrap(), "owner");
+    assert!(items[0].get("joined_at").is_some());
 }
 
 #[tokio::test]
@@ -304,6 +750,12 @@ async fn tenant_init_rejects_jwt_sub_mismatch() {
         .unwrap();
 
     assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+    let body: serde_json::Value = body_to_json(response).await;
+    assert_eq!(body.get("code").unwrap(), "Unauthorized");
+    assert_eq!(
+        body.get("message").unwrap(),
+        "JWT subject does not match requested user_sub"
+    );
 }
 
 // ─── Cross-Tenant Isolation ──────────────────────────────────────────────────
@@ -386,6 +838,12 @@ async fn counter_endpoints_require_existing_user_tenant_binding() {
         "Expected 401 but got {}: {body_str}",
         status
     );
+    let body: serde_json::Value = serde_json::from_slice(&body_bytes).unwrap();
+    assert_eq!(body.get("code").unwrap(), "Unauthorized");
+    assert_eq!(
+        body.get("message").unwrap(),
+        "No tenant binding found for authenticated user"
+    );
 }
 
 #[tokio::test]
@@ -456,6 +914,47 @@ async fn counter_endpoints_resolve_real_tenant_binding_after_init() {
     assert_eq!(value_body.get("value").unwrap(), 1);
 }
 
+#[tokio::test]
+async fn counter_endpoints_continue_to_work_after_repeated_tenant_init() {
+    let state = build_test_state().await;
+    let app = create_router(state);
+    let token = make_test_token("repeat-init-user");
+
+    for _ in 0..2 {
+        let response = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/api/tenant/init")
+                    .method(http::Method::POST)
+                    .header(http::header::AUTHORIZATION, format!("Bearer {token}"))
+                    .header(http::header::CONTENT_TYPE, "application/json")
+                    .body(Body::from(
+                        r#"{"user_sub":"repeat-init-user","user_name":"Repeat Init"}"#,
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+    }
+
+    let increment_response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/counter/increment")
+                .method(http::Method::POST)
+                .header(http::header::AUTHORIZATION, format!("Bearer {token}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(increment_response.status(), StatusCode::OK);
+}
+
 // ─── Request Validation ──────────────────────────────────────────────────────
 
 #[tokio::test]
@@ -479,6 +978,15 @@ async fn tenant_init_rejects_empty_user_sub() {
 
     // Now returns 422 (Unprocessable Entity) due to validator
     assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    let body: serde_json::Value = body_to_json(response).await;
+    assert_eq!(body.get("code").unwrap(), "ValidationError");
+    assert!(
+        body.get("message")
+            .unwrap()
+            .as_str()
+            .unwrap()
+            .contains("user_sub")
+    );
 }
 
 #[tokio::test]
@@ -502,6 +1010,15 @@ async fn tenant_init_rejects_empty_user_name() {
 
     // Now returns 422 (Unprocessable Entity) due to validator
     assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    let body: serde_json::Value = body_to_json(response).await;
+    assert_eq!(body.get("code").unwrap(), "ValidationError");
+    assert!(
+        body.get("message")
+            .unwrap()
+            .as_str()
+            .unwrap()
+            .contains("user_name")
+    );
 }
 
 #[tokio::test]
@@ -523,6 +1040,56 @@ async fn tenant_init_rejects_missing_content_type() {
         .unwrap();
 
     assert_eq!(response.status(), StatusCode::UNSUPPORTED_MEDIA_TYPE);
+    let body: serde_json::Value = body_to_json(response).await;
+    assert_eq!(body.get("code").unwrap(), "BadRequest");
+    assert_eq!(
+        body.get("message").unwrap(),
+        "Expected content-type: application/json"
+    );
+}
+
+#[tokio::test]
+async fn counter_endpoint_rejects_tenant_claim_mismatch_with_forbidden_contract() {
+    let state = build_dev_headers_state().await;
+    let app = create_router(state);
+
+    let init_response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/tenant/init")
+                .method(http::Method::POST)
+                .header("x-dev-user-sub", "claim-mismatch-user")
+                .header(http::header::CONTENT_TYPE, "application/json")
+                .body(Body::from(
+                    r#"{"user_sub":"claim-mismatch-user","user_name":"Claim Mismatch"}"#,
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(init_response.status(), StatusCode::OK);
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/counter/value")
+                .method(http::Method::GET)
+                .header("x-dev-user-sub", "claim-mismatch-user")
+                .header("x-dev-tenant-id", "tenant-other")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::FORBIDDEN);
+    let body: serde_json::Value = body_to_json(response).await;
+    assert_eq!(body.get("code").unwrap(), "Forbidden");
+    assert_eq!(
+        body.get("message").unwrap(),
+        "Tenant claim does not match authenticated user binding"
+    );
 }
 
 // ─── CORS Headers ────────────────────────────────────────────────────────────
@@ -644,8 +1211,11 @@ async fn tenant_init_with_malformed_json_body() {
         .await
         .unwrap();
 
-    // Axum returns 400 for malformed JSON (before it reaches the handler)
+    // ContractJson maps malformed JSON into the public error contract.
     assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    let body: serde_json::Value = body_to_json(response).await;
+    assert_eq!(body.get("code").unwrap(), "BadRequest");
+    assert_eq!(body.get("message").unwrap(), "Malformed JSON request body");
 }
 
 #[tokio::test]

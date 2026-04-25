@@ -144,4 +144,36 @@ mod tests {
                 .unwrap()
         );
     }
+
+    #[tokio::test]
+    async fn seeded_member_and_counter_permissions_can_be_checked() {
+        let authz = MockAuthzAdapter::strict();
+        authz
+            .seed(vec![
+                AuthzTupleKey::new("user:bound-user", "owner", "tenant:tenant-123"),
+                AuthzTupleKey::new("user:bound-user", "member", "tenant:tenant-123"),
+                AuthzTupleKey::new("user:bound-user", "can_read", "counter:tenant-123"),
+                AuthzTupleKey::new("user:bound-user", "can_write", "counter:tenant-123"),
+            ])
+            .await;
+
+        assert!(
+            authz
+                .check("user:bound-user", "member", "tenant:tenant-123")
+                .await
+                .unwrap()
+        );
+        assert!(
+            authz
+                .check("user:bound-user", "can_read", "counter:tenant-123")
+                .await
+                .unwrap()
+        );
+        assert!(
+            authz
+                .check("user:bound-user", "can_write", "counter:tenant-123")
+                .await
+                .unwrap()
+        );
+    }
 }

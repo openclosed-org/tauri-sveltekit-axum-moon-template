@@ -19,6 +19,29 @@ deploy-dev-full:
     podman compose -f infra/docker/compose/observability.yaml up -d
     @echo "OpenObserve UI: http://localhost:5080 (admin@localhost / admin)"
 
+# Start local auth stack (Zitadel + OpenFGA)
+auth-up:
+    @echo "Starting local auth stack..."
+    bash infra/local/scripts/bootstrap-auth.sh up
+
+# Bootstrap local auth stack and write runtime env scaffold
+auth-bootstrap:
+    @echo "Bootstrapping local auth stack..."
+    bash infra/local/scripts/bootstrap-auth.sh bootstrap
+
+# Stop local auth stack
+auth-down:
+    @echo "Stopping local auth stack..."
+    bash infra/local/scripts/bootstrap-auth.sh down
+
+# Inspect local auth stack status
+auth-status:
+    bash infra/local/scripts/bootstrap-auth.sh status
+
+# Follow local auth stack logs
+auth-logs:
+    bash infra/local/scripts/bootstrap-auth.sh logs
+
 # Stop all dev services
 stop-dev:
     @echo "Stopping dev infrastructure..."

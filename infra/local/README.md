@@ -6,18 +6,21 @@
 
 - status: `implemented`
 - 角色：本地基础依赖承载层
-- 说明：这里负责把 NATS、Valkey、MinIO 和可选 sqld 等基础设施拉起，但它不是 `.env` 教程目录
+- 说明：这里负责把 NATS、Valkey、MinIO、可选 sqld，以及本地 auth 栈（Zitadel/OpenFGA）拉起，但它不是 `.env` 教程目录
 
 ## 责任
 
 1. 提供本地基础依赖的启动、停止、状态与日志入口。
 2. 复用 `infra/docker/compose/core.yaml` 管理开发期基础设施。
 3. 为 `counter-service` 默认参考链提供最小本地承载环境。
+4. 为 `web-bff` Phase 5 本地验证提供 `Zitadel + OpenFGA` 资源服务器闭环。
 
 ## 入口
 
 1. `scripts/bootstrap.sh`：默认本地基础设施入口。
+2. `scripts/bootstrap-auth.sh`：本地 auth 栈入口。
 2. `../docker/compose/core.yaml`：核心基础依赖定义。
+3. `../docker/compose/auth.yaml`：本地 auth 栈定义。
 3. `../../docs/operations/local-dev.md`：本地开发主说明。
 4. `../../justfiles/sops.just`：本地 secrets 注入默认入口。
 
@@ -28,6 +31,11 @@ bash infra/local/scripts/bootstrap.sh up
 bash infra/local/scripts/bootstrap.sh status
 bash infra/local/scripts/bootstrap.sh logs
 bash infra/local/scripts/bootstrap.sh down
+
+bash infra/local/scripts/bootstrap-auth.sh bootstrap
+bash infra/local/scripts/bootstrap-auth.sh status
+bash infra/local/scripts/bootstrap-auth.sh logs
+bash infra/local/scripts/bootstrap-auth.sh down
 ```
 
 当前脚本会管理的核心依赖包括：
@@ -36,6 +44,7 @@ bash infra/local/scripts/bootstrap.sh down
 2. Valkey
 3. MinIO
 4. 可选的 sqld/libSQL client-server 形态
+5. 可选的本地 auth 栈：`Zitadel + OpenFGA`
 
 ## 验证
 

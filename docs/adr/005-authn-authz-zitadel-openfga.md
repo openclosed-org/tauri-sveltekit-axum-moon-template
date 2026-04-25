@@ -2,12 +2,12 @@
 
 ## Status
 - [x] Proposed
-- [x] Accepted
+- [ ] Accepted
 - [ ] Deprecated
 - [ ] Superseded
 
-> **Implementation Status**: Only mock OAuth provider and JWT/session repositories are implemented.
-> Zitadel integration and OpenFGA adapter are deferred. Do not assume production auth is available.
+> **Implementation Status**: Local Zitadel resource-server validation, OpenFGA adapter, and Podman bootstrap scripts now exist for optional local/backend auth flows.
+> They are not the default backend admission path. The canonical backend reference remains the counter chain, and auth stays an optional lane.
 
 ## Context
 The system needs robust authentication and authorization capabilities that support:
@@ -27,11 +27,11 @@ Building auth from scratch is risky and time-consuming. Options considered:
 5. **Supabase Auth**: Easy but limited customization
 
 ## Decision
-We selected **Zitadel for Authentication** and **OpenFGA for Authorization**:
+We keep **Zitadel + OpenFGA** as the preferred future auth platform direction, but it is not yet part of the default backend reference path.
 
 ### Authentication (Zitadel)
 - OIDC/OAuth2 compliant: Standard protocols
-- Multi-tenancy: Native tenant support
+- Multi-tenancy: a target capability, not a current repository guarantee
 - User management: Registration, password reset, MFA
 - Session management: Secure session handling
 - Self-hosted: Full control over user data
@@ -45,7 +45,7 @@ We selected **Zitadel for Authentication** and **OpenFGA for Authorization**:
 - Fast: Sub-millisecond authorization decisions
 - Self-hosted: No external API calls
 - DSL: Clear policy language
-- Auditable: Decision logging and tracing
+- Auditable: a target capability, not a current repository guarantee
 
 ### Implementation Strategy
 ```
@@ -72,8 +72,9 @@ services/auth-service/
 
 ### Development vs Production
 - **Development**: MockOAuthProvider for local testing
-- **Production**: Replace with Zitadel + real OAuth providers
-- **Authorization**: OpenFGA for both dev (embedded) and prod (clustered)
+- **Backend-first local development**: `web-bff` may use `APP_AUTH_MODE=dev_headers` to debug handler/service flows without OAuth bootstrap
+- **Production**: Replace with Zitadel + real OAuth providers when auth becomes part of the chosen deployable path
+- **Authorization**: OpenFGA is available as an optional integration path, not a default prerequisite for the primary backend lane
 
 ### Rationale
 1. **Security**: Auth is critical; battle-tested solutions are safer
@@ -84,8 +85,8 @@ services/auth-service/
 
 ## Consequences
 ### What becomes easier
-- Multi-tenancy: Native support from Zitadel
-- Fine-grained authZ: OpenFGA relationship tuples
+- Future multi-tenancy integration once auth platform work is actually scheduled
+- Fine-grained authZ once OpenFGA integration is actually implemented
 - Local dev: MockOAuthProvider for testing
 - Security: OIDC standard, proven implementations
 - Auditing: OpenFGA decision logs
@@ -104,8 +105,10 @@ services/auth-service/
 - ✅ JWT token repository implemented
 - ✅ LibSQL session repository implemented
 - ✅ MockOAuthProvider for development
-- ⏳ Production OAuth provider (Zitadel integration) deferred
-- ⏳ OpenFGA adapter deferred
+- ✅ `web-bff` supports Zitadel OIDC/JWKS and introspection-based resource-server validation
+- ✅ `packages/authz` includes an OpenFGA adapter
+- ✅ Local Podman bootstrap exists for Zitadel + OpenFGA (`infra/docker/compose/auth.yaml`, `infra/local/scripts/bootstrap-auth.sh`)
+- ⏳ Interactive end-user frontend OIDC login is still not the default repository path
 
 ## References
 - `services/auth-service/src/infrastructure/` - Auth infrastructure adapters

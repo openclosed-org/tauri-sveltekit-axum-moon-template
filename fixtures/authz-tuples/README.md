@@ -1,7 +1,7 @@
-# Authorization Tuples — OpenFGA 种子数据
+# Authorization Tuples — OpenFGA / MockAuthz 种子数据
 
-> Phase 5: authz 已正式接入，MockAuthzAdapter 使用这些元组作为 dev/test 种子。
-> 当 OpenFGA 实例部署后，这些元组通过 `write_tuple` API 写入 OpenFGA store。
+> Phase 5 当前已补齐仓库内集成面：`counter` 路径会真实调用 `AuthzPort`，`web-bff` 可在 `MockAuthzAdapter` 与 `OpenFGA` adapter 间切换。
+> 当 OpenFGA 实例部署后，这些元组可通过 `write_tuple` API 写入 OpenFGA store；在 dev/test 中，`tenant/init` 也会向当前 authz adapter 写入最小授权元组。
 
 ## 授权模型
 

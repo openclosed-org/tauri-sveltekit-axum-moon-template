@@ -5,10 +5,12 @@
 
 pub mod mock;
 pub mod model;
+pub mod openfga;
 pub mod ports;
 
 pub use mock::MockAuthzAdapter;
 pub use model::{AuthorizationModel, RelationDefinition, TypeDefinition};
+pub use openfga::{OpenFgaAdapter, OpenFgaConfig};
 pub use ports::{AuthzError, AuthzPort, AuthzTuple, AuthzTupleKey};
 
 #[cfg(test)]

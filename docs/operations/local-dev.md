@@ -9,9 +9,21 @@
 当前本地开发应优先理解为两层：
 
 1. 基础依赖层：`infra/local/scripts/bootstrap.sh` 管理 NATS、Valkey、MinIO，以及可选的 sqld 相关基础设施。
-2. 应用运行层：通过 `just` / `moon` 启动 `web-bff`、其他 BFF 或需要的开发进程。
+2. 本地 auth 层：`infra/local/scripts/bootstrap-auth.sh` 管理 `Zitadel + OpenFGA`，用于 Phase 5 本地闭环。
+3. 应用运行层：通过 `just` / `moon` 启动 `web-bff`、其他 BFF 或需要的开发进程。
 
 后端默认入口不是 `.env` 驱动的全仓库教程，而是围绕 `counter-service` 主链建立的最小本地闭环。
+
+当前对 auth 的推荐理解也应分层：
+
+1. `counter-service + tenant-service + web-bff` 是默认后端主链。
+2. `Zitadel + OpenFGA` 是可选增强，不应成为所有本地后端开发的前提。
+3. 若当前任务只关心后端 handler / service / contracts，可优先使用 `APP_AUTH_MODE=dev_headers` 做本地接口调试。
+
+当前本地与 CI 的验证入口也按这两条 lane 区分：
+
+1. 默认主链：`just verify-backend-primary` + `just test-backend-primary`
+2. 可选 auth lane：`just verify-auth-optional` + `just test-auth-optional`
 
 ## 2. 推荐阅读顺序
 
@@ -22,6 +34,7 @@
 3. `justfiles/dev.just`
 4. `justfiles/sops.just`
 5. `infra/local/scripts/bootstrap.sh`
+6. `infra/local/scripts/bootstrap-auth.sh`
 
 ## 3. 当前真实入口
 
@@ -47,12 +60,20 @@ bash infra/local/scripts/bootstrap.sh up
 bash infra/local/scripts/bootstrap.sh status
 ```
 
+当任务涉及本地 `Zitadel/OpenFGA` 时，再额外启动：
+
+```bash
+bash infra/local/scripts/bootstrap-auth.sh bootstrap
+source infra/local/generated/auth.env
+```
+
 脚本当前会管理的核心依赖包括：
 
 1. NATS
 2. Valkey
 3. MinIO
 4. 可选的 Turso/libSQL client-server 模式相关端口信息
+5. 可选的本地 auth 栈：`http://localhost:8082` (Zitadel), `http://localhost:8081` (OpenFGA)
 
 需要注意：
 
@@ -68,6 +89,9 @@ just dev
 just dev-web
 just dev-api
 just dev-admin-bff
+just auth-bootstrap
+just auth-up
+just auth-down
 ```
 
 其中：
@@ -75,6 +99,47 @@ just dev-admin-bff
 1. `just dev-web` 对应 web 开发主路径。
 2. `just dev-api` 是更贴近后端默认视角的入口之一。
 3. 是否需要同时启动前端壳层，取决于当前任务，不应作为所有后端任务的默认要求。
+4. `just auth-bootstrap` 会把本地 `Zitadel/OpenFGA` 起起来，并生成 `infra/local/generated/auth.env` 供 `web-bff` 直接读取。
+5. `just verify-backend-primary` / `just test-backend-primary` 对应默认后端 admission lane。
+6. `just verify-auth-optional` / `just test-auth-optional` 仅在 auth lane 变更时需要额外运行。
+
+### 3.3.1 后端优先的最小调试模式
+
+如果当前任务只围绕后端接口、tenant flow、counter flow，而不希望被 `web` / `tauri` / `Zitadel` 阻塞，可以直接使用：
+
+```bash
+export APP_DATABASE_URL=file:./.data/web-bff.db
+export APP_AUTH_MODE=dev_headers
+cargo run -p web-bff
+```
+
+此时受保护 API 可以通过本地开发头注入身份：
+
+```bash
+curl -X POST http://localhost:3010/api/tenant/init \
+  -H 'content-type: application/json' \
+  -H 'x-dev-user-sub: local-dev-user' \
+  -d '{"user_sub":"local-dev-user","user_name":"Local Dev"}'
+
+curl http://localhost:3010/api/counter/value \
+  -H 'x-dev-user-sub: local-dev-user'
+```
+
+可选开发头：
+
+1. `x-dev-user-sub`：必填，本地用户标识。
+2. `x-dev-tenant-id`：可选，若已知 tenant id 可显式传入；通常不需要，`tenant/init` 后会从数据库绑定解析。
+3. `x-dev-user-roles`：可选，逗号分隔角色，仅用于本地调试上下文。
+
+这个模式的目标不是替代真实 auth，而是降低后端开发、接口测试、issue 复现的成本。
+
+当前 `web-bff` 受保护接口的本地错误矩阵也应按统一契约理解：
+
+1. `401 Unauthorized`：缺少 bearer token、token 无效，或缺少 authenticated request context。
+2. `403 Forbidden`：tenant claim 与持久化 tenant binding 不一致，或 authz check 明确拒绝。
+3. `404 NotFound`：`GET /api/user/me` 的当前用户尚无 profile 记录。
+4. `415 BadRequest(code) + HTTP 415`：`POST /api/tenant/init` 未提供 `application/json`。
+5. `422 ValidationError`：`tenant/init` 请求体字段缺失或校验失败。
 
 ### 3.4 本地 secrets 注入
 
@@ -90,6 +155,7 @@ just sops-run DEPLOYABLE=projector-worker ENV=dev CMD='cargo run -p projector-wo
 
 1. 这与集群中的 `SOPS -> Kustomize/Flux` 路径保持环境变量形状一致。
 2. 可以避免本地路径和交付路径分叉得过早。
+3. 若要走本地 Podman auth 栈，可先 `source infra/local/generated/auth.env`，再用 host-process 或 `just sops-run` 启动 `web-bff`。
 
 ## 4. 以 counter 参考链理解本地开发
 

@@ -1,0 +1,106 @@
+# Podman Compose — Local Auth Stack (Zitadel + OpenFGA)
+#
+# Usage:
+#   podman compose -f infra/docker/compose/auth.yaml up -d
+#   podman compose -f infra/docker/compose/auth.yaml down
+#
+# Notes:
+# - This is a local-only single-node stack.
+# - `bootstrap-auth.sh` provisions OpenFGA store/model and can scaffold Zitadel resources.
+
+services:
+  zitadel-postgres:
+    image: postgres:17.2-alpine
+    environment:
+      - POSTGRES_DB=zitadel
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - "5434:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d zitadel -U postgres"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 15s
+    volumes:
+      - zitadel-postgres-data:/var/lib/postgresql/data
+
+  zitadel:
+    image: ghcr.io/zitadel/zitadel:v4.13.0
+    command: start-from-init --masterkey "MasterkeyNeedsToHave32Characters"
+    environment:
+      - ZITADEL_PORT=8080
+      - ZITADEL_EXTERNALDOMAIN=localhost
+      - ZITADEL_EXTERNALPORT=8082
+      - ZITADEL_EXTERNALSECURE=false
+      - ZITADEL_TLS_ENABLED=false
+      - ZITADEL_DATABASE_POSTGRES_DSN=postgresql://postgres:postgres@zitadel-postgres:5432/zitadel?sslmode=disable
+      - ZITADEL_FIRSTINSTANCE_ORG_HUMAN_USERNAME=zitadel-admin
+      - ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORD=Password1!
+      - ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORDCHANGEREQUIRED=false
+      - ZITADEL_FIRSTINSTANCE_ORG_HUMAN_EMAIL_VERIFIED=true
+      - ZITADEL_FIRSTINSTANCE_PATPATH=/zitadel/bootstrap/admin.pat
+      - ZITADEL_FIRSTINSTANCE_ORG_MACHINE_MACHINE_USERNAME=bootstrap-admin
+      - ZITADEL_FIRSTINSTANCE_ORG_MACHINE_MACHINE_NAME=Bootstrap Admin
+      - ZITADEL_FIRSTINSTANCE_ORG_MACHINE_PAT_EXPIRATIONDATE=2099-01-01T00:00:00Z
+      - ZITADEL_FIRSTINSTANCE_LOGINCLIENTPATPATH=/zitadel/bootstrap/login-client.pat
+      - ZITADEL_FIRSTINSTANCE_ORG_LOGINCLIENT_MACHINE_USERNAME=login-client
+      - ZITADEL_FIRSTINSTANCE_ORG_LOGINCLIENT_MACHINE_NAME=Login Client
+      - ZITADEL_FIRSTINSTANCE_ORG_LOGINCLIENT_PAT_EXPIRATIONDATE=2099-01-01T00:00:00Z
+      - ZITADEL_DEFAULTINSTANCE_FEATURES_LOGINV2_REQUIRED=false
+    ports:
+      - "8082:8080"
+    volumes:
+      - zitadel-bootstrap:/zitadel/bootstrap
+    depends_on:
+      zitadel-postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/app/zitadel", "ready"]
+      interval: 10s
+      timeout: 30s
+      retries: 12
+      start_period: 20s
+
+  openfga-migrate:
+    image: openfga/openfga:latest
+    command:
+      - migrate
+      - --datastore-engine
+      - sqlite
+      - --datastore-uri
+      - file:/home/nonroot/openfga.db
+    user: nonroot
+    volumes:
+      - openfga-data:/home/nonroot
+
+  openfga:
+    image: openfga/openfga:latest
+    command:
+      - run
+      - --datastore-engine
+      - sqlite
+      - --datastore-uri
+      - file:/home/nonroot/openfga.db
+      - --playground-enabled
+    user: nonroot
+    ports:
+      - "8081:8080"
+      - "3003:3000"
+    volumes:
+      - openfga-data:/home/nonroot
+    depends_on:
+      openfga-migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/grpc_health_probe", "-addr=localhost:8081"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  zitadel-postgres-data:
+  zitadel-bootstrap:
+  openfga-data:

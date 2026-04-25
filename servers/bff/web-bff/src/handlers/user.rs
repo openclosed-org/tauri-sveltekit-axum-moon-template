@@ -9,8 +9,8 @@ use axum::{
     http::StatusCode,
     routing::get,
 };
+use contracts_errors::{ErrorCode, ErrorResponse};
 use user_service::ports::{TenantRepository, UserRepository, UserTenantRepository};
-use utoipa::OpenApi;
 
 use crate::middleware::tenant::RequestContext;
 use crate::state::BffState;
@@ -29,28 +29,28 @@ pub fn router() -> Router<BffState> {
     security(("bearer_auth" = [])),
     responses(
         (status = 200, description = "User profile retrieved", body = serde_json::Value, content_type = "application/json"),
-        (status = 401, description = "Unauthorized"),
-        (status = 404, description = "User not found"),
-        (status = 500, description = "Internal server error"),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 404, description = "User not found", body = ErrorResponse),
+        (status = 500, description = "Internal server error", body = ErrorResponse),
     ),
 )]
-async fn get_user_profile(
+pub async fn get_user_profile(
     State(state): State<BffState>,
     request_context: Option<Extension<RequestContext>>,
-) -> (StatusCode, Json<serde_json::Value>) {
+) -> Result<(StatusCode, Json<serde_json::Value>), (StatusCode, Json<ErrorResponse>)> {
     let user_sub = match extract_user_sub(request_context) {
         Ok(id) => id,
-        Err(e) => return e,
+        Err(error) => return Err(error),
     };
 
     let user_repo = match state.user_profile_repository() {
         Some(repo) => repo,
-        None => return db_not_ready(),
+        None => return Err(db_not_ready()),
     };
     let result = user_repo.find_by_sub(&user_sub).await;
 
     match result {
-        Ok(Some(user)) => (
+        Ok(Some(user)) => Ok((
             StatusCode::OK,
             Json(serde_json::json!({
                 "id": user.id,
@@ -60,15 +60,18 @@ async fn get_user_profile(
                 "created_at": user.created_at.to_rfc3339(),
                 "last_login_at": user.last_login_at.map(|dt| dt.to_rfc3339()),
             })),
-        ),
-        Ok(None) => (
+        )),
+        Ok(None) => Err((
             StatusCode::NOT_FOUND,
-            Json(serde_json::json!({ "error": "User not found" })),
-        ),
-        Err(e) => (
+            Json(ErrorResponse::new(ErrorCode::NotFound, "User not found")),
+        )),
+        Err(e) => Err((
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(serde_json::json!({ "error": e.to_string() })),
-        ),
+            Json(ErrorResponse::new(
+                ErrorCode::InternalError,
+                format!("Failed to load user profile: {e}"),
+            )),
+        )),
     }
 }
 
@@ -80,27 +83,27 @@ async fn get_user_profile(
     security(("bearer_auth" = [])),
     responses(
         (status = 200, description = "User tenants retrieved", body = serde_json::Value, content_type = "application/json"),
-        (status = 401, description = "Unauthorized"),
-        (status = 500, description = "Internal server error"),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 500, description = "Internal server error", body = ErrorResponse),
     ),
 )]
-async fn get_user_tenants(
+pub async fn get_user_tenants(
     State(state): State<BffState>,
     request_context: Option<Extension<RequestContext>>,
-) -> (StatusCode, Json<serde_json::Value>) {
+) -> Result<(StatusCode, Json<serde_json::Value>), (StatusCode, Json<ErrorResponse>)> {
     let user_sub = match extract_user_sub(request_context) {
         Ok(id) => id,
-        Err(e) => return e,
+        Err(error) => return Err(error),
     };
 
     let (binding_repo, tenant_repo) = match state.user_read_repositories() {
         Some(repos) => repos,
-        None => return db_not_ready(),
+        None => return Err(db_not_ready()),
     };
 
     match binding_repo.find_user_tenant(&user_sub).await {
         Ok(Some(binding)) => match tenant_repo.find_by_id(&binding.tenant_id).await {
-            Ok(Some(tenant_info)) => (
+            Ok(Some(tenant_info)) => Ok((
                 StatusCode::OK,
                 Json(serde_json::json!([{
                     "tenant_id": tenant_info.id,
@@ -108,42 +111,58 @@ async fn get_user_tenants(
                     "role": binding.role,
                     "joined_at": binding.joined_at.to_rfc3339(),
                 }])),
-            ),
-            Ok(None) | Err(_) => (
+            )),
+            Ok(None) => Ok((
                 StatusCode::OK,
                 Json(serde_json::json!([{
                     "tenant_id": binding.tenant_id,
                     "role": binding.role,
                     "joined_at": binding.joined_at.to_rfc3339(),
                 }])),
-            ),
+            )),
+            Err(e) => Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    ErrorCode::InternalError,
+                    format!("Failed to load tenant details: {e}"),
+                )),
+            )),
         },
-        Ok(None) => (StatusCode::OK, Json(serde_json::json!([]))),
-        Err(e) => (
+        Ok(None) => Ok((StatusCode::OK, Json(serde_json::json!([])))),
+        Err(e) => Err((
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(serde_json::json!({ "error": e.to_string() })),
-        ),
+            Json(ErrorResponse::new(
+                ErrorCode::InternalError,
+                format!("Failed to load user tenant bindings: {e}"),
+            )),
+        )),
     }
 }
 
 // ── Helpers ──────────────────────────────────────────────────
 
-fn db_not_ready() -> (StatusCode, Json<serde_json::Value>) {
+fn db_not_ready() -> (StatusCode, Json<ErrorResponse>) {
     (
         StatusCode::INTERNAL_SERVER_ERROR,
-        Json(serde_json::json!({ "error": "Embedded database not initialized" })),
+        Json(ErrorResponse::new(
+            ErrorCode::InternalError,
+            "Embedded database not initialized",
+        )),
     )
 }
 
 fn extract_user_sub(
     request_context: Option<Extension<RequestContext>>,
-) -> Result<String, (StatusCode, Json<serde_json::Value>)> {
+) -> Result<String, (StatusCode, Json<ErrorResponse>)> {
     request_context
         .map(|Extension(context)| context.user_sub)
         .ok_or_else(|| {
             (
                 StatusCode::UNAUTHORIZED,
-                Json(serde_json::json!({ "error": "Missing JWT — not authenticated" })),
+                Json(ErrorResponse::new(
+                    ErrorCode::Unauthorized,
+                    "Missing authenticated request context",
+                )),
             )
         })
 }

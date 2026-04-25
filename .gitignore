@@ -17,6 +17,8 @@ logs/
 .env
 .env.*
 !.env.example
+infra/local/generated/
+infra/local/state/
 # SOPS plaintext templates — NEVER commit (contains secret shapes / may contain real values)
 infra/security/sops/templates/
 
