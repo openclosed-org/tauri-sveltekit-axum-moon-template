@@ -97,7 +97,12 @@ function collectDeclaredModules(codemap: CodeMapRuleSet): Map<string, DeclaredMo
 function isPlannedOnlyModule(module: DeclaredModule): boolean {
   const note = module.notes ?? '';
   const status = module.status ?? '';
-  return status === 'planned' || note.includes('尚未实现') || note.includes('占位');
+  return (
+    status === 'planned' ||
+    note.includes('尚未实现') ||
+    note.includes('占位') ||
+    note.includes('仅保留语义边界')
+  );
 }
 
 function discoverActualModules(kind: ModuleKind): string[] {

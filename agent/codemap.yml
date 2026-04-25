@@ -158,8 +158,8 @@ reference_modules:
       status: reference
     - name: indexing-service
       path: services/indexing-service
-      role: 索引服务占位
-      status: stub
+      role: 索引服务规划占位，仅保留语义边界，不参与 workspace 或 release-plz
+      status: planned
     - name: tenant
       path: services/tenant-service
       role: 多租户、多实体、workflow、补偿样例
