@@ -17,6 +17,7 @@ import? 'justfiles/skills.just'
 import? 'justfiles/platform.just'
 import? 'justfiles/gates.just'
 import? 'justfiles/sops.just'
+import? 'justfiles/template.just'
 
 # ── 默认行为 ────────────────────────────────────────────────
 

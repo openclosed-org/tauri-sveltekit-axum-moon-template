@@ -1,76 +1,88 @@
-# Docs Index
+# Docs
 
-> Entry point for `docs/`. For agent coordination rules, see `AGENTS.md`.
-> For machine-readable directory boundaries, see `agent/codemap.yml`.
+`docs/` is a small, shared layer for durable guidance. If something is only useful for one active task, it should not stay here.
 
-## Project Status
+When docs conflict with code, validators, gates, or executable scripts, trust the executable sources.
 
-This is an **experimental architecture template** — a semantic-first, topology-late, agent-native backend design for Axum. Functional but not production-hardened. Before deploying to production, address:
+## Start Here
 
-1. **Documentation drift**: some docs are in Chinese, some in English, some describe target-state rather than current-state. Always verify against code.
-2. **Generated artifacts**: `deployables.generated.yaml` and `architecture.generated.md` may drift after structural changes. Run `just commit-golden-baseline` to resync.
-3. **Secrets**: SOPS templates use `minioadmin` defaults. Production must use proper secret injection (SOPS/Kustomize/Flux), not `.env` files.
-4. **Stubs**: `auth-service`, `indexing-service`, `scheduler-worker`, `sync-reconciler-worker` are stubs — not production-ready.
-5. **Release flow**: release preparation is now handled by `release-plz` for the Rust workspace; prefer conventional commits for readable changelogs.
+For general readers and template adopters:
 
-## Default Reading Order
+1. `README.md`
+2. `docs/operations/local-dev.md`
+3. `docs/operations/secret-management.md`
+4. `docs/operations/counter-service-reference-chain.md`
+5. `docs/template-users/template-init.md`
 
-1. `docs/operations/counter-service-reference-chain.md` — primary backend reference
-2. Task-specific: `services/*/README.md`, `workers/*/README.md`, `ops/runbooks/**`
-3. `docs/adr/**` — architecture decision records
+For maintainers and agent-assisted development:
 
-When docs conflict with code, trust code, schemas, validators, and gates.
+1. `AGENTS.md`
+2. `agent/codemap.yml`
+3. `docs/adr/**`
+4. `docs/governance/docs-lifecycle.md`
+
+## What Belongs Here
+
+Tracked `docs/**` should stay limited to:
+
+1. current operator/developer guidance in `docs/operations/**`
+2. durable architecture decisions in `docs/adr/**`
+3. minimal template-adoption guidance in `docs/template-users/**`
+4. historical notes in `docs/archive/**`
+5. a small amount of governance guidance when it remains stable and worth keeping
+
+## What Does Not Belong Here
+
+Put these in `docs/_local/` so they stay outside the shared docs entry flow and out of tracked repository docs:
+
+1. one-off refactor backlogs
+2. temporary execution plans
+3. personal scratch notes
+4. exploratory comparisons that have not become durable decisions
+
+`docs/_local/` is the maintainer workspace for active plans, execution notes, and temporary guidance.
+It should stay gitignored; if you need lightweight versioning, keep that inside the document itself with frontmatter or explicit revision notes.
 
 ## Default Backend Anchor
 
-`counter-service` is the default backend reference anchor — not a minimal demo. It carries two chains:
+`counter-service` remains the default backend reference anchor for this repository:
 
-1. **Business main chain**: `service → contracts → server → outbox → relay → projector`
-2. **Engineering cross-cutting chain**: `platform model → secrets → deploy → GitOps → promotion → drift → runbook`
+1. business chain: `service -> contracts -> server -> outbox -> relay -> projector`
+2. engineering chain: `platform model -> secrets -> deploy -> GitOps -> runbook`
 
-New backend capabilities should align with `counter-service` first. Detailed status → `docs/operations/counter-service-reference-chain.md`.
+If you are trying to understand the current backend path, start there instead of reading speculative planning material.
 
-Current validation policy follows the same split:
+## Repository Notes
 
-1. Default backend admission lane: `just verify-backend-primary` and `just test-backend-primary`
-2. Optional auth lane: `just verify-auth-optional` and `just test-auth-optional`
-3. Secondary/governance workflow: `.github/workflows/quality-gate.yml` covers secondary backend and governance validation, not the default business-chain admission lane
+Repository-level policy and project-level caveats live here instead of expanding the root `README.md`.
 
-## Documentation Strategy
+### Versioning
 
-Two types of docs enter the main context:
+This repository is versioned as a single template product.
 
-- **Class A**: repo-level rules, boundaries, source of truth — `AGENTS.md`, `agent/codemap.yml`, `agent/manifests/routing-rules.yml`, `agent/manifests/gate-matrix.yml`
-- **Class B**: reference chains, owner docs, runbooks — `docs/operations/`, `services/*/README.md`, `ops/runbooks/`
+1. patch releases cover safe template iteration, docs fixes, tooling updates, and internal refactors
+2. minor releases add template capabilities without forcing adopters to restructure existing projects
+3. major releases are template-breaking and require adopter attention
 
-Before deleting/archiving docs, confirm their toolchain info has entered Class A or B.
+`release-plz` prepares repository releases, and `just semver-check` is the local visibility check for repository-level compatibility assumptions.
 
-## Current Refactor Guidance
+### Configuration
 
-For the current architecture convergence work, read these two documents after the default backend anchor docs:
+There are three different configuration paths and they should not be confused:
 
-1. `docs/architecture/refactor-backlog-monolith-first-topology-late.md` — executable refactor backlog
-2. `docs/adr/009-canonical-monolith-first-topology-late-backend.md` — canonical architecture statement
+1. canonical backend path: `SOPS -> Kustomize/Flux`, with `just sops-run` locally
+2. quick backend debug path: explicit `APP_*` exports for short host-process loops
+3. local tooling or desktop convenience path: `.env`, which is not the canonical backend secrets path
 
-## Helper Scripts
+If you are working on backend deployables, prefer the first path by default.
 
-These scripts support agent routing, scoped gates, and handoff verification:
+### Architecture Rules
 
-| Script | Purpose |
-|--------|---------|
-| `scripts/route-task.ts` | Route tasks to subagents |
-| `scripts/run-scoped-gates.ts <subagent>` | Run scoped verification gates |
-| `scripts/verify-handoff.ts <subagent>` | Verify handoff between agents |
+The root `README.md` keeps the public overview short. The main repository rules live here and in `AGENTS.md`:
 
-For all available commands: `just --list`
-
-## Future Direction: Macro-Based Boilerplate Reduction
-
-A key area for future improvement — reducing per-service boilerplate through declarative macros:
-
-1. **Derive macros for CAS + idempotency + outbox**: auto-generate `commit_mutation` wrappers from `model.yaml` declarations.
-2. **Handler generation from contracts**: auto-generate Axum stubs from `packages/contracts` API definitions.
-3. **Worker scaffolding macros**: generate retry, checkpoint, dedup, and metrics from `model.yaml`.
-4. **Platform model codegen**: emit Rust types and drift checks from `platform/schema`.
-
-This is deliberately deferred — the semantic model must be validated by real usage before encoding it in macros.
+1. `platform/model/*` is the truth source for platform shape
+2. contracts change before implementation when external shapes change
+3. services are libraries; servers and workers compose them
+4. workers are first-class and must make retry, idempotency, and replay explicit
+5. generated directories are read-only
+6. topology may change deployment shape, but not business semantics

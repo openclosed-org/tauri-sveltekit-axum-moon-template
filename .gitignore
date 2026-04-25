@@ -25,6 +25,9 @@ infra/security/sops/templates/
 # --- AI planning artifacts ---
 # .planning/ (uncomment to exclude - currently tracking for sync)
 
+# --- Local docs workspace ---
+docs/_local/*
+
 # --- Rust / Cargo ---
 target/
 

@@ -11,6 +11,12 @@ This repository is a backend-first Rust reference architecture with a built-in m
 - Read `agent/codemap.yml` for ownership boundaries and anti-patterns.
 - Read `docs/operations/counter-service-reference-chain.md` before changing backend architecture patterns.
 
+## Who this guide is for
+
+This file is for people contributing to the template itself.
+
+If you are using the repository via GitHub "Use this template", the repository release and README are your primary contract. You do not need to preserve every contributor-facing doc or research artifact in your derived project.
+
 ## Ground rules
 
 - Keep changes small and reversible.
@@ -18,6 +24,9 @@ This repository is a backend-first Rust reference architecture with a built-in m
 - Do not hand-edit generated directories such as `platform/catalog/**`, `docs/generated/**`, `infra/kubernetes/rendered/**`, or generated SDK output.
 - Do not introduce product-specific business logic under the name of a generic pattern improvement.
 - Secrets must never be committed in plaintext. Use SOPS-based flows, not `.env` files, for backend secrets.
+- Put temporary private task notes, local refactor checklists, and scratch guidance under `docs/_local/`; it is gitignored by design.
+- Only commit docs that are meant to remain useful to future contributors or template users.
+- Follow `docs/governance/docs-lifecycle.md` when deciding whether a document should stay tracked, move to archive, or remain local-only.
 
 ## Development setup
 
@@ -91,12 +100,22 @@ Only claim checks passed if you actually ran them.
 - Update docs when behavior, workflows, or operator expectations change.
 - Avoid unrelated cleanup in the same PR.
 
+## Commit and release semantics
+
+- This repository is versioned as one template product using repository-level SemVer.
+- Prefer conventional commits such as `feat:`, `fix:`, `docs:`, `refactor:`, `ci:`, and `chore:`.
+- Use scopes when they add signal, for example `feat(template):`, `fix(bff):`, `docs(readme):`, `refactor(worker-runtime):`.
+- If a change alters template defaults, project layout, setup flow, or migration expectations for template users, call that out explicitly in the PR description and release notes.
+- If a change is only contributor-facing or internal, keep the commit message clear so `release-plz` changelogs stay readable.
+
 ## Release process
 
-- This repository uses `release-plz` for Rust-workspace release preparation.
+- This repository uses `release-plz` for repository release preparation.
 - Maintainers should prefer conventional commits such as `feat:`, `fix:`, and `docs:` so generated changelogs stay readable.
 - `release-plz` opens a release PR on `main` and prepares version/changelog updates from merged commits.
 - Most binaries/internal crates are configured with `publish = false`, so release automation can still generate changelogs and GitHub releases without requiring every crate to publish to crates.io.
+- The SemVer contract users should rely on first is the repository tag/release, because this repo is primarily shipped as a template rather than as a set of independently consumed crates.
+- Use `just semver-check` locally when validating repository-level release compatibility assumptions.
 
 ## Reporting bugs and features
 

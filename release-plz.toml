@@ -1,92 +1,229 @@
 [workspace]
 changelog_update = true
 dependencies_update = true
-git_release_enable = true
+git_release_enable = false
+git_tag_enable = false
 pr_branch_prefix = "release-plz/"
 pr_labels = ["release", "automated"]
 publish_timeout = "10m"
-semver_check = false
+semver_check = true
+
+[changelog]
+protect_breaking_commits = true
+sort_commits = "newest"
+commit_parsers = [
+  { message = "^feat", group = "Added" },
+  { message = "^fix", group = "Fixed" },
+  { message = "^docs", group = "Documentation" },
+  { message = "^refactor", group = "Changed" },
+  { message = "^ci", group = "CI" },
+  { message = "^chore", group = "Chore" },
+  { message = "^test", group = "Tests" },
+]
 
 [[package]]
 name = "workspace-hack"
 release = false
+semver_check = false
+version_group = "template-repo"
 
 [[package]]
 name = "native-tauri"
 release = false
+semver_check = false
+version_group = "template-repo"
 
 [[package]]
 name = "adapter-google"
 release = false
+semver_check = false
+version_group = "template-repo"
+
+[[package]]
+name = "adapter-google-backend"
+publish = false
+semver_check = false
+version_group = "template-repo"
 
 [[package]]
 name = "pingora-gateway"
 publish = false
+semver_check = false
+version_group = "template-repo"
 
 [[package]]
 name = "web-bff"
 publish = false
+semver_check = false
+version_group = "template-repo"
+git_tag_enable = true
+git_release_enable = true
+git_tag_name = "v{{ version }}"
 
 [[package]]
 name = "platform"
 publish = false
+semver_check = false
+version_group = "template-repo"
 
 [[package]]
 name = "runtime"
 publish = false
+semver_check = false
+version_group = "template-repo"
 
 [[package]]
 name = "kernel"
 publish = false
+semver_check = false
+version_group = "template-repo"
 
 [[package]]
 name = "data"
 publish = false
+semver_check = false
+version_group = "template-repo"
 
 [[package]]
 name = "data-traits"
 publish = false
+semver_check = false
+version_group = "template-repo"
 
 [[package]]
 name = "observability"
 publish = false
+semver_check = false
+version_group = "template-repo"
+
+[[package]]
+name = "worker-runtime"
+publish = false
+semver_check = false
+version_group = "template-repo"
 
 [[package]]
 name = "sdk-counter"
 publish = false
+version_group = "template-repo"
 
 [[package]]
 name = "sdk-counter-embedded"
 publish = false
+semver_check = false
+version_group = "template-repo"
 
 [[package]]
 name = "sdk-counter-http"
 publish = false
+version_group = "template-repo"
 
 [[package]]
 name = "outbox-relay-worker"
 publish = false
+semver_check = false
+version_group = "template-repo"
 
 [[package]]
 name = "indexer-worker"
 publish = false
+semver_check = false
+version_group = "template-repo"
 
 [[package]]
 name = "projector-worker"
 publish = false
+semver_check = false
+version_group = "template-repo"
 
 [[package]]
 name = "scheduler-worker"
 publish = false
+semver_check = false
+version_group = "template-repo"
 
 [[package]]
 name = "sync-reconciler-worker"
 publish = false
+semver_check = false
+version_group = "template-repo"
 
 [[package]]
 name = "adapter-telemetry-otel"
 publish = false
+semver_check = false
+version_group = "template-repo"
 
 [[package]]
 name = "adapter-telemetry-tracing"
 publish = false
+semver_check = false
+version_group = "template-repo"
+
+[[package]]
+name = "counter-service"
+publish = false
+semver_check = false
+version_group = "template-repo"
+
+[[package]]
+name = "tenant-service"
+publish = false
+semver_check = false
+version_group = "template-repo"
+
+[[package]]
+name = "auth-service"
+publish = false
+semver_check = false
+version_group = "template-repo"
+
+[[package]]
+name = "user-service"
+publish = false
+semver_check = false
+version_group = "template-repo"
+
+[[package]]
+name = "indexing-service"
+publish = false
+semver_check = false
+version_group = "template-repo"
+
+[[package]]
+name = "authz"
+publish = false
+semver_check = false
+version_group = "template-repo"
+
+[[package]]
+name = "storage_turso"
+publish = false
+semver_check = false
+version_group = "template-repo"
+
+[[package]]
+name = "storage_surrealdb"
+publish = false
+semver_check = false
+version_group = "template-repo"
+
+[[package]]
+name = "contracts_auth"
+publish = false
+version_group = "template-repo"
+
+[[package]]
+name = "contracts_api"
+publish = false
+version_group = "template-repo"
+
+[[package]]
+name = "contracts_events"
+publish = false
+version_group = "template-repo"
+
+[[package]]
+name = "contracts_errors"
+publish = false
+version_group = "template-repo"

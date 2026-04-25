@@ -142,7 +142,6 @@ These may be described in ADRs, platform model, or tooling notes, but should not
 
 ## References
 
-- `docs/architecture/refactor-backlog-monolith-first-topology-late.md`
 - `docs/operations/counter-service-reference-chain.md`
 - `docs/adr/002-services-are-libraries-not-processes.md`
 - `docs/adr/003-runtime-abstraction-direct-plus-dapr.md`

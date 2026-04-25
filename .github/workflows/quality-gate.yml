@@ -225,6 +225,28 @@ jobs:
       - name: SDK drift check
         run: just sdk-drift-check
 
+  semver:
+    name: Repository SemVer Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install just
+        uses: taiki-e/install-action@just
+
+      - name: Install cargo-semver-checks
+        uses: taiki-e/install-action@cargo-semver-checks
+
+      - name: SemVer compatibility check
+        run: just semver-check
+
 
   validation-scripts:
     name: Validation Scripts

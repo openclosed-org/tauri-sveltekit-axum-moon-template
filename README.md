@@ -1,12 +1,20 @@
-# Backend-in-Rust Reference Architecture
+# Backend-in-Rust Template and Reference Architecture
 
-> Semantic-first, topology-late, agent-native backend architecture — with DDD, CAS, unified outbox, projection, workflow, and a multi-agent AI harness. Built entirely in Rust.
+> Backend-first, semantic-first, topology-late, agent-native template architecture — with DDD, CAS, unified outbox, projection, workflow, and a multi-agent AI harness. Built entirely in Rust.
 >
 > Single VPS → K3s cluster → multi-service topology. Same code, different platform model.
 
-**What this is:** A living reference architecture for building resilient Rust backends. Every service owns its state, every mutation uses CAS + idempotency, every event flows through a unified outbox, and every projection is rebuildable from source.
+**What this is:** A backend-first template and living reference architecture for building resilient Rust backends. Every service owns its state, every mutation uses CAS + idempotency, every event flows through a unified outbox, and every projection is rebuildable from source.
 
 **What makes it different:** A [multi-agent AI harness](#-for-ai-agents) that routes tasks to domain-specialized subagents, enforces architectural boundaries, and gates every change — humans and AI co-develop under the same protocol.
+
+## Reality Check
+
+This repository is an exploration and learning template for the agent-native development era.
+
+It does **not** yet have confidence from a long-running real production business system. Current confidence comes primarily from repository structure, focused local verification, architectural gates, and GitHub CI.
+
+Use it as a strong starting point, not as proof that every pattern here is already production-proven for your workload. You should evaluate each pattern against your own latency budget, reliability target, compliance requirements, team maturity, and operational model.
 
 ---
 
@@ -18,7 +26,7 @@
 - **Contracts-first** — API/Event/DTO/ErrorCode changes land in `packages/contracts/` first, with drift detection gates.
 - **Platform model as truth source** — `platform/model/*` declares deployables, workflows, topologies, resources, environments. No implicit infrastructure.
 - **Single VPS to K3s** — `platform/model/topologies/*.yaml` defines the deployment shape. Same binary, different topology.
-- **SOPS + Flux GitOps** — Secrets via SOPS/Kustomize/Flux, not `.env` files. `just sops-run <deployable>` injects env vars locally; Flux reconciles in-cluster.
+- **SOPS + Flux GitOps** — Backend secrets flow through SOPS/Kustomize/Flux, not `.env` files. `just sops-run <deployable>` injects env vars locally; Flux reconciles in-cluster.
 - **Multi-agent AI harness** — 8 specialized agents (planner, platform-ops, contract, service, server, worker, app-shell) with routing rules, scoped gates, and boundary checks.
 
 ## Architecture at a Glance
@@ -98,6 +106,19 @@ agent/             Multi-agent AI harness rules
 apps/              Optional frontend shells (web, desktop, mobile)
 ```
 
+## Who This Repo Is For
+
+There are two primary user modes for this repository:
+
+1. **Template users** — teams that want to click "Use this template" and start a backend project from a pre-structured foundation.
+2. **Contributors / maintainers** — people who want to evolve the template itself, improve the architecture, and keep the repository publishable as an open-source project.
+
+Template users should treat the repository release as the main contract and keep only the parts relevant to their project.
+
+Contributors should treat the repository structure, gates, agent protocol, and documentation conventions as part of the design, not as optional extras.
+
+A dedicated `just template-init` cleanup flow now exists as a conservative planning/dry-run entrypoint. It does **not** delete files yet; it previews which upstream-maintainer and open-source governance materials a derived project may want to remove after adopting the template.
+
 ## Quick Start
 
 ```bash
@@ -125,39 +146,21 @@ just platform-doctor
 just --list    # See all available commands
 ```
 
-## Core Principles
+## Using This Template
 
-1. **Platform model first** — `platform/model/*` is the truth source; infra and generated artifacts derive from it.
-2. **Contracts before implementation** — `packages/contracts/*` changes first; contract drift is detected by gate.
-3. **Services are libraries, not processes** — composed by servers and workers, never import each other directly.
-4. **Workers are first-class** — every async executor must declare idempotency, retry, checkpoint/replay, and recovery.
-5. **Vendor only in adapters** — concrete SDKs live in `packages/*/adapters/`, never in domain code.
-6. **Generated directories are read-only** — `sdk/`, `rendered/`, `catalog/` must be regenerable.
-7. **Topology changes shape, not semantics** — `platform/model/topologies/*.yaml` switches deployment without touching business logic.
+If you adopt this repository via GitHub "Use this template", the shortest useful path is:
 
-## Why This Design Exists
+1. `README.md`
+2. `docs/operations/local-dev.md`
+3. `docs/operations/secret-management.md`
+4. `docs/operations/counter-service-reference-chain.md`
+5. `just template-init PROFILE=backend-core MODE=dry-run`
 
-The old engineering wisdom says: *"don't over-engineer — write simple code, refactor when needed."*
-
-In 2026, with AI agents as persistent co-developers, this advice needs an update. Agents don't struggle with complexity — they struggle with **implicit, unstable architecture**. They thrive on stable conventions, executable gates, and explicit boundaries. What kills agent productivity is tribal knowledge, naming drift, inconsistent patterns, and rules that live in human memory instead of validators.
-
-The new paradigm: **design the system to be semantically unfoldable from day one.** Don't prematurely split into microservices — that's just more moving parts. Instead, make every semantic boundary extractable and every deployment seam switchable, so that future growth becomes a **topology toggle**, not a **semantic rewrite**.
-
-This is what **semantic-first, topology-late, agent-native** means in practice:
-
-- **semantic-first** — Service-local semantics (`services/<name>/model.yaml`), contracts (`packages/contracts/`), outbox/projection/replay mechanisms, and validation scripts are designed upfront with explicit boundaries. The business logic layer is written once.
-- **topology-late** — Deployment shape (single binary, multi-process, multi-node) is declared in `platform/model/topologies/` and can be switched without touching service code. The runtime topology unfolds when you need it, not before.
-- **agent-native** — The repository is structured so that AI agents can continuously take over, verify, and evolve it. `AGENTS.md`, `agent/codemap.yml`, routing rules, gate matrix, scoped verification — these aren't extras. They're part of the architecture.
-
-**What you gain:** Most future changes become topology switches and adapter migrations, not semantic rewrites. The system grows, the harness stays stable.
-
-**What this doesn't promise:** Crossing from in-process to cross-network changes latency budgets, consistency models, failure recovery, permission boundaries, and observability. These are real problem-domain shifts, not code-generation problems. This architecture compresses future pain from "semantic rewrite" down to "topology + runtime strategy adjustment." That's already a massive win.
-
-> *Agents don't hate big architecture. They hate unstable implicit architecture.*
+The current `template-init` flow is intentionally conservative. It is meant to help derived projects identify upstream-maintainer artifacts to review or remove; it is not a code-pruning tool.
 
 ## For AI Agents
 
-This repository has a built-in multi-agent collaboration protocol:
+This repository has a built-in multi-agent collaboration protocol.
 
 - `AGENTS.md` — master protocol: reading order, truth source hierarchy, routing rules, global constraints
 - `agent/codemap.yml` — module boundaries, dependency rules, anti-patterns, required files per entity type
@@ -172,11 +175,15 @@ bun run scripts/run-scoped-gates.ts <agent> # Run gates for a specific agent
 just verify                                 # Total verification (final gate)
 ```
 
+More repository policy and documentation-boundary details live in `docs/README.md`.
+
 ## Project Status
 
-This is an actively developed reference architecture. The backend core (DDD, CAS, outbox, projection, platform model) is functional and gated. The multi-agent harness is operational. Some workers (indexer, scheduler, sync-reconciler) and the frontend shells are stubs awaiting future development.
+This is an actively developed backend-first template and reference architecture. The backend core (DDD, CAS, outbox, projection, platform model) is functional and gated. The multi-agent harness is operational. Some workers (indexer, scheduler, sync-reconciler) and the frontend shells are stubs awaiting future development.
 
 The default development path follows the `counter-service` reference chain. New backend capabilities should be compared against this anchor before extending new patterns.
+
+The template is already useful, but it should still be adopted with engineering judgment. CI green status means the repository passed its current automated checks; it does not mean every pattern has been validated under real business traffic, long-lived operational load, or your own production constraints.
 
 ## License
 
