@@ -4,7 +4,7 @@
 template-init PROFILE='backend-core' MODE='dry-run':
     bun run scripts/template-init.ts --profile "{{PROFILE}}" --mode "{{MODE}}"
 
-# Repository-level SemVer check for release automation visibility.
+# Repository-level SemVer check for the current 0.1.x template line.
 semver-check BASELINE='' RELEASE_TYPE='minor':
     #!/usr/bin/env bash
     set -euo pipefail
@@ -12,12 +12,12 @@ semver-check BASELINE='' RELEASE_TYPE='minor':
     release_type="{{RELEASE_TYPE}}"
 
     if [ -z "$baseline" ]; then
-      baseline="$(git for-each-ref --sort=-creatordate --format='%(refname:short)' refs/tags | head -n 1)"
+      baseline="$(git tag -l 'v0.1.*' | sort -V | tail -n 1)"
     fi
 
     if [ -z "$baseline" ]; then
-      echo "No repository tag found for SemVer baseline" >&2
-      exit 1
+      echo "No v0.1.x repository tag found; skipping SemVer baseline check until the first official 0.1.x release exists."
+      exit 0
     fi
 
     echo "Using SemVer baseline: $baseline"
