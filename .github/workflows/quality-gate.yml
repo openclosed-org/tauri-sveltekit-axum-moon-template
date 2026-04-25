@@ -310,7 +310,7 @@ jobs:
     name: Quality Gate Summary
     runs-on: ubuntu-latest
     timeout-minutes: 2
-    needs: [security, governance-static, secondary-runtime, platform-drift, contract-drift, sdk-drift, validation-scripts, supply-chain]
+    needs: [security, governance-static, secondary-runtime, platform-drift, contract-drift, sdk-drift, semver, validation-scripts, supply-chain]
     if: always()
 
     steps:
@@ -326,6 +326,7 @@ jobs:
           echo "| Platform Drift Check | ${{ needs.platform-drift.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Contract Drift Check | ${{ needs.contract-drift.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| SDK Drift Check | ${{ needs.sdk-drift.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Repository SemVer Check | ${{ needs.semver.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Supply Chain Scan | ${{ needs.supply-chain.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
@@ -335,6 +336,7 @@ jobs:
              [ "${{ needs.platform-drift.result }}" = "success" ] && \
              [ "${{ needs.contract-drift.result }}" = "success" ] && \
              [ "${{ needs.sdk-drift.result }}" = "success" ] && \
+             [ "${{ needs.semver.result }}" = "success" ] && \
              [ "${{ needs.validation-scripts.result }}" = "success" ] && \
              [ "${{ needs.supply-chain.result }}" = "success" ]; then
             echo "All governance checks passed." >> $GITHUB_STEP_SUMMARY
