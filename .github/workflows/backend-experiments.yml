@@ -14,46 +14,6 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
-  PRIMARY_PACKAGES: >-
-    -p kernel
-    -p platform
-    -p runtime
-    -p contracts_api
-    -p contracts_auth
-    -p contracts_events
-    -p contracts_errors
-    -p adapter-telemetry-otel
-    -p adapter-telemetry-tracing
-    -p storage_turso
-    -p adapter-google-backend
-    -p user-service
-    -p tenant-service
-    -p auth-service
-    -p counter-service
-    -p event-bus
-    -p web-bff
-    -p data
-    -p authz
-    -p observability
-    -p sdk-counter
-    -p sdk-counter-embedded
-    -p sdk-counter-http
-  SECONDARY_PACKAGES: >-
-    -p pingora-gateway
-    -p outbox-relay-worker
-    -p indexer-worker
-    -p projector-worker
-    -p scheduler-worker
-    -p sync-reconciler-worker
-    -p platform-validator
-    -p dependency-validator
-    -p contract-drift-detector
-    -p topology-validator
-    -p security-validator
-    -p observability-validator
-    -p platform-generator
-  ALTERNATIVE_PACKAGES: >-
-    -p storage_surrealdb
 
 jobs:
   compile-drift:
@@ -79,24 +39,17 @@ jobs:
           toolchain: ${{ matrix.toolchain }}
           components: clippy
 
+      - name: Install just
+        uses: taiki-e/install-action@just
+
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
         with:
           shared-key: backend-experiments-${{ matrix.toolchain }}
 
       - name: Cargo check (all backend tiers)
-        run: >-
-          cargo check
-          ${PRIMARY_PACKAGES}
-          ${SECONDARY_PACKAGES}
-          ${ALTERNATIVE_PACKAGES}
+        run: just verify-backend-experiments
 
       - name: Cargo clippy (stable baseline)
         if: matrix.toolchain == 'stable'
-        run: >-
-          cargo clippy
-          ${PRIMARY_PACKAGES}
-          ${SECONDARY_PACKAGES}
-          ${ALTERNATIVE_PACKAGES}
-          --all-targets
-          -- -D warnings
+        run: just lint-backend-experiments

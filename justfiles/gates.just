@@ -16,6 +16,10 @@ gate-existence MODE='warn':
 gate-imports MODE='warn':
     bun run scripts/validate-imports.ts --mode {{MODE}}
 
+# Shared contracts vs service-local event boundary gate
+gate-contract-boundaries MODE='warn':
+    bun run scripts/validate-contract-boundaries.ts --mode {{MODE}}
+
 # CI gate: strict once checks leave local warn-only mode
 gate-ci:
     bun run scripts/gate.ts ci --mode strict

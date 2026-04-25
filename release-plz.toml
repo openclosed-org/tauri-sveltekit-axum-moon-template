@@ -1,0 +1,92 @@
+[workspace]
+changelog_update = true
+dependencies_update = true
+git_release_enable = true
+pr_branch_prefix = "release-plz/"
+pr_labels = ["release", "automated"]
+publish_timeout = "10m"
+semver_check = false
+
+[[package]]
+name = "workspace-hack"
+release = false
+
+[[package]]
+name = "native-tauri"
+release = false
+
+[[package]]
+name = "adapter-google"
+release = false
+
+[[package]]
+name = "pingora-gateway"
+publish = false
+
+[[package]]
+name = "web-bff"
+publish = false
+
+[[package]]
+name = "platform"
+publish = false
+
+[[package]]
+name = "runtime"
+publish = false
+
+[[package]]
+name = "kernel"
+publish = false
+
+[[package]]
+name = "data"
+publish = false
+
+[[package]]
+name = "data-traits"
+publish = false
+
+[[package]]
+name = "observability"
+publish = false
+
+[[package]]
+name = "sdk-counter"
+publish = false
+
+[[package]]
+name = "sdk-counter-embedded"
+publish = false
+
+[[package]]
+name = "sdk-counter-http"
+publish = false
+
+[[package]]
+name = "outbox-relay-worker"
+publish = false
+
+[[package]]
+name = "indexer-worker"
+publish = false
+
+[[package]]
+name = "projector-worker"
+publish = false
+
+[[package]]
+name = "scheduler-worker"
+publish = false
+
+[[package]]
+name = "sync-reconciler-worker"
+publish = false
+
+[[package]]
+name = "adapter-telemetry-otel"
+publish = false
+
+[[package]]
+name = "adapter-telemetry-tracing"
+publish = false

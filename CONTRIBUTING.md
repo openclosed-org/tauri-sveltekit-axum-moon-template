@@ -91,6 +91,13 @@ Only claim checks passed if you actually ran them.
 - Update docs when behavior, workflows, or operator expectations change.
 - Avoid unrelated cleanup in the same PR.
 
+## Release process
+
+- This repository uses `release-plz` for Rust-workspace release preparation.
+- Maintainers should prefer conventional commits such as `feat:`, `fix:`, and `docs:` so generated changelogs stay readable.
+- `release-plz` opens a release PR on `main` and prepares version/changelog updates from merged commits.
+- Most binaries/internal crates are configured with `publish = false`, so release automation can still generate changelogs and GitHub releases without requiring every crate to publish to crates.io.
+
 ## Reporting bugs and features
 
 - Use the GitHub issue templates.

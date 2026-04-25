@@ -45,6 +45,49 @@ boundary-check:
 verify:
     moon run repo:verify
 
+# ── Backend Lane Commands ─────────────────────────────────────
+
+_primary_packages := '-p kernel -p platform -p runtime -p contracts_api -p contracts_events -p contracts_errors -p adapter-telemetry-otel -p adapter-telemetry-tracing -p storage_turso -p user-service -p tenant-service -p counter-service -p event-bus -p web-bff -p data -p observability -p sdk-counter -p sdk-counter-embedded -p sdk-counter-http'
+_auth_optional_packages := '-p contracts_auth -p adapter-google-backend -p auth-service -p authz'
+_secondary_packages := '-p pingora-gateway -p outbox-relay-worker -p indexer-worker -p projector-worker -p scheduler-worker -p sync-reconciler-worker -p platform-validator -p dependency-validator -p contract-drift-detector -p topology-validator -p security-validator -p observability-validator -p platform-generator'
+_alternative_packages := '-p tenant-service -p storage_surrealdb'
+
+# 默认后端主链静态检查（counter reference chain）
+verify-backend-primary:
+    cargo fmt {{_primary_packages}} -- --check
+    cargo clippy {{_primary_packages}} --all-targets -- -D warnings
+    cargo check {{_primary_packages}}
+
+# 可选 auth lane 静态检查（不阻塞默认主链）
+verify-auth-optional:
+    cargo fmt {{_auth_optional_packages}} -- --check
+    cargo clippy {{_auth_optional_packages}} --all-targets -- -D warnings
+    cargo check {{_auth_optional_packages}}
+
+# 次级 backend / governance 静态检查
+verify-backend-secondary:
+    cargo fmt {{_secondary_packages}} -- --check
+    cargo clippy {{_secondary_packages}} --all-targets -- -D warnings
+    cargo check {{_secondary_packages}}
+
+# 备选 lane 静态检查
+verify-backend-alternative:
+    cargo fmt {{_alternative_packages}} -- --check
+    cargo clippy {{_alternative_packages}} --all-targets -- -D warnings
+    cargo check {{_alternative_packages}}
+
+# backend experiments: compile drift across all backend tiers
+verify-backend-experiments:
+    cargo check {{_primary_packages}} {{_auth_optional_packages}} {{_secondary_packages}} {{_alternative_packages}}
+
+# backend experiments stable-only clippy sweep
+lint-backend-experiments:
+    cargo clippy {{_primary_packages}} {{_auth_optional_packages}} {{_secondary_packages}} {{_alternative_packages}} --all-targets -- -D warnings
+
+# primary backend coverage lane
+coverage-backend-primary:
+    cargo llvm-cov {{_primary_packages}} --lcov --output-path lcov.info
+
 # 生成目录分类索引（Agent 搜索优先级提示）
 gen-dir-cats:
     bun run scripts/gen-directory-categories.ts

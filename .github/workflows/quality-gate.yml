@@ -1,4 +1,4 @@
-name: Quality Gate
+name: Quality Gate (Secondary/Governance)
 
 on:
   pull_request:
@@ -70,20 +70,6 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
-  SECONDARY_PACKAGES: >-
-    -p pingora-gateway
-    -p outbox-relay-worker
-    -p indexer-worker
-    -p projector-worker
-    -p scheduler-worker
-    -p sync-reconciler-worker
-    -p platform-validator
-    -p dependency-validator
-    -p contract-drift-detector
-    -p topology-validator
-    -p security-validator
-    -p observability-validator
-    -p platform-generator
 
 jobs:
   security:
@@ -96,6 +82,9 @@ jobs:
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
+
+      - name: Install just
+        uses: taiki-e/install-action@just
 
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
@@ -137,18 +126,12 @@ jobs:
           shared-key: "quality-gate-static"
 
       - name: Rust fmt check (secondary backend)
-        run: >-
-          cargo fmt ${SECONDARY_PACKAGES} -- --check
+        run: just verify-backend-secondary
 
-      - name: Rust clippy (secondary backend)
-        run: >-
-          cargo clippy ${SECONDARY_PACKAGES}
-          --all-targets
-          -- -D warnings
-
-      - name: Rust check (secondary backend)
-        run: >-
-          cargo check ${SECONDARY_PACKAGES}
+      - name: Explain scope
+        run: |
+          echo "Quality Gate covers secondary backend and governance lanes only." >> $GITHUB_STEP_SUMMARY
+          echo "Default business-chain admission lives in CI -> Primary Static Checks / Primary Tests / BFF Smoke Tests." >> $GITHUB_STEP_SUMMARY
 
   secondary-runtime:
     name: Secondary Runtime Validation
@@ -161,15 +144,16 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Install just
+        uses: taiki-e/install-action@just
+
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
         with:
           shared-key: "quality-gate-runtime"
 
       - name: Rust test (secondary backend)
-        run: >-
-          cargo test ${SECONDARY_PACKAGES}
-          -- --test-threads=4
+        run: just test-backend-secondary
 
       - name: Build gateway and workers (secondary backend)
         run: >-
@@ -192,6 +176,9 @@ jobs:
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
+
+      - name: Install just
+        uses: taiki-e/install-action@just
 
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
@@ -253,17 +240,20 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Install just
+        uses: taiki-e/install-action@just
+
       - name: Validate state
-        run: bun run scripts/validate-state.ts --mode strict
+        run: just validate-state strict
 
       - name: Validate contracts
-        run: bun run scripts/validate-contracts.ts --mode strict
+        run: just contracts-check strict
 
       - name: Validate imports
-        run: bun run scripts/validate-imports.ts --mode strict
+        run: just gate-imports strict
 
       - name: Boundary check
-        run: bun run scripts/boundary-check.ts
+        run: just boundary-check
 
   supply-chain:
     name: Supply Chain Scan

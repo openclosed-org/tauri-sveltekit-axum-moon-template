@@ -66,30 +66,6 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
-  PRIMARY_PACKAGES: >-
-    -p kernel
-    -p platform
-    -p runtime
-    -p contracts_api
-    -p contracts_auth
-    -p contracts_events
-    -p contracts_errors
-    -p adapter-telemetry-otel
-    -p adapter-telemetry-tracing
-    -p storage_turso
-    -p adapter-google-backend
-    -p user-service
-    -p tenant-service
-    -p auth-service
-    -p counter-service
-    -p event-bus
-    -p web-bff
-    -p data
-    -p authz
-    -p observability
-    -p sdk-counter
-    -p sdk-counter-embedded
-    -p sdk-counter-http
 
 jobs:
   primary-static:
@@ -104,24 +80,16 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Install just
+        uses: taiki-e/install-action@just
+
       - name: Cache Rust
         uses: Swatinem/rust-cache@v2
         with:
           shared-key: "backend-primary-static"
 
       - name: Rust fmt check (primary backend)
-        run: >-
-          cargo fmt ${PRIMARY_PACKAGES} -- --check
-
-      - name: Rust clippy (primary backend)
-        run: >-
-          cargo clippy ${PRIMARY_PACKAGES}
-          --all-targets
-          -- -D warnings
-
-      - name: Rust check (primary backend)
-        run: >-
-          cargo check ${PRIMARY_PACKAGES}
+        run: just verify-backend-primary
 
   primary-tests:
     name: Primary Tests
@@ -137,15 +105,16 @@ jobs:
         with:
           toolchain: stable
 
+      - name: Install just
+        uses: taiki-e/install-action@just
+
       - name: Cache Rust
         uses: Swatinem/rust-cache@v2
         with:
           shared-key: "backend-primary-tests"
 
       - name: Rust test (primary backend)
-        run: >-
-          cargo test ${PRIMARY_PACKAGES}
-          -- --test-threads=4
+        run: just test-backend-primary
 
   bff-smoke:
     name: BFF Smoke Tests
@@ -161,6 +130,9 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
+
+      - name: Install just
+        uses: taiki-e/install-action@just
 
       - name: Cache Rust
         uses: Swatinem/rust-cache@v2
@@ -205,6 +177,9 @@ jobs:
         with:
           toolchain: stable
 
+      - name: Install just
+        uses: taiki-e/install-action@just
+
       - name: Cache Rust
         uses: Swatinem/rust-cache@v2
         with:
@@ -241,11 +216,40 @@ jobs:
 
           kill $WEB_BFF_PID || true
 
+  auth-local-smoke:
+    name: Auth Optional Smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    continue-on-error: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - name: Install just
+        uses: taiki-e/install-action@just
+
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "backend-auth-optional"
+
+      - name: Rust fmt check (optional auth lane)
+        run: just verify-auth-optional
+
+      - name: Rust test (optional auth lane)
+        run: just test-auth-optional
+
   summary:
     name: Backend CI
     runs-on: ubuntu-latest
     timeout-minutes: 2
-    needs: [primary-static, primary-tests, bff-smoke, load-test]
+    needs: [primary-static, primary-tests, bff-smoke, load-test, auth-local-smoke]
     if: always()
 
     steps:
@@ -253,12 +257,17 @@ jobs:
         run: |
           echo "## Backend Primary Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Primary backend admission covers the default business chain only." >> $GITHUB_STEP_SUMMARY
+          echo "Secondary/governance checks live in the separate Quality Gate workflow." >> $GITHUB_STEP_SUMMARY
+          echo "Auth local smoke is optional and non-blocking." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Phase | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
           echo "| Primary Static Checks | ${{ needs.primary-static.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Primary Tests | ${{ needs.primary-tests.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| BFF Smoke Tests | ${{ needs.bff-smoke.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Baseline Load Test | ${{ needs.load-test.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Auth Optional Smoke | ${{ needs.auth-local-smoke.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
           if [ "${{ needs.primary-static.result }}" = "success" ] && \
@@ -269,4 +278,10 @@ jobs:
           else
             echo "Primary backend admission failed. Review the failing primary jobs above." >> $GITHUB_STEP_SUMMARY
             exit 1
+          fi
+
+          if [ "${{ needs.auth-local-smoke.result }}" = "success" ]; then
+            echo "Optional auth smoke passed." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Optional auth smoke is non-blocking. Review it separately if auth lane changed." >> $GITHUB_STEP_SUMMARY
           fi

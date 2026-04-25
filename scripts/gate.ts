@@ -86,6 +86,11 @@ const gateDefinitions: Record<GateName, GateCommand[]> = {
       command: 'bun',
       args: ['run', 'scripts/boundary-check.ts'],
     },
+    {
+      label: 'contract boundary validation',
+      command: 'bun',
+      args: ['run', 'scripts/validate-contract-boundaries.ts', '--mode', 'strict'],
+    },
   ],
   release: [
     {

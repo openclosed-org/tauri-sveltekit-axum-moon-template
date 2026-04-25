@@ -38,9 +38,6 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
-  ALTERNATIVE_PACKAGES: >-
-    -p tenant-service
-    -p storage_surrealdb
 
 jobs:
   alternatives-static:
@@ -54,24 +51,16 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Install just
+        uses: taiki-e/install-action@just
+
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
         with:
           shared-key: "backend-alternatives-static"
 
       - name: Rust fmt check (alternative backend)
-        run: >-
-          cargo fmt ${ALTERNATIVE_PACKAGES} -- --check
-
-      - name: Rust clippy (alternative backend)
-        run: >-
-          cargo clippy ${ALTERNATIVE_PACKAGES}
-          --all-targets
-          -- -D warnings
-
-      - name: Rust check (alternative backend)
-        run: >-
-          cargo check ${ALTERNATIVE_PACKAGES}
+        run: just verify-backend-alternative
 
   alternatives-tests:
     name: Alternative Tests
@@ -84,12 +73,13 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Install just
+        uses: taiki-e/install-action@just
+
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
         with:
           shared-key: "backend-alternatives-tests"
 
       - name: Rust test (alternative backend)
-        run: >-
-          cargo test ${ALTERNATIVE_PACKAGES}
-          -- --test-threads=4
+        run: just test-backend-alternative

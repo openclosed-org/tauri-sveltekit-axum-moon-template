@@ -82,3 +82,19 @@ test-api-e2e-only:
       --reporter-cli \
       --reporter-junit-extra \
       --reporter-junit-extra-output {{justfile_directory()}}/servers/bff/web-bff/tests/e2e/report.xml
+
+# 默认后端主链验证：counter-service + tenant-service + web-bff
+test-backend-primary:
+    cargo test -p kernel -p platform -p runtime -p contracts_api -p contracts_events -p contracts_errors -p adapter-telemetry-otel -p adapter-telemetry-tracing -p storage_turso -p user-service -p tenant-service -p counter-service -p event-bus -p web-bff -p data -p observability -p sdk-counter -p sdk-counter-embedded -p sdk-counter-http -- --test-threads=4
+
+# 可选 auth lane 验证：auth-service + authz + auth contracts/adapters
+test-auth-optional:
+    cargo test -p contracts_auth -p adapter-google-backend -p auth-service -p authz
+
+# 次级 backend / governance 测试
+test-backend-secondary:
+    cargo test -p pingora-gateway -p outbox-relay-worker -p indexer-worker -p projector-worker -p scheduler-worker -p sync-reconciler-worker -p platform-validator -p dependency-validator -p contract-drift-detector -p topology-validator -p security-validator -p observability-validator -p platform-generator -- --test-threads=4
+
+# 备选 lane 测试
+test-backend-alternative:
+    cargo test -p tenant-service -p storage_surrealdb -- --test-threads=4

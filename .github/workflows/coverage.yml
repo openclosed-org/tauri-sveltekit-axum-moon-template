@@ -39,30 +39,6 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
-  PRIMARY_PACKAGES: >-
-    -p kernel
-    -p platform
-    -p runtime
-    -p contracts_api
-    -p contracts_auth
-    -p contracts_events
-    -p contracts_errors
-    -p adapter-telemetry-otel
-    -p adapter-telemetry-tracing
-    -p storage_turso
-    -p adapter-google-backend
-    -p user-service
-    -p tenant-service
-    -p auth-service
-    -p counter-service
-    -p event-bus
-    -p web-bff
-    -p data
-    -p authz
-    -p observability
-    -p sdk-counter
-    -p sdk-counter-embedded
-    -p sdk-counter-http
 
 jobs:
   coverage:
@@ -79,6 +55,9 @@ jobs:
         with:
           components: llvm-tools
 
+      - name: Install just
+        uses: taiki-e/install-action@just
+
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
         with:
@@ -88,9 +67,7 @@ jobs:
         run: cargo install cargo-llvm-cov
 
       - name: Generate coverage (primary backend)
-        run: >-
-          cargo llvm-cov ${PRIMARY_PACKAGES}
-          --lcov --output-path lcov.info
+        run: just coverage-backend-primary
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
