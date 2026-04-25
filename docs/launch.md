@@ -1,37 +1,53 @@
-# axum-harness: Agent-native backend architecture for Axum
+# axum-harness: Experimental backend reference architecture for Axum
 
-**axum-harness** is a reference architecture and template for building production-grade Rust backends with Axum. It demonstrates how to structure a distributed backend so that AI agents can continuously take over, verify, and evolve it — without architectural drift.
+**axum-harness** is an experimental reference architecture for Rust backends built with Axum.
+It contains a real backend reference chain, but it is **not** a fully production-hardened microservice platform.
 
-## The problem
+## Current canonical path
 
-Traditional backend advice says: *"don't over-engineer, refactor when needed."* But in 2026, with AI agents as persistent co-developers, the cost model has changed. Agents don't struggle with complexity — they struggle with **implicit, unstable architecture**. Tribal knowledge, naming drift, inconsistent patterns, and rules that live in human memory instead of validators — these are what kill agent productivity.
+The current default backend path is:
 
-## The approach: semantic-first, topology-late, agent-native
-
-- **semantic-first** — Service-local semantics, contracts, CAS + idempotency, unified outbox, projection, and replay are designed upfront with explicit boundaries. Business logic is written once.
-- **topology-late** — Deployment shape (single binary → multi-process → K3s cluster) is declared in a platform model YAML and can be switched without touching service code.
-- **agent-native** — The repository ships with a built-in multi-agent collaboration protocol: 8 specialized agents, routing rules, scoped gates, and boundary checks.
-
-The result: most future changes become **topology switches** and **adapter migrations**, not semantic rewrites.
-
-## What's in the box
-
-| Layer | What | Technology |
-|-------|------|-----------|
-| Web BFF | Sync request entrypoint | Axum, tokio |
-| Services | DDD business logic (pure libraries) | domain → application → ports → infrastructure |
-| Workers | Async executors: outbox relay, projector, indexer, scheduler | tokio, NATS |
-| Platform model | YAML truth source for deployables, topologies, workflows, resources | Custom validators + generators |
-| Contracts | API/Event/DTO/ErrorCode source of truth | Drift detection gates |
-| Secrets | SOPS + Kustomize + Flux GitOps | No .env files |
-| Agent harness | 8 specialized subagents with routing + gates | AGENTS.md, codemap.yml, gate matrix |
-
-`counter-service` is the reference anchor — the smallest business unit with the most complete engineering chain:
-
+```text
+counter-service
+  -> web-bff
+  -> CAS + idempotency + unified event_outbox
+  -> outbox-relay worker
+  -> projector worker
+  -> replayable read model
 ```
-service → contracts → server → CAS mutation + outbox (atomic)
-  → outbox-relay → NATS → projector → read model → replay
-```
+
+This is the path new agents and developers should study first.
+
+## What is already real
+
+- `services/*` are library-first business boundaries
+- `counter-service` is the default backend reference anchor
+- `web-bff` is the current default sync entrypoint for the counter chain
+- `outbox-relay` and `projector` are the current async reference workers
+- `platform/model/*`, SOPS, Kustomize, and Flux already have partial real landing points
+
+## What is deferred or only partially landed
+
+The repository also contains target-state or partially landed material for:
+
+- broader worker families
+- `packages/runtime` abstractions
+- future auth platform integration
+- future gateway/platform capabilities
+- future Wasm extension points
+
+These are **not** the default starting point unless the task explicitly targets them.
+
+## Reading order
+
+For backend work, start with:
+
+1. `README.md`
+2. `AGENTS.md`
+3. `docs/README.md`
+4. `docs/operations/counter-service-reference-chain.md`
+5. `docs/architecture/refactor-backlog-monolith-first-topology-late.md`
+6. `docs/adr/009-canonical-monolith-first-topology-late-backend.md`
 
 ## Quick start
 
@@ -46,9 +62,3 @@ just verify
 ## License
 
 Apache 2.0
-
-## Links
-
-- **Repository**: [github.com/openclosed-org/axum-harness](https://github.com/openclosed-org/axum-harness)
-- **Architecture docs**: [README](https://github.com/openclosed-org/axum-harness#readme)
-- **Contributing**: [CONTRIBUTING.md](https://github.com/openclosed-org/axum-harness/blob/main/CONTRIBUTING.md)

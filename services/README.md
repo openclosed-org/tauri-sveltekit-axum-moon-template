@@ -9,7 +9,7 @@
 | Directory | Class | Purpose |
 |---|---|---|
 | `counter-service/` | reference | Smallest complete command/query/event sample |
-| `tenant-service/` | reference | Multi-entity, workflow-driven tenant sample |
+| `tenant-service/` | reference-secondary | Multi-entity, workflow-driven semantics sample |
 | `auth-service/` | stub | Planned auth capability placeholder |
 | `user-service/` | stub | Planned identity/profile capability placeholder |
 | `indexing-service/` | stub | Planned indexing/search capability placeholder |
@@ -17,7 +17,8 @@
 ## Rules
 
 1. Every service directory must carry a `model.yaml` that explains its current semantic status.
-2. Only `counter-service` and `tenant-service` are copy targets for new business services.
+2. `counter-service` is the only default copy target for new business services.
+3. `tenant-service` may be consulted as a secondary semantics reference when a feature truly needs multi-entity, workflow, or compensation semantics.
 3. Stub services may keep minimal or legacy code, but they are not reference modules and should not drive new design decisions.
 
 ## Reference Skeleton

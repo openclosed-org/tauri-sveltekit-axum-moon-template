@@ -2,12 +2,13 @@
 
 ## Status
 - [x] Proposed
-- [x] Accepted
+- [ ] Accepted
 - [ ] Deprecated
 - [ ] Superseded
 
 > **Implementation Status**: All Wasm components are deferred — WIT definitions, host runtime,
 > and guest SDK are not yet implemented. This ADR describes a future capability, not current reality.
+> It is not part of the current default agent path.
 
 ## Context
 The system needs extensibility mechanisms for:
@@ -24,7 +25,7 @@ Traditional approaches (shared libraries, subprocesses, HTTP callbacks) have lim
 - **Scripting engines**: Limited language support, security concerns
 
 ## Decision
-We selected **WebAssembly (Wasm) as the extension plane** via `packages/wasm/`:
+We keep **WebAssembly (Wasm)** as a future extension-plane direction. It is not part of the current backend reference path.
 
 ### Wasm Components
 ```

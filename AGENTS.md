@@ -6,11 +6,7 @@
 
 ## 1. Language Preference
 
-Communication defaults to English. To switch, add to your agent configuration:
-
-```yaml
-communication_language: Chinese
-```
+Communication **MUST** be Chinese
 
 Code, commands, config keys, logs, and protocol fields always remain in their original language.
 

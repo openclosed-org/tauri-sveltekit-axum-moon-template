@@ -17,11 +17,11 @@ Multiple approaches were considered:
 ## Decision
 We adopted a **Platform Model First** approach where:
 
-- `platform/model/` is the single source of truth for all platform definitions
-- Services, deployables, resources, workflows, policies, topologies, and environments are all declared in YAML
-- All infrastructure manifests (`infra/kubernetes/rendered/`), SDKs (`packages/sdk/`), documentation (`docs/generated/`), and catalogs (`platform/catalog/`) are **generated** from the model
-- The model is validated against JSON schemas before generation
-- Manual modifications to generated directories are forbidden; they must be regenerated from the model
+- `platform/model/` is the source of truth for platform metadata, deployables, topologies, workflows, resources, and environments
+- service-local distributed semantics still belong in `services/<name>/model.yaml`, not in `platform/model/`
+- the model is validated against JSON schemas before generation or delivery checks
+- generated directories remain read-only, but the current repository does **not** yet generate every infra/doc artifact mechanically from the model
+- platform generators and validators are a control-plane aid, not proof that every target-state platform capability is already implemented
 
 ### Rationale
 1. **Consistency**: Single source of truth eliminates drift between code, infrastructure, and docs
@@ -40,19 +40,19 @@ We adopted a **Platform Model First** approach where:
 
 ## Consequences
 ### What becomes easier
-- Adding new services: define in model, regenerate, done
-- Changing topology: edit topology YAML, regenerate, deploy
-- Keeping docs in sync with code: regenerate docs from model
-- Onboarding new developers: read model to understand system
+- Adding new deployables/resources/topology metadata in one place
+- Checking platform-level consistency before delivery
+- Keeping ownership and topology intent explicit
+- Onboarding new developers to the intended control-plane structure
 
 ### What becomes more difficult
 - Initial setup requires understanding the model schema
-- Simple changes require model updates first (extra step, but safer)
-- Generator bugs can block progress (mitigated by model validation)
+- Some changes require model updates first (extra step, but safer)
+- Generator or validator drift can create false confidence if not checked against live code
 
 ### Trade-offs
 - **Pros**: Consistency, automation, verification, topology independence
-- **Cons**: Learning curve, upfront investment in generators/validators
+- **Cons**: Learning curve, upfront investment in generators/validators, risk of target-state docs outrunning code
 
 ## References
 - `agent/codemap.yml` - Repository layout specification

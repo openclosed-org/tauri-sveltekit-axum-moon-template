@@ -2,11 +2,11 @@
 
 ## Status
 - [x] Proposed
-- [x] Accepted
+- [ ] Accepted
 - [ ] Deprecated
 - [ ] Superseded
 
-> **Implementation Status**: Only package structure and OpenTelemetry SDK integration are planned.
+> **Implementation Status**: Observability is still partial.
 > Vector configuration, OpenObserve deployment, and dashboards are all deferred.
 > Do not assume observability infrastructure is available.
 
@@ -25,7 +25,7 @@ Traditional observability stacks (ELK, Grafana, Jaeger) require multiple tools w
 5. **Honeycomb**: Powerful but cloud-only
 
 ## Decision
-We selected **Vector for data collection** and **OpenObserve for storage/visualization**:
+We keep **Vector + OpenObserve** as the preferred observability direction, but not as a fully landed current-state platform.
 
 ### Vector (Data Pipeline)
 - High performance: Written in Rust, low resource usage
@@ -43,7 +43,7 @@ We selected **Vector for data collection** and **OpenObserve for storage/visuali
 - Cost-effective: Low resource requirements
 - Self-hosted: Full control over data
 
-### Implementation Structure
+### Intended Structure
 ```
 packages/observability/
 ├── tracing/      # OpenTelemetry tracing setup
@@ -53,7 +53,7 @@ packages/observability/
 └── otel/         # OpenTelemetry SDK integration
 
 infra/local/compose/observability.yaml  # Local observability stack
-infra/kubernetes/addons/openobserve/    # K8s deployment
+infra/k3s/...                           # future cluster deployment path
 ```
 
 ### Data Flow
@@ -79,11 +79,8 @@ Services/Servers/Workers
 
 ## Consequences
 ### What becomes easier
-- Unified observability: Single platform for all telemetry
-- Local development: Lightweight enough for local stack
-- Production scaling: OpenObserve handles high cardinality
-- Debugging: Correlated traces, logs, metrics
-- Cost control: Efficient storage, self-hosted
+- Keeping a single future observability direction documented
+- Building toward correlated traces, logs, and metrics later
 
 ### What becomes more difficult
 - New concepts: OpenObserve is newer than ELK/Grafana
@@ -97,7 +94,7 @@ Services/Servers/Workers
 
 ### Implementation Status
 - ✅ Observability package structure defined
-- ✅ OpenTelemetry SDK integration planned
+- ✅ OpenTelemetry-related package scaffolding exists
 - ⏳ Vector configuration for local dev
 - ⏳ OpenObserve deployment manifests
 - ⏳ Dashboard and alerting setup

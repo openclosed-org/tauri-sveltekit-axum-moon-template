@@ -1,100 +1,101 @@
-# ADR-004: K3s + Cilium + Gateway API + Flux
+# ADR-004: K3s + Flux Delivery Direction
 
 ## Status
 - [x] Proposed
-- [x] Accepted
+- [ ] Accepted
 - [ ] Deprecated
 - [ ] Superseded
 
-## Context
-The system needs a production-ready Kubernetes deployment strategy that supports:
-- Local development with minimal infrastructure
-- Staging environments for testing
-- Production deployments with high availability
-- GitOps-based continuous delivery
-- Network security and service isolation
-- Easy scaling and maintenance
+> Implementation status: K3s overlays, Flux apps, and SOPS integration have real landing points.
+> Cilium and Gateway API are still target-state options, not current default infrastructure facts.
+> The current gateway implementation is a lightweight Pingora reverse proxy, not a full Gateway API control plane.
 
-Traditional choices considered:
-1. **EKS/GKE**: Managed but expensive, vendor lock-in
-2. **Vanilla Kubernetes**: Powerful but complex to operate
-3. **Docker Swarm**: Simple but limited features
-4. **Nomad**: Flexible but smaller ecosystem
-5. **K3s**: Lightweight, production-ready, CNCF certified
+## Context
+
+The repository needs a deployment direction that supports:
+
+1. local and single-node validation
+2. GitOps-based reconciliation
+3. environment overlays
+4. encrypted secret delivery
+5. later topology expansion without rewriting business code
+
+Earlier discussions also considered stronger networking and ingress choices such as Cilium and Gateway API,
+but those are not required to describe the current default path.
 
 ## Decision
-We selected a **K3s + Cilium + Gateway API + Flux** stack:
 
-### K3s (Kubernetes Distribution)
-- Lightweight: Single binary, <1GB RAM
-- Production-ready: CNCF certified, Rancher-backed
-- Easy upgrades: Single binary replacement
-- SQLite default, supports external DB
-- Perfect for edge computing and small clusters
+We use **K3s + Flux + SOPS** as the current delivery direction.
 
-### Cilium (CNI + Network Policy)
-- eBPF-based: High performance, low overhead
-- NetworkPolicy: Fine-grained network control
-- Service mesh: L7 awareness without sidecars
-- Observability: Hubble for network visibility
-- Gateway API: Native support
+`Cilium` and `Gateway API` remain deferred platform options that may be introduced later if the deployment topology truly requires them.
 
-### Gateway API (Ingress/Routing)
-- Kubernetes native: Standard API, not Ingress-specific
-- Multi-tenancy: Gateway classes per tenant/environment
-- Advanced routing: Header-based, path-based, weight-based
-- TLS management: Centralized certificate handling
+### Current default delivery stack
 
-### Flux (GitOps)
-- Declarative: Git as source of truth
-- Automated reconciliation: Continuous sync
-- SOPS integration: Encrypted secrets
-- Health checks: Deployment verification
-- Rollback: Git revert for instant rollback
+#### K3s
 
-### Infrastructure Structure
-```
-infra/kubernetes/
-├── bootstrap/          # Cluster initialization
-├── base/              # Namespaces, RBAC, NetworkPolicy
-├── addons/            # NATS, Valkey, MinIO, etc.
-├── rendered/          # Generated workloads
-└── overlays/          # Environment-specific overrides
+- lightweight enough for the repository's single-node-first direction
+- supports environment overlays and gradual topology evolution
+- aligns with the current `infra/k3s/**` layout
+
+#### Flux
+
+- keeps Git as the declared delivery source
+- reconciles app overlays from `infra/gitops/flux/**`
+- integrates with SOPS decryption
+
+#### SOPS + age
+
+- encrypted secrets in Git
+- consistent secret shape between local `sops-run` and cluster delivery
+- avoids `.env` becoming the backend reference path
+
+### Current infrastructure structure
+
+```text
+infra/k3s/
+  base/        Base manifests
+  overlays/    Environment-specific overrides
+  scripts/     Bootstrap and deploy helpers
 
 infra/gitops/flux/
-├── apps/              # Application definitions
-└── infrastructure/    # Infrastructure components
+  apps/              Application definitions
+  infrastructure/    Infrastructure components
 ```
 
-### Rationale
-1. **Cost-effective**: K3s runs on minimal hardware
-2. **Security**: Cilium provides network isolation at L3-L7
-3. **GitOps**: Flux ensures infrastructure is version-controlled
-4. **Standardization**: Gateway API is the future of Kubernetes ingress
-5. **Simplicity**: K3s reduces operational overhead
+### Deferred infrastructure options
+
+The following are deferred until the real deployment path requires them:
+
+1. Cilium as the default networking layer
+2. Gateway API as the default ingress/routing control plane
+3. more advanced TLS and edge policy machinery
+4. service-mesh-like capabilities
 
 ## Consequences
+
 ### What becomes easier
-- Local-to-prod: Same Kubernetes for dev and prod
-- GitOps: Changes via PR, automatic deployment
-- Network security: Cilium policies prevent lateral movement
-- Scaling: K3s clusters are easy to add/remove
+
+- aligning dev/staging/prod delivery structure
+- GitOps-based reconciliation
+- keeping secret delivery consistent with the current backend reference path
+- evolving topology gradually as the codebase hardens
 
 ### What becomes more difficult
-- Learning curve: Kubernetes concepts are complex
-- Debugging: eBPF and Gateway API require new skills
-- Bootstrap: Initial cluster setup is non-trivial
-- Secrets management: Requires SOPS + age integration
+
+- Kubernetes still introduces operational complexity
+- networking and ingress decisions remain partially deferred
+- agents must distinguish between current K3s/Flux facts and later platform options
 
 ### Trade-offs
-- **Pros**: Cost, security, GitOps, standardization, simplicity
-- **Cons**: Learning curve, debugging complexity, bootstrap effort
+
+- **Pros**: clear delivery path, incremental topology evolution, GitOps alignment
+- **Cons**: bootstrap effort, deferred networking decisions still need later validation
 
 ## References
-- `infra/k3s/base/` - Base Kubernetes manifests
-- `infra/kubernetes/addons/` - Infrastructure addons
+
+- `infra/k3s/base/` - base manifests
+- `infra/k3s/overlays/` - environment overlays
 - `infra/gitops/flux/` - Flux GitOps configuration
-- `infra/security/sops/` - Secret management setup
-- [K3s Documentation](https://rancher.com/docs/k3s/latest/)
-- [Cilium Documentation](https://docs.cilium.io/)
-- [Flux Documentation](https://fluxcd.io/flux/)
+- `infra/security/sops/` - secret management setup
+- `servers/gateway/src/main.rs` - current lightweight gateway implementation
+- `docs/operations/gitops.md`
