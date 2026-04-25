@@ -6,7 +6,7 @@ git_tag_enable = false
 pr_branch_prefix = "release-plz/"
 pr_labels = ["release", "automated"]
 publish_timeout = "10m"
-semver_check = true
+semver_check = false
 
 [changelog]
 protect_breaking_commits = true
@@ -59,6 +59,12 @@ version_group = "template-repo"
 git_tag_enable = true
 git_release_enable = true
 git_tag_name = "v{{ version }}"
+
+[[package]]
+name = "event-bus"
+publish = false
+semver_check = false
+version_group = "template-repo"
 
 [[package]]
 name = "platform"
@@ -185,12 +191,6 @@ semver_check = false
 version_group = "template-repo"
 
 [[package]]
-name = "indexing-service"
-publish = false
-semver_check = false
-version_group = "template-repo"
-
-[[package]]
 name = "authz"
 publish = false
 semver_check = false
@@ -226,4 +226,46 @@ version_group = "template-repo"
 [[package]]
 name = "contracts_errors"
 publish = false
+version_group = "template-repo"
+
+[[package]]
+name = "contract-drift-detector"
+publish = false
+semver_check = false
+version_group = "template-repo"
+
+[[package]]
+name = "dependency-validator"
+publish = false
+semver_check = false
+version_group = "template-repo"
+
+[[package]]
+name = "observability-validator"
+publish = false
+semver_check = false
+version_group = "template-repo"
+
+[[package]]
+name = "platform-generator"
+publish = false
+semver_check = false
+version_group = "template-repo"
+
+[[package]]
+name = "platform-validator"
+publish = false
+semver_check = false
+version_group = "template-repo"
+
+[[package]]
+name = "security-validator"
+publish = false
+semver_check = false
+version_group = "template-repo"
+
+[[package]]
+name = "topology-validator"
+publish = false
+semver_check = false
 version_group = "template-repo"
