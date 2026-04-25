@@ -1,4 +1,8 @@
-//! Event publisher — publishes outbox entries to the event bus and runtime pubsub.
+//! Event publisher for the canonical outbox relay path.
+//!
+//! Canonical path: `event_outbox -> outbox-relay -> EventBus/NATS -> consumers`.
+//! The runtime PubSub publish is a compatibility mirror for runtime consumers;
+//! it must not be treated as a second source-of-truth relay path.
 
 use contracts_events::{EventEnvelope, event_type_name, runtime_outbox_topic_for_type};
 use event_bus::ports::EventBus;
@@ -20,7 +24,8 @@ pub enum PublishError {
     PubSub(String),
 }
 
-/// Publishes outbox entries to both event bus and runtime pubsub.
+/// Publishes outbox entries to the canonical event bus plus a compatibility
+/// runtime pubsub mirror.
 pub struct OutboxPublisher<E: EventBus, P: PubSub> {
     event_bus: E,
     pubsub: P,
@@ -36,7 +41,7 @@ impl<E: EventBus, P: PubSub> OutboxPublisher<E, P> {
             .map_err(|error| PublishError::Deserialize(error.to_string()))
     }
 
-    /// Publish a single outbox entry to both event bus and pubsub.
+    /// Publish a single outbox entry to the canonical bus and compatibility pubsub mirror.
     pub async fn publish(&self, entry: &PendingOutboxEntry) -> Result<(), PublishError> {
         let mut envelope = Self::deserialize_event(&entry.payload)?;
         if envelope.metadata.correlation_id.is_none()
@@ -54,13 +59,14 @@ impl<E: EventBus, P: PubSub> OutboxPublisher<E, P> {
             "publishing outbox entry"
         );
 
-        // Publish to event bus (for service-to-service communication)
+        // Canonical domain event publish path.
         self.event_bus
             .publish(envelope.clone())
             .await
             .map_err(|e| PublishError::Bus(e.to_string()))?;
 
-        // Publish to runtime pubsub (for workers and external consumers)
+        // Compatibility mirror for runtime PubSub consumers. Do not write new
+        // domain-event producers against this path; write to event_outbox.
         let topic = runtime_outbox_topic_for_type(event_type_name(&envelope.event));
         let runtime_envelope =
             RuntimeMessageEnvelope::new(envelope.event.clone(), &topic, &envelope.source_service)
@@ -71,7 +77,7 @@ impl<E: EventBus, P: PubSub> OutboxPublisher<E, P> {
             .await
             .map_err(|e| PublishError::PubSub(e.to_string()))?;
 
-        debug!(entry_id = %entry.id, "published outbox entry to event bus and pubsub");
+        debug!(entry_id = %entry.id, "published outbox entry to canonical event bus and pubsub mirror");
         Ok(())
     }
 

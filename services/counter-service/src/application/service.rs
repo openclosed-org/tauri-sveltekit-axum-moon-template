@@ -21,7 +21,6 @@
 
 use crate::contracts::service::{CounterCommandContext, CounterError, CounterService};
 use async_trait::async_trait;
-use chrono::Utc;
 use contracts_events::{AppEvent, CounterChanged, EventEnvelope, event_type_name};
 use kernel::id::correlation_id as new_correlation_id;
 use tracing::debug;

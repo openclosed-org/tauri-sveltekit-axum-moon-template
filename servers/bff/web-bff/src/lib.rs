@@ -2,6 +2,10 @@
 //!
 //! Phase 0: 路由和中间件已就位，tenant/counter 为当前活跃 reference。
 
+#![deny(unused_imports, unused_variables)]
+
+pub mod bootstrap;
+pub mod composition;
 pub mod config;
 pub mod error;
 pub mod handlers;
@@ -19,7 +23,7 @@ use tower_http::{
 };
 use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::{Modify, OpenApi};
-use utoipa_scalar::{Scalar, Servable};
+use utoipa_scalar::Scalar;
 
 struct SecurityAddon;
 
@@ -82,7 +86,7 @@ pub fn create_router(state: BffState) -> Router {
         .route_layer(axum::middleware::from_fn(
             middleware::tenant::tenant_middleware,
         ))
-        .layer(axum::Extension(state.config.jwt_secret.clone()));
+        .layer(axum::Extension(state.config.clone()));
 
     let scalar_html: String = Scalar::new(ApiDoc::openapi()).to_html();
 

@@ -9,8 +9,8 @@ use async_trait::async_trait;
 use tokio::time;
 use tracing::{debug, warn};
 
-use crate::checkpoint::CheckpointStore;
-use crate::dedupe::MessageDedup;
+use crate::checkpoint::CheckpointStorePort;
+use crate::dedupe::DedupeStorePort;
 use data::ports::lib_sql::LibSqlPort;
 use serde::Deserialize;
 
@@ -192,23 +192,34 @@ impl Default for PollerConfig {
 pub struct OutboxPoller<R: OutboxReader> {
     pub reader: R,
     config: PollerConfig,
-    checkpoint: CheckpointStore,
-    dedup: MessageDedup,
+    checkpoint: Box<dyn CheckpointStorePort>,
+    dedup: Box<dyn DedupeStorePort>,
 }
 
 impl<R: OutboxReader> OutboxPoller<R> {
-    pub fn new(reader: R, config: PollerConfig, checkpoint_path: &str) -> Self {
+    pub fn new(
+        reader: R,
+        config: PollerConfig,
+        checkpoint: Box<dyn CheckpointStorePort>,
+        dedup: Box<dyn DedupeStorePort>,
+    ) -> Self {
         Self {
             reader,
             config,
-            checkpoint: CheckpointStore::new(0, checkpoint_path),
-            dedup: MessageDedup::default(),
+            checkpoint,
+            dedup,
         }
     }
 
     /// Run one poll cycle, returning entries to process.
     pub async fn poll_cycle(&mut self) -> Vec<PendingOutboxEntry> {
-        let since = self.checkpoint.get();
+        let since = match self.checkpoint.get().await {
+            Ok(sequence) => sequence,
+            Err(error) => {
+                warn!(error = %error, "failed to load checkpoint");
+                0
+            }
+        };
 
         match self
             .reader
@@ -218,7 +229,15 @@ impl<R: OutboxReader> OutboxPoller<R> {
             Ok(entries) => {
                 let mut result = Vec::new();
                 for entry in entries {
-                    if !self.dedup.is_duplicate(&entry.id) {
+                    let is_duplicate = match self.dedup.is_duplicate(&entry.id).await {
+                        Ok(is_duplicate) => is_duplicate,
+                        Err(error) => {
+                            warn!(error = %error, entry_id = %entry.id, "failed to check dedupe store");
+                            false
+                        }
+                    };
+
+                    if !is_duplicate {
                         result.push(entry);
                     } else {
                         debug!(entry_id = %entry.id, "skipping duplicate outbox entry");
@@ -236,11 +255,24 @@ impl<R: OutboxReader> OutboxPoller<R> {
     }
 
     /// Mark entries as processed and advance the checkpoint.
-    pub fn mark_processed(&mut self, entries: &[PendingOutboxEntry]) {
+    pub async fn mark_processed(&mut self, entries: &[PendingOutboxEntry]) {
         for entry in entries {
-            self.dedup.mark_processed(&entry.id);
-            if entry.sequence > self.checkpoint.get() {
-                self.checkpoint.advance(entry.sequence);
+            if let Err(error) = self.dedup.mark_processed(&entry.id).await {
+                warn!(error = %error, entry_id = %entry.id, "failed to mark dedupe entry as processed");
+            }
+
+            let current_checkpoint = match self.checkpoint.get().await {
+                Ok(sequence) => sequence,
+                Err(error) => {
+                    warn!(error = %error, "failed to load checkpoint while advancing");
+                    0
+                }
+            };
+
+            if entry.sequence > current_checkpoint
+                && let Err(error) = self.checkpoint.advance(entry.sequence).await
+            {
+                warn!(error = %error, sequence = entry.sequence, "failed to advance checkpoint");
             }
         }
     }
@@ -265,7 +297,7 @@ impl<R: OutboxReader> OutboxPoller<R> {
             let entries = self.poll_cycle().await;
             if !entries.is_empty() {
                 handler(entries.clone()).await;
-                self.mark_processed(&entries);
+                self.mark_processed(&entries).await;
             }
         }
     }
@@ -292,7 +324,15 @@ mod tests {
             retry_count: 0,
         }];
         let reader = MemoryOutboxReader::new(entries);
-        let mut poller = OutboxPoller::new(reader, PollerConfig::default(), test_checkpoint_path());
+        let mut poller = OutboxPoller::new(
+            reader,
+            PollerConfig::default(),
+            Box::new(worker_runtime::FileCheckpointStore::new(
+                test_checkpoint_path(),
+                0,
+            )),
+            Box::<worker_runtime::FileDedupeStore>::default(),
+        );
 
         let result = poller.poll_cycle().await;
         assert_eq!(result.len(), 1);
@@ -313,12 +353,20 @@ mod tests {
             retry_count: 0,
         }];
         let reader = MemoryOutboxReader::new(entries.clone());
-        let mut poller = OutboxPoller::new(reader, PollerConfig::default(), test_checkpoint_path());
+        let mut poller = OutboxPoller::new(
+            reader,
+            PollerConfig::default(),
+            Box::new(worker_runtime::FileCheckpointStore::new(
+                test_checkpoint_path(),
+                0,
+            )),
+            Box::<worker_runtime::FileDedupeStore>::default(),
+        );
 
         // First poll
         let result1 = poller.poll_cycle().await;
         assert_eq!(result1.len(), 1);
-        poller.mark_processed(&result1);
+        poller.mark_processed(&result1).await;
 
         // Second poll — should skip the duplicate
         let reader2 = MemoryOutboxReader::new(entries);

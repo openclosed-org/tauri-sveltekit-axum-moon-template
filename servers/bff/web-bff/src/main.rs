@@ -1,6 +1,6 @@
 //! Web BFF 入口 — 配置加载 + 服务启动。
 
-use web_bff::{config::Config, create_router, state::BffState};
+use web_bff::{bootstrap::bootstrap_bff_state, config::Config, create_router};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -10,7 +10,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     tracing::info!("Starting Web BFF...");
 
     let config = Config::from_env()?;
-    let state = BffState::new(config).await?;
+    let state = bootstrap_bff_state(config).await?;
     let port = state.config.server_port;
     let addr = format!("{}:{}", state.config.server_host, port);
     let app = create_router(state);

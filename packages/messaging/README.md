@@ -1,7 +1,7 @@
-# Event Bus — Unified Outbox & Inter-Service Communication
+# Event Bus — Shared Event Contracts And Bus Abstraction
 
-> `packages/messaging` is the **single event persistence truth source** for all services.
-> Every service writes to the unified `event_outbox` table owned by this crate.
+> `packages/messaging` owns the shared EventBus abstraction and the canonical `event_outbox` schema surface.
+> It does **not** define the canonical background relay loop; that lives in `workers/outbox-relay`.
 
 ## Architecture
 
@@ -12,23 +12,23 @@
 │  adapters/      (InMemoryEventBus)         │  ← In-process
 │                 (NatsEventBus)              │  ← Distributed
 ├────────────────────────────────────────────┤
-│  outbox/        (event_outbox schema +     │  ← Unified outbox truth source
-│                  OutboxEntry +              │
-│                  OutboxPublisher)           │
+│  outbox/        (event_outbox schema +     │  ← Unified outbox persistence surface
+│                  OutboxEntry)               │
 └────────────────────────────────────────────┘
 ```
 
 ## Key Design
 
-- `event_outbox` is the **only** event persistence table — no per-service private outbox tables
+- `event_outbox` is the **only** canonical event persistence table — no per-service private outbox tables
 - Schema: `sequence INTEGER PRIMARY KEY AUTOINCREMENT` + `event_id TEXT UNIQUE` (UUID v7)
 - `status` / `retry_count` / `published_at` track delivery state
-- outbox-relay worker reads from this table and publishes to EventBus + PubSub
+- canonical relay path is `event_outbox -> outbox-relay worker -> event backbone -> consumers`
+- current relay implementation also fans the canonical envelope into `runtime::PubSub`, but that compatibility path is not a second canonical outbox owner
 
 ## Ownership
 
 - Schema definition: `src/outbox/outbox_entry.rs`
-- Publisher logic: `src/outbox/outbox_publisher.rs`
+- Canonical relay worker: `workers/outbox-relay/`
 - Event types: `packages/contracts/events/`
 
 ## Feature Flags

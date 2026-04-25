@@ -3,7 +3,7 @@
 use async_trait::async_trait;
 
 use crate::domain::{CreateTenantInput, Tenant};
-use crate::ports::{RepositoryError, TenantRepository, UserTenantBinding};
+use crate::ports::{RepositoryError, TenantRepository};
 
 /// Application-level error type.
 #[derive(Debug, thiserror::Error)]

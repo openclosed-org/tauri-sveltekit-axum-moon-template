@@ -3,14 +3,15 @@
 //! Consumes replayable events from the outbox, runs them through interested
 //! consumers, and updates materialized read models.
 
-use std::net::SocketAddr;
-use std::sync::Arc;
+#![deny(unused_imports, unused_variables)]
 
-use axum::{Router, routing::get};
 use event_bus::ports::EventEnvelope;
 use storage_turso::TursoBackend;
-use tokio::sync::RwLock;
-use tracing::{info, warn};
+use tracing::info;
+use worker_runtime::{
+    FileCheckpointStore, WorkerHealthState, bootstrap_worker, build_checkpoint_store,
+    shutdown_signal, spawn_health_server,
+};
 
 mod checkpoint;
 mod config;
@@ -21,7 +22,7 @@ mod readmodels;
 mod replay;
 mod source;
 
-use checkpoint::ProjectionCheckpoint;
+use checkpoint::ProjectionCheckpointPort;
 use config::Config;
 use consumers::EventConsumer;
 use error::ProjectorError;
@@ -30,60 +31,11 @@ use readmodels::{ReadModel, SqliteCounterReadModel};
 use replay::{ReplayManager, ReplayStrategy};
 use source::CounterOutboxSource;
 
-/// Worker state.
-struct WorkerState {
-    healthy: RwLock<bool>,
-    projected_count: RwLock<u64>,
-}
-
-impl WorkerState {
-    fn new() -> Self {
-        Self {
-            healthy: RwLock::new(true),
-            projected_count: RwLock::new(0),
-        }
-    }
-
-    async fn record_projected(&self, count: usize) {
-        let mut guard = self.projected_count.write().await;
-        *guard += count as u64;
-    }
-}
-
-async fn healthz(state: axum::extract::State<Arc<WorkerState>>) -> axum::Json<serde_json::Value> {
-    let projected = state.projected_count.read().await;
-    axum::Json(serde_json::json!({
-        "status": "ok",
-        "projected_count": *projected,
-    }))
-}
-
-async fn readyz(state: axum::extract::State<Arc<WorkerState>>) -> axum::Json<serde_json::Value> {
-    let healthy = state.healthy.read().await;
-    if *healthy {
-        axum::Json(serde_json::json!({ "status": "ready" }))
-    } else {
-        axum::Json(serde_json::json!({ "status": "not ready" }))
-    }
-}
-
-async fn start_health_server(state: Arc<WorkerState>, addr: SocketAddr) -> anyhow::Result<()> {
-    let app = Router::new()
-        .route("/healthz", get(healthz))
-        .route("/readyz", get(readyz))
-        .with_state(state);
-
-    let listener = tokio::net::TcpListener::bind(addr).await?;
-    info!("Projector health server on {}", addr);
-    axum::serve(listener, app).await?;
-    Ok(())
-}
-
 /// The projector — consumes events and updates read models.
 pub struct Projector {
     consumers: Vec<Box<dyn EventConsumer>>,
     read_models: Vec<Box<dyn ReadModel>>,
-    checkpoint: ProjectionCheckpoint,
+    checkpoint: Box<dyn ProjectionCheckpointPort>,
 }
 
 impl Projector {
@@ -91,11 +43,14 @@ impl Projector {
         Self {
             consumers: Vec::new(),
             read_models: Vec::new(),
-            checkpoint: ProjectionCheckpoint::new(0, "/tmp/projector-checkpoint.json"),
+            checkpoint: Box::new(FileCheckpointStore::new(
+                "/tmp/projector-checkpoint.json",
+                0,
+            )),
         }
     }
 
-    pub fn with_checkpoint(checkpoint: ProjectionCheckpoint) -> Self {
+    pub fn with_checkpoint(checkpoint: Box<dyn ProjectionCheckpointPort>) -> Self {
         Self {
             consumers: Vec::new(),
             read_models: Vec::new(),
@@ -129,8 +84,8 @@ impl Projector {
         Ok(projected)
     }
 
-    pub fn checkpoint(&self) -> &ProjectionCheckpoint {
-        &self.checkpoint
+    pub fn checkpoint(&self) -> &dyn ProjectionCheckpointPort {
+        self.checkpoint.as_ref()
     }
 }
 
@@ -144,21 +99,15 @@ impl Default for Projector {
 async fn main() -> anyhow::Result<()> {
     let config = Config::from_env()?;
 
-    let _observability = observability::init_observability("projector-worker", &config.rust_log)
-        .map_err(anyhow::Error::msg)?;
+    let worker_runtime::WorkerBootstrap {
+        observability: _observability,
+        state,
+    } = bootstrap_worker("projector-worker", &config.rust_log)?;
 
     info!("Projector worker starting");
     info!("Database: {}", config.database_url);
 
-    let state = Arc::new(WorkerState::new());
-
-    let health_addr: SocketAddr = config.health_addr();
-    let health_state = state.clone();
-    tokio::spawn(async move {
-        if let Err(e) = start_health_server(health_state, health_addr).await {
-            warn!(error = %e, "health server failed");
-        }
-    });
+    spawn_health_server(state.clone(), config.health_addr(), "projector-worker");
 
     let db = TursoBackend::connect(&config.database_url, config.turso_auth_token.as_deref())
         .await
@@ -172,20 +121,29 @@ async fn main() -> anyhow::Result<()> {
     let sqlite_read_model = SqliteCounterReadModel::new(db.clone());
     sqlite_read_model.init().await?;
 
-    let mut projector =
-        Projector::with_checkpoint(ProjectionCheckpoint::new(0, &config.checkpoint_path));
+    let (checkpoint, checkpoint_backend) = build_checkpoint_store(
+        "projector-worker",
+        &config.database_url,
+        config.turso_auth_token.as_deref(),
+        &config.checkpoint_path,
+        0,
+    )
+    .await?;
+
+    let mut projector = Projector::with_checkpoint(checkpoint);
     projector.add_consumer(Box::new(consumers::LoggingConsumer));
     projector.add_consumer(Box::new(consumers::CounterStateConsumer::new()));
     projector.add_read_model(Box::new(sqlite_read_model));
 
     let replay = ReplayManager::new(ReplayStrategy::Checkpoint)
-        .with_fallback_checkpoint(projector.checkpoint().get());
+        .with_fallback_checkpoint(projector.checkpoint().get().await.unwrap_or(0));
 
     info!(
-        "Projector worker running (poll interval: {:?}, batch size: {}, checkpoint: {})",
+        "Projector worker running (poll interval: {:?}, batch size: {}, checkpoint: {}, store_backend: {})",
         config.poll_interval(),
         config.batch_size,
-        config.checkpoint_path
+        config.checkpoint_path,
+        checkpoint_backend.as_str(),
     );
 
     replay_outbox(
@@ -205,35 +163,59 @@ async fn main() -> anyhow::Result<()> {
             LiveEventSubscriber::connect(nats_url, &config.nats_subject, queue_group).await?;
 
         loop {
-            if let Some(envelope) = live.try_next(config.poll_interval()).await? {
-                let projected = projector.process_event(&envelope).await?;
-                state.record_projected(projected).await;
+            tokio::select! {
+                _ = shutdown_signal() => {
+                    state.set_healthy(false).await;
+                    info!("shutdown signal received, stopping projector worker");
+                    return Ok(());
+                }
+                result = live.try_next(config.poll_interval()) => {
+                    if let Some(envelope) = result? {
+                        let projected = projector.process_event(&envelope).await?;
+                        state.record_count("projected_count", projected).await;
+                    }
+                }
             }
         }
     }
 
     loop {
+        tokio::select! {
+            _ = shutdown_signal() => {
+                state.set_healthy(false).await;
+                info!("shutdown signal received, stopping projector worker");
+                break;
+            }
+            _ = tokio::time::sleep(config.poll_interval()) => {}
+        }
+
         let events = source
-            .fetch_since(projector.checkpoint().get(), config.batch_size)
+            .fetch_since(
+                projector.checkpoint().get().await.unwrap_or(0),
+                config.batch_size,
+            )
             .await?;
 
         if !events.is_empty() {
             let mut projected = 0;
             for event in events {
                 projected += projector.process_event(&event.envelope).await?;
-                projector.checkpoint().advance(event.sequence);
+                let current = projector.checkpoint().get().await.unwrap_or(0);
+                if event.sequence > current {
+                    let _ = projector.checkpoint().advance(event.sequence).await;
+                }
             }
-            state.record_projected(projected).await;
+            state.record_count("projected_count", projected).await;
         }
-
-        tokio::time::sleep(config.poll_interval()).await;
     }
+
+    Ok(())
 }
 
 async fn replay_outbox(
     source: &CounterOutboxSource<TursoBackend>,
     projector: &Projector,
-    state: &Arc<WorkerState>,
+    state: &WorkerHealthState,
     start_sequence: u64,
     batch_size: usize,
 ) -> Result<(), ProjectorError> {
@@ -248,9 +230,12 @@ async fn replay_outbox(
         let mut projected = 0;
         for event in events {
             projected += projector.process_event(&event.envelope).await?;
-            projector.checkpoint().advance(event.sequence);
+            let current = projector.checkpoint().get().await.unwrap_or(0);
+            if event.sequence > current {
+                let _ = projector.checkpoint().advance(event.sequence).await;
+            }
             since = event.sequence;
         }
-        state.record_projected(projected).await;
+        state.record_count("projected_count", projected).await;
     }
 }

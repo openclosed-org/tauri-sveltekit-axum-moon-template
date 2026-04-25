@@ -6,18 +6,15 @@
 //! Configuration is loaded via SOPS-encrypted secrets, never from `.env` files.
 //! For local development: `just sops-run outbox-relay-worker`
 
-use std::net::SocketAddr;
-use std::sync::Arc;
+#![deny(unused_imports, unused_variables)]
 
-use axum::{Router, routing::get};
 use event_bus::adapters::nats_bus::NatsEventBus;
-use event_bus::ports::EventBus;
 use runtime::adapters::nats::NatsPubSub;
-use runtime::ports::state::StateEntry;
-use runtime::ports::{MessageEnvelope, PubSub, State};
 use storage_turso::TursoBackend;
-use tokio::sync::RwLock;
-use tracing::{error, info, warn};
+use tracing::{error, info};
+use worker_runtime::{
+    bootstrap_worker, build_worker_store_set, shutdown_signal, spawn_health_server,
+};
 
 mod checkpoint;
 mod config;
@@ -27,96 +24,26 @@ mod polling;
 mod publish;
 
 use config::Config;
-use idempotency::IdempotencyStore;
 use polling::{OutboxPoller, OutboxReader, PollerConfig};
 use publish::OutboxPublisher;
-
-/// Worker state shared across tasks.
-struct WorkerState {
-    healthy: RwLock<bool>,
-    processed_count: RwLock<u64>,
-    failed_count: RwLock<u64>,
-}
-
-impl WorkerState {
-    fn new() -> Self {
-        Self {
-            healthy: RwLock::new(true),
-            processed_count: RwLock::new(0),
-            failed_count: RwLock::new(0),
-        }
-    }
-
-    async fn record_success(&self, count: usize) {
-        let mut guard = self.processed_count.write().await;
-        *guard += count as u64;
-    }
-
-    async fn record_failure(&self, count: usize) {
-        let mut guard = self.failed_count.write().await;
-        *guard += count as u64;
-    }
-}
-
-/// Health check endpoint.
-async fn healthz(state: axum::extract::State<Arc<WorkerState>>) -> axum::Json<serde_json::Value> {
-    let healthy = state.healthy.read().await;
-    let processed = state.processed_count.read().await;
-    let failed = state.failed_count.read().await;
-
-    axum::Json(serde_json::json!({
-        "status": if *healthy { "ok" } else { "unhealthy" },
-        "processed_count": *processed,
-        "failed_count": *failed,
-    }))
-}
-
-/// Readiness check endpoint.
-async fn readyz(state: axum::extract::State<Arc<WorkerState>>) -> axum::Json<serde_json::Value> {
-    let healthy = state.healthy.read().await;
-    if *healthy {
-        axum::Json(serde_json::json!({ "status": "ready" }))
-    } else {
-        axum::Json(serde_json::json!({ "status": "not ready" }))
-    }
-}
-
-/// Start the health check HTTP server.
-async fn start_health_server(state: Arc<WorkerState>, addr: SocketAddr) -> anyhow::Result<()> {
-    let app = Router::new()
-        .route("/healthz", get(healthz))
-        .route("/readyz", get(readyz))
-        .with_state(state);
-
-    let listener = tokio::net::TcpListener::bind(addr).await?;
-    info!("Health check server listening on {}", addr);
-    axum::serve(listener, app).await?;
-    Ok(())
-}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // Load configuration from SOPS-encrypted environment variables
     let config = Config::from_env()?;
 
-    let _observability = observability::init_observability("outbox-relay-worker", &config.rust_log)
-        .map_err(anyhow::Error::msg)?;
+    let worker_runtime::WorkerBootstrap {
+        observability: _observability,
+        state,
+    } = bootstrap_worker("outbox-relay-worker", &config.rust_log)?;
 
     info!("Outbox relay worker starting");
     info!("Database: {}", config.database_url);
     info!("NATS URL: {}", config.nats_url);
     info!("Poll interval: {:?}", config.poll_interval());
 
-    let state = Arc::new(WorkerState::new());
-
     // Start health check server using config
-    let health_addr = config.health_addr();
-    let health_state = state.clone();
-    tokio::spawn(async move {
-        if let Err(e) = start_health_server(health_state, health_addr).await {
-            warn!(error = %e, "health server failed");
-        }
-    });
+    spawn_health_server(state.clone(), config.health_addr(), "outbox-relay-worker");
 
     let event_bus = NatsEventBus::connect(&config.nats_url, &config.nats_subject_prefix).await?;
     let pubsub = NatsPubSub::connect(&config.nats_url, &config.nats_subject_prefix).await?;
@@ -124,75 +51,103 @@ async fn main() -> anyhow::Result<()> {
     // Create outbox publisher with both event bus and pubsub
     let publisher = OutboxPublisher::new(event_bus, pubsub);
 
-    // Create idempotency store for exactly-once publishing
-    let idempotency_store = IdempotencyStore::default();
+    let stores = build_worker_store_set(
+        "outbox-relay-worker",
+        &config.database_url,
+        config.turso_auth_token.as_deref(),
+        &config.checkpoint_path,
+    )
+    .await?;
+    let worker_runtime::WorkerStoreSet {
+        checkpoint,
+        idempotency: idempotency_store,
+        dedupe,
+        backend: store_backend,
+    } = stores;
 
     // Create the production reader from the configured database.
-    let mut poller = create_outbox_poller(&config).await?;
+    let mut poller = create_outbox_poller(&config, checkpoint, dedupe).await?;
 
     info!(
-        "Outbox relay worker running (poll interval: {:?}, batch size: {}, checkpoint: {})",
+        "Outbox relay worker running (poll interval: {:?}, batch size: {}, checkpoint: {}, store_backend: {})",
         config.poll_interval(),
         config.batch_size,
-        config.checkpoint_path
+        config.checkpoint_path,
+        store_backend.as_str(),
     );
 
     // Main processing loop
     loop {
-        let entries = poller.poll_cycle().await;
-
-        if !entries.is_empty() {
-            // Filter out already-processed entries via idempotency store
-            let mut to_publish = Vec::new();
-            for entry in &entries {
-                if idempotency_store.is_already_processed(&entry.id) {
-                    info!(entry_id = %entry.id, "skipping already-processed entry");
-                    continue;
-                }
-                if idempotency_store.start(&entry.id) {
-                    to_publish.push(entry.clone());
-                } else {
-                    info!(entry_id = %entry.id, "skipping entry already in progress");
-                }
+        tokio::select! {
+            _ = shutdown_signal() => {
+                state.set_healthy(false).await;
+                info!("shutdown signal received, stopping outbox relay worker");
+                break;
             }
+            _ = tokio::time::sleep(config.poll_interval()) => {
+                let entries = poller.poll_cycle().await;
 
-            if !to_publish.is_empty() {
-                let (successes, failures) = publisher.publish_batch(&to_publish).await;
-                state.record_success(successes.len()).await;
-                state.record_failure(failures.len()).await;
-
-                // Mark published in database for successful entries
-                if !successes.is_empty() {
-                    if let Err(e) = poller.mark_published(&successes).await {
-                        error!(error = %e, "failed to mark outbox entries as published");
-                        for id in &successes {
-                            idempotency_store.fail(id, format!("mark_published failed: {}", e));
+                if !entries.is_empty() {
+                    // Filter out already-processed entries via idempotency store
+                    let mut to_publish = Vec::new();
+                    for entry in &entries {
+                        if idempotency_store
+                            .is_already_processed(&entry.id)
+                            .await
+                            .unwrap_or(false)
+                        {
+                            info!(entry_id = %entry.id, "skipping already-processed entry");
+                            continue;
                         }
-                    } else {
-                        for id in &successes {
-                            idempotency_store.complete(id);
+                        if idempotency_store.start(&entry.id).await.unwrap_or(false) {
+                            to_publish.push(entry.clone());
+                        } else {
+                            info!(entry_id = %entry.id, "skipping entry already in progress");
                         }
                     }
-                }
 
-                // Mark failures in idempotency store
-                for (id, err) in &failures {
-                    idempotency_store.fail(id, err.to_string());
-                }
+                    if !to_publish.is_empty() {
+                        let (successes, failures) = publisher.publish_batch(&to_publish).await;
+                        state.record_count("processed_count", successes.len()).await;
+                        state.record_count("failed_count", failures.len()).await;
 
-                // Advance checkpoint and dedup
-                poller.mark_processed(&entries);
+                        // Mark published in database for successful entries
+                        if !successes.is_empty() {
+                            if let Err(e) = poller.mark_published(&successes).await {
+                                error!(error = %e, "failed to mark outbox entries as published");
+                                for id in &successes {
+                                    let _ = idempotency_store
+                                        .fail(id, format!("mark_published failed: {}", e))
+                                        .await;
+                                }
+                            } else {
+                                for id in &successes {
+                                    let _ = idempotency_store.complete(id).await;
+                                }
+                            }
+                        }
+
+                        // Mark failures in idempotency store
+                        for (id, err) in &failures {
+                            let _ = idempotency_store.fail(id, err.to_string()).await;
+                        }
+
+                        // Advance checkpoint and dedup
+                        poller.mark_processed(&entries).await;
+                    }
+                }
             }
         }
-
-        // Sleep for the poll interval
-        tokio::time::sleep(config.poll_interval()).await;
     }
+
+    Ok(())
 }
 
 /// Create the production outbox poller from the configured database.
 async fn create_outbox_poller(
     config: &Config,
+    checkpoint: Box<dyn worker_runtime::CheckpointStore>,
+    dedupe: Box<dyn worker_runtime::DedupeStore>,
 ) -> anyhow::Result<OutboxPoller<Box<dyn OutboxReader>>> {
     let poller_config = PollerConfig {
         poll_interval: config.poll_interval(),
@@ -212,6 +167,7 @@ async fn create_outbox_poller(
     Ok(OutboxPoller::new(
         Box::new(reader),
         poller_config,
-        &config.checkpoint_path,
+        checkpoint,
+        dedupe,
     ))
 }

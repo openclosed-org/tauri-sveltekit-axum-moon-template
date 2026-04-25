@@ -8,7 +8,7 @@ use tokio::sync::RwLock;
 use tracing::{debug, warn};
 
 use crate::ports::{EventBus, EventBusError, EventEnvelope, EventHandler};
-use contracts_events::{NATS_EVENT_SUBJECT_PREFIX, event_type_name};
+use contracts_events::event_type_name;
 
 /// Event bus backed by NATS subjects.
 pub struct NatsEventBus {

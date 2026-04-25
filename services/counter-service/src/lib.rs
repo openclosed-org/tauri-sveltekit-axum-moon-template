@@ -11,8 +11,10 @@
 //! - `policies/` → policy placeholders and rule hooks
 //! - `contracts/` → DTO re-exports from shared contracts
 //!
-//! `infrastructure/` remains temporarily because existing server and desktop
-//! composition roots still instantiate `LibSqlCounterRepository` from here.
+//! Concrete adapter wiring belongs to server/worker bootstrap modules.
+//! `infrastructure/` remains temporarily only as the adapter implementation home.
+
+#![deny(unused_imports, unused_variables)]
 
 // ── Core layers ──
 pub mod application;

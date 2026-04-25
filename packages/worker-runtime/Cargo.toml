@@ -1,0 +1,32 @@
+[package]
+name = "worker-runtime"
+version = "0.1.0"
+edition = "2024"
+description = "Shared worker reliability primitives: checkpoint, idempotency, dedupe"
+license = "Apache-2.0"
+rust-version.workspace = true
+
+[dependencies]
+# Core
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+async-trait = { workspace = true }
+anyhow = { workspace = true }
+
+# Storage
+data = { workspace = true }
+storage_turso = { workspace = true }
+
+# Utilities
+tracing = { workspace = true }
+tokio = { workspace = true }
+axum = { workspace = true }
+observability = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt", "sync"] }
+uuid = { workspace = true, features = ["v7"] }
+
+[lints]
+workspace = true

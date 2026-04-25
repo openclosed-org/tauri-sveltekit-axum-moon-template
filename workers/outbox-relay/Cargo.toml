@@ -15,6 +15,7 @@ event-bus = { path = "../../packages/messaging" }
 contracts_events = { path = "../../packages/contracts/events" }
 data = { path = "../../packages/data" }
 storage_turso = { path = "../../packages/data-adapters/turso" }
+worker-runtime = { workspace = true }
 observability = { workspace = true }
 platform = { workspace = true }
 

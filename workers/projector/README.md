@@ -6,7 +6,7 @@
 
 - status: `reference`
 - 角色：默认 projection、checkpoint、replay 结构参考 worker
-- 说明：当前已补齐真实 outbox replay、持久化 read model、磁盘 checkpoint，并新增可选 NATS live tail；live tail 默认使用 queue group 降低多副本重复消费，但仍不提供 durable broker checkpoint 语义。同时已补到独立的 dev SOPS/Kustomize/Flux 落点，当前 overlay 中显式保持 `replicas=1`，因此 shared libSQL/Turso secret 与 delivery gate 校验必须前置
+- 说明：当前已补齐真实 outbox replay、持久化 read model、磁盘 checkpoint，并新增可选 NATS live tail；但 durable consumer / shared checkpoint 语义仍未成为默认生产能力
 
 ## 责任
 

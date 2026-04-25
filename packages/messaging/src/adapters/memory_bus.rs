@@ -4,7 +4,6 @@
 //! If a subscriber's handler is slow, it may block the publish path.
 
 use std::collections::HashMap;
-use std::sync::Arc;
 
 use async_trait::async_trait;
 use tokio::sync::{RwLock, broadcast};

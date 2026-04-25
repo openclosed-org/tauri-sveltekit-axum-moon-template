@@ -6,7 +6,7 @@
 
 - status: `reference`
 - 角色：默认 outbox -> relay -> publish 链路参考 worker
-- 说明：默认主路径已改为真实数据库 reader，并补上真实 NATS 发布 adapter；独立 dev overlay 现已接入 shared counter DB secret，当前 overlay 中显式保持 `replicas=1`，因此更依赖 shared secret 与 delivery gate 的前置校验
+- 说明：当前 canonical relay path 是 `event_outbox -> outbox-relay`。它会把 canonical `contracts_events::EventEnvelope` 发布到当前消息骨干，并兼容把同一 envelope 转给 runtime pubsub；后者仍属于次级分发面，不应反向定义默认主链
 
 ## 责任
 
@@ -36,5 +36,5 @@ cargo test -p outbox-relay-worker
 
 1. 不要把当前 NATS 发布 adapter 写成“所有下游都已完成 broker 订阅”的最终形态。
 2. 不要跳过 checkpoint、幂等、恢复顺序这些 worker 硬约束。
-3. 不要把本地可运行误写成 NATS 与真实数据库链路已经完全闭环。
+3. 不要把 `EventBus` 与 `runtime::PubSub` 的双写兼容面误写成“双 canonical 发布路径”。
 4. 不要在 shared libSQL/Turso secret 仍指向本地 `file:` 路径，或 `just sops-verify-counter-shared-db ENV=dev` / `just verify-counter-delivery strict` 仍未通过时，继续依赖 dev overlay 中已启用的 `outbox-relay-worker` 作为有效交付链路。

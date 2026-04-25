@@ -3,7 +3,6 @@
 //! These handlers use the counter-service implementation via its repository.
 //! All responses use contract DTOs from `contracts_api` and `contracts_errors`.
 
-use authz::ports::AuthzPort;
 use axum::{
     Json, Router,
     extract::{Extension, State},
@@ -15,10 +14,9 @@ use contracts_errors::{ErrorCode, ErrorResponse};
 use counter_service::contracts::service::CounterCommandContext;
 use counter_service::contracts::service::{CounterError, CounterService};
 use counter_service::domain::CounterId;
-use user_service::infrastructure::LibSqlUserTenantRepository;
 use user_service::ports::UserTenantRepository;
-use utoipa::OpenApi;
 
+use crate::composition::CounterServiceHandle;
 use crate::middleware::tenant::RequestContext;
 use crate::state::BffState;
 
@@ -244,7 +242,7 @@ async fn check_authz(
             (
                 StatusCode::FORBIDDEN,
                 Json(ErrorResponse::new(
-                    ErrorCode::Unauthorized,
+                    ErrorCode::Forbidden,
                     format!("Permission denied: user {user} cannot {relation} {object}"),
                 )),
             )
@@ -255,7 +253,7 @@ async fn check_authz(
 /// Abstracts over embedded and remote database backends.
 fn build_service(
     state: &BffState,
-) -> Result<impl CounterService + 'static, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<CounterServiceHandle, (StatusCode, Json<ErrorResponse>)> {
     state.counter_service().ok_or_else(|| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -335,7 +333,7 @@ async fn resolve_tenant_id(
         return Err((
             StatusCode::FORBIDDEN,
             Json(ErrorResponse::new(
-                ErrorCode::Unauthorized,
+                ErrorCode::Forbidden,
                 "Tenant claim does not match authenticated user binding",
             )),
         ));

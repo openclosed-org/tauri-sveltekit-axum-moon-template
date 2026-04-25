@@ -4,8 +4,10 @@
 //! The target skeleton keeps domain semantics in `model.yaml`, while source code
 //! remains focused on domain/application/ports/contracts/events/policies.
 //!
-//! `infrastructure/` remains temporarily because existing composition roots still
-//! construct repository adapters from this crate.
+//! Concrete adapter wiring belongs to server/worker bootstrap modules.
+//! `infrastructure/` remains temporarily only as the adapter implementation home.
+
+#![deny(unused_imports, unused_variables)]
 
 pub mod application;
 pub mod contracts;
