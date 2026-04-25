@@ -115,6 +115,8 @@ There are two primary user modes for this repository:
 
 Template users should treat the repository release as the main contract and keep only the parts relevant to their project.
 
+The current release strategy is one repository-level `0.1.x` line for the template as a whole. Cargo crate versions remain internal workspace metadata, not separate product release channels.
+
 Contributors should treat the repository structure, gates, agent protocol, and documentation conventions as part of the design, not as optional extras.
 
 A dedicated `just template-init` cleanup flow now exists as a conservative planning/dry-run entrypoint. It does **not** delete files yet; it previews which upstream-maintainer and open-source governance materials a derived project may want to remove after adopting the template.

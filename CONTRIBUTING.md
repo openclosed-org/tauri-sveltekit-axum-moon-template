@@ -103,6 +103,7 @@ Only claim checks passed if you actually ran them.
 ## Commit and release semantics
 
 - This repository is versioned as one template product using repository-level SemVer.
+- The active repository release line is `0.1.x`; keep iterating there until there is a deliberate reason to open a new pre-1.0 line or to declare `1.0.0` stability.
 - Prefer conventional commits such as `feat:`, `fix:`, `docs:`, `refactor:`, `ci:`, and `chore:`.
 - Use scopes when they add signal, for example `feat(template):`, `fix(bff):`, `docs(readme):`, `refactor(worker-runtime):`.
 - If a change alters template defaults, project layout, setup flow, or migration expectations for template users, call that out explicitly in the PR description and release notes.
@@ -112,10 +113,12 @@ Only claim checks passed if you actually ran them.
 
 - This repository uses `release-plz` for repository release preparation.
 - Maintainers should prefer conventional commits such as `feat:`, `fix:`, and `docs:` so generated changelogs stay readable.
+- Bootstrap the first official repository release manually as `v0.1.0`; after that, let release automation continue the `0.1.x` line.
 - `release-plz` opens a release PR on `main` and prepares version/changelog updates from merged commits.
 - Most binaries/internal crates are configured with `publish = false`, so release automation can still generate changelogs and GitHub releases without requiring every crate to publish to crates.io.
 - The SemVer contract users should rely on first is the repository tag/release, because this repo is primarily shipped as a template rather than as a set of independently consumed crates.
-- Use `just semver-check` locally when validating repository-level release compatibility assumptions.
+- Cargo crate versions are still required for workspace tooling, but they are not independent product version promises.
+- Use `just semver-check` locally when validating repository-level compatibility assumptions for the current `0.1.x` line.
 
 ## Reporting bugs and features
 
