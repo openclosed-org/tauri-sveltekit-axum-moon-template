@@ -59,8 +59,8 @@ test-desktop:
 
 # 快速运行 E2E（使用 e2e profile,跳过优化编译）
 test-desktop-fast:
-    cd {{justfile_directory()}} && cargo build -p native-tauri --profile e2e --features e2e-testing
-    cd {{justfile_directory()}}/e2e-desktop-playwright && bun run test:desktop:core
+    cargo build -p native-tauri --profile e2e --features e2e-testing
+    bun --cwd {{justfile_directory()}}/apps/desktop/tests/e2e run test:desktop:core
 
 # ── 聚合 ────────────────────────────────────────────────────
 

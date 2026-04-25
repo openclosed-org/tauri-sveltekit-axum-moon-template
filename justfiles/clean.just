@@ -29,8 +29,8 @@ clean-tmp:
 clean-tmp-truncate:
     @echo "截断大日志文件（>10MB，保留最后 5 万行）..."
     @find .tmp -name "*.log" -size +10M 2>/dev/null | while read f; do \
-        echo "  截断 $$f"; \
-        tail -n 50000 "$$f" > "$$f.tmp" && mv "$$f.tmp" "$$f"; \
+        echo "  截断 $f"; \
+        tail -n 50000 "$f" > "$f.tmp" && mv "$f.tmp" "$f"; \
     done
     @echo "✓ 大日志文件已截断"
 

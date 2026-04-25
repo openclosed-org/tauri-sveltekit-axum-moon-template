@@ -92,7 +92,7 @@ logs-api:
 
 # 检查 storage-turso 编译
 check-storage-turso:
-    cargo check -p web-bff -p admin-bff
+    cargo check -p web-bff
 
 # 构建桌面 E2E 二进制
 build-desktop-bin:

@@ -15,11 +15,11 @@ concurrency:
 
 jobs:
   release-line:
-    name: Detect Active Release Line
+    name: Detect Repository Release Bootstrap
     runs-on: ubuntu-latest
 
     outputs:
-      has_v0_1_tag: ${{ steps.detect.outputs.has_v0_1_tag }}
+      has_repo_tag: ${{ steps.detect.outputs.has_repo_tag }}
 
     steps:
       - name: Checkout
@@ -27,14 +27,14 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Detect official 0.1.x tags
+      - name: Detect official repository semver tags
         id: detect
         run: |
-          if git tag -l 'v0.1.*' | grep -q .; then
-            echo "has_v0_1_tag=true" >> "$GITHUB_OUTPUT"
+          if git tag -l 'v[0-9]*.[0-9]*.[0-9]*' | grep -q .; then
+            echo "has_repo_tag=true" >> "$GITHUB_OUTPUT"
           else
-            echo "has_v0_1_tag=false" >> "$GITHUB_OUTPUT"
-            echo "No official v0.1.x tag found yet. Bootstrap the first repository release manually as v0.1.0, then let release-plz continue the 0.1.x line." >> "$GITHUB_STEP_SUMMARY"
+            echo "has_repo_tag=false" >> "$GITHUB_OUTPUT"
+            echo "No official repository semver tag found yet. Bootstrap the first repository release manually with your chosen starting tag, then let release-plz continue from there." >> "$GITHUB_STEP_SUMMARY"
           fi
 
   semver:
@@ -64,7 +64,7 @@ jobs:
     name: Release PR
     runs-on: ubuntu-latest
     needs: [release-line, semver]
-    if: needs.release-line.outputs.has_v0_1_tag == 'true'
+    if: needs.release-line.outputs.has_repo_tag == 'true'
 
     steps:
       - name: Checkout
@@ -85,7 +85,7 @@ jobs:
 
   release:
     name: GitHub Release
-    if: github.event_name == 'workflow_dispatch' && needs.release-line.outputs.has_v0_1_tag == 'true'
+    if: github.event_name == 'workflow_dispatch' && needs.release-line.outputs.has_repo_tag == 'true'
     runs-on: ubuntu-latest
     needs: [release-line, semver]
 

@@ -26,11 +26,11 @@ build-macos-aarch64:
 
 # Build API server only
 build-api:
-    cargo build -p api-server --release
+    cargo build -p web-bff --release
 
 # Build Tauri desktop app
 build-tauri:
-    cd apps/client/native/src-tauri && cargo tauri build
+    cargo tauri build --manifest-path apps/desktop/src-tauri/Cargo.toml
 
 # Analyze binary size
 bloat:
