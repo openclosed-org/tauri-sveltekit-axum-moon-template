@@ -4,7 +4,7 @@ use serde::Deserialize;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
-use tracing::{error, info, warn};
+use tracing::info;
 
 #[derive(Parser, Debug)]
 #[command(name = "topology-validator")]
@@ -37,6 +37,8 @@ struct DeployableModel {
     services: Option<Vec<String>>,
     resources: Option<Vec<String>>,
     health_check: Option<HealthCheck>,
+    current_status: Option<String>,
+    independent_deploy: Option<bool>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -279,10 +281,6 @@ fn load_topologies(platform_dir: &Path) -> Result<BTreeMap<String, TopologyModel
 }
 
 fn is_critical_deployable(deployable: &DeployableModel) -> bool {
-    // Critical deployables are those without explicit non-critical marking
-    // In the future, this could be based on a explicit "critical: true" field
-    deployable
-        .description
-        .as_ref()
-        .is_none_or(|desc| !desc.to_lowercase().contains("optional"))
+    matches!(deployable.current_status.as_deref(), Some("implemented"))
+        && deployable.independent_deploy.unwrap_or(false)
 }

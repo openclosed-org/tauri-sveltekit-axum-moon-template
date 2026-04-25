@@ -295,7 +295,7 @@ fn check_service_crate_drift(platform_dir: &Path, root_dir: &Path) -> Result<Vec
         }
     }
 
-    // Get service crate names from services/ directory
+    // Get service package names from Cargo manifests under services/
     let services_crate_dir = root_dir.join("services");
     let mut crate_service_names = BTreeSet::new();
 
@@ -307,13 +307,13 @@ fn check_service_crate_drift(platform_dir: &Path, root_dir: &Path) -> Result<Vec
                 continue;
             }
 
-            // Check if it has a Cargo.toml (is a Rust crate)
-            if path.join("Cargo.toml").exists()
-                && let Some(name) = path.file_name().and_then(|n| n.to_str())
-            {
-                // Strip -service suffix for comparison
-                let clean_name = name.strip_suffix("-service").unwrap_or(name);
-                crate_service_names.insert(clean_name.to_string());
+            let cargo_toml = path.join("Cargo.toml");
+            if cargo_toml.exists() {
+                if let Some(package_name) = read_package_name(&cargo_toml)? {
+                    crate_service_names.insert(package_name);
+                } else if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                    crate_service_names.insert(name.to_string());
+                }
             }
         }
     }
@@ -345,4 +345,32 @@ fn check_service_crate_drift(platform_dir: &Path, root_dir: &Path) -> Result<Vec
     }
 
     Ok(drifts)
+}
+
+fn read_package_name(cargo_toml: &Path) -> Result<Option<String>> {
+    let content = fs::read_to_string(cargo_toml)
+        .with_context(|| format!("Failed to read Cargo manifest: {}", cargo_toml.display()))?;
+
+    let mut in_package_section = false;
+    for line in content.lines() {
+        let trimmed = line.trim();
+
+        if trimmed == "[package]" {
+            in_package_section = true;
+            continue;
+        }
+
+        if in_package_section && trimmed.starts_with('[') {
+            break;
+        }
+
+        if in_package_section
+            && trimmed.starts_with("name")
+            && let Some((_, value)) = trimmed.split_once('=')
+        {
+            return Ok(Some(value.trim().trim_matches('"').to_string()));
+        }
+    }
+
+    Ok(None)
 }

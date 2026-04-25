@@ -1,10 +1,12 @@
+#![deny(unused_imports, unused_variables)]
+
 use anyhow::{Context, Result};
 use clap::Parser;
 use jsonschema::Validator;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
-use tracing::{error, info, warn};
+use tracing::{info, warn};
 
 #[derive(Parser, Debug)]
 #[command(name = "platform-validator")]
@@ -155,6 +157,7 @@ fn main() -> Result<()> {
     info!("Running cross-reference checks...");
     warnings += check_service_deployable_refs(&platform_dir, &mut results);
     warnings += check_resource_refs(&platform_dir, &mut results);
+    check_deployable_status_consistency(&platform_dir, &mut results);
 
     // Print results
     let passed = results.iter().filter(|r| r.valid).count();
@@ -275,6 +278,189 @@ fn check_resource_refs(platform_dir: &Path, _results: &mut [ValidationResult]) -
     }
 
     warnings
+}
+
+fn check_deployable_status_consistency(platform_dir: &Path, results: &mut Vec<ValidationResult>) {
+    let deployables_dir = platform_dir.join("model/deployables");
+    if !deployables_dir.exists() {
+        return;
+    }
+
+    let yaml_pattern = format!("{}/*.yaml", deployables_dir.display());
+    let Ok(yaml_files) = glob::glob(&yaml_pattern) else {
+        return;
+    };
+
+    for yaml_file in yaml_files.filter_map(|path| path.ok()) {
+        let file_name = yaml_file
+            .strip_prefix(platform_dir)
+            .unwrap_or(&yaml_file)
+            .to_string_lossy()
+            .to_string();
+
+        let mut errors = Vec::new();
+        let content = match fs::read_to_string(&yaml_file) {
+            Ok(content) => content,
+            Err(error) => {
+                errors.push(format!("Failed to read deployable model: {error}"));
+                results.push(ValidationResult {
+                    file: file_name,
+                    schema: "deployable-status-consistency".to_string(),
+                    valid: false,
+                    errors,
+                });
+                continue;
+            }
+        };
+
+        let yaml: serde_json::Value = match serde_yaml::from_str(&content) {
+            Ok(yaml) => yaml,
+            Err(error) => {
+                errors.push(format!("Invalid deployable YAML: {error}"));
+                results.push(ValidationResult {
+                    file: file_name,
+                    schema: "deployable-status-consistency".to_string(),
+                    valid: false,
+                    errors,
+                });
+                continue;
+            }
+        };
+
+        let name = yaml.get("name").and_then(|v| v.as_str()).unwrap_or("");
+        let current_status = yaml.get("current_status").and_then(|v| v.as_str());
+        let target_status = yaml.get("target_status").and_then(|v| v.as_str());
+        let independent_deploy = yaml
+            .get("independent_deploy")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
+        let embedded_in = yaml
+            .get("embedded_in")
+            .and_then(|v| v.as_array())
+            .map(|items| items.iter().filter_map(|v| v.as_str()).count())
+            .unwrap_or(0);
+        let entry_point = yaml.get("entry_point").and_then(|v| v.as_str());
+        let package = yaml.get("package").and_then(|v| v.as_str());
+        let planned_capabilities = yaml
+            .get("planned_capabilities")
+            .and_then(|v| v.as_array())
+            .map(|items| items.len())
+            .unwrap_or(0);
+
+        if current_status.is_none() {
+            errors.push("deployables must declare current_status".to_string());
+        }
+
+        if target_status.is_none() {
+            errors.push("deployables must declare target_status".to_string());
+        }
+
+        if yaml.get("planned_capabilities").is_none() {
+            errors.push(
+                "deployables must declare planned_capabilities (use [] when empty)".to_string(),
+            );
+        }
+
+        if matches!(current_status, Some("embedded")) && embedded_in == 0 {
+            errors.push("current_status=embedded requires embedded_in".to_string());
+        }
+
+        if matches!(current_status, Some("embedded")) && independent_deploy {
+            errors.push("current_status=embedded cannot set independent_deploy=true".to_string());
+        }
+
+        if matches!(current_status, Some("planned") | Some("stub")) && independent_deploy {
+            errors.push("planned/stub deployables cannot set independent_deploy=true".to_string());
+        }
+
+        if matches!(target_status, Some("independent"))
+            && matches!(
+                current_status,
+                Some("embedded") | Some("planned") | Some("stub")
+            )
+            && planned_capabilities == 0
+        {
+            errors
+                .push("future independent deployables must list planned_capabilities".to_string());
+        }
+
+        if matches!(current_status, Some("implemented")) && !independent_deploy {
+            errors.push(
+                "current_status=implemented requires independent_deploy=true for real runnable binaries"
+                    .to_string(),
+            );
+        }
+
+        if independent_deploy && entry_point.is_none() {
+            errors.push("independent_deploy=true requires entry_point".to_string());
+        }
+
+        if independent_deploy && package.is_none() {
+            errors.push("independent_deploy=true requires package".to_string());
+        }
+
+        if independent_deploy
+            && let Some(package) = package
+            && !package_name_exists(platform_dir, package)
+        {
+            errors.push(format!(
+                "independent_deploy=true references missing package '{package}'"
+            ));
+        }
+
+        if independent_deploy
+            && let Some(entry_point) = entry_point
+            && !platform_dir
+                .parent()
+                .unwrap_or(platform_dir)
+                .join(entry_point)
+                .exists()
+        {
+            errors.push(format!(
+                "independent_deploy=true references missing entry_point '{entry_point}'"
+            ));
+        }
+
+        if name == "counter-service" && !matches!(current_status, Some("embedded")) {
+            errors.push(
+                "counter-service must declare current_status=embedded until it has its own binary"
+                    .to_string(),
+            );
+        }
+
+        if errors.is_empty() {
+            continue;
+        }
+
+        results.push(ValidationResult {
+            file: file_name,
+            schema: "deployable-status-consistency".to_string(),
+            valid: false,
+            errors,
+        });
+    }
+}
+
+fn package_name_exists(platform_dir: &Path, package_name: &str) -> bool {
+    let repo_root = platform_dir.parent().unwrap_or(platform_dir);
+    let cargo_pattern = format!("{}/**/Cargo.toml", repo_root.display());
+    let Ok(cargo_files) = glob::glob(&cargo_pattern) else {
+        return false;
+    };
+
+    for cargo_file in cargo_files.filter_map(|path| path.ok()) {
+        let Ok(content) = fs::read_to_string(cargo_file) else {
+            continue;
+        };
+        if content
+            .lines()
+            .any(|line| line.trim() == format!("name = \"{package_name}\""))
+        {
+            return true;
+        }
+    }
+
+    false
 }
 
 fn print_text_report(results: &[ValidationResult], passed: usize, failed: usize, warnings: usize) {

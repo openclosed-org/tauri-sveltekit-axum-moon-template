@@ -23,6 +23,21 @@
     "description": {
       "type": "string"
     },
+    "current_status": {
+      "type": "string",
+      "enum": ["implemented", "embedded", "stub", "planned"],
+      "description": "Current implementation/deployment status in this repository"
+    },
+    "target_status": {
+      "type": "string",
+      "enum": ["independent", "embedded", "stub", "planned"],
+      "description": "Intended deployable status after topology evolution"
+    },
+    "planned_capabilities": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Capabilities intentionally described as target-state, not current implementation"
+    },
     "services": {
       "type": "array",
       "items": { "type": "string" },

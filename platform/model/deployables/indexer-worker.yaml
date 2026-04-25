@@ -7,6 +7,11 @@ description: >
   the search index. Supports incremental indexing with source-level
   checkpoint tracking.
 
+current_status: stub
+target_status: independent
+planned_capabilities:
+  - durable indexing pipeline beyond current stub implementation
+
 services: []
 
 resources:
@@ -14,6 +19,7 @@ resources:
 
 entry_point: workers/indexer/src/main.rs
 package: indexer-worker
+independent_deploy: false
 
 health_check:
   path: /healthz

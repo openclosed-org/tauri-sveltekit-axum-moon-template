@@ -5,6 +5,10 @@ description: >
   Reference event-driven projector. Consumes domain events and builds
   denormalized read models that must remain replayable and rebuildable.
 
+current_status: implemented
+target_status: independent
+planned_capabilities: []
+
 services: []
 
 runtime_profile: async-projection
@@ -21,6 +25,7 @@ resources:
 
 entry_point: workers/projector/src/main.rs
 package: projector-worker
+independent_deploy: true
 
 health_check:
   path: /healthz

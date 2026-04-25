@@ -19,6 +19,8 @@
 //! Services define their own internal error enums (via `thiserror`) and
 //! convert to [`ApiError`] at the boundary (Axum handler / Tauri command).
 
+#![deny(unused_imports, unused_variables)]
+
 use serde::{Deserialize, Serialize, ser::SerializeStruct};
 use ts_rs::TS;
 use utoipa::ToSchema;

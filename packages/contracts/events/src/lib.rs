@@ -1,4 +1,11 @@
-//! contracts/events — Domain event payload types.
+//! contracts/events — shared domain event payload types.
+//!
+//! Any event persisted to `event_outbox` or sent across process/deployable
+//! boundaries must be represented here as `AppEvent` inside `EventEnvelope`.
+//! Service-local orchestration events may remain in a service crate only when
+//! they never cross HTTP/message/outbox boundaries.
+
+#![deny(unused_imports, unused_variables)]
 
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
@@ -247,8 +254,8 @@ pub enum EventEnvelopeError {
 
 /// Unified application event envelope.
 ///
-/// This is the single type that flows through the EventBus.
-/// All services publish and consume via this enum.
+/// This is the single shared event type for cross-process/domain-event traffic.
+/// All events written to `event_outbox` must be variants of this enum.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", content = "payload")]
 pub enum AppEvent {

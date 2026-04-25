@@ -6,6 +6,11 @@ description: >
   delayed job execution, and recurring task scheduling. Maintains
   job registry with scheduling metadata and execution history.
 
+current_status: stub
+target_status: independent
+planned_capabilities:
+  - durable scheduling and dispatch beyond current stub implementation
+
 services: []
 
 resources:
@@ -13,6 +18,7 @@ resources:
 
 entry_point: workers/scheduler/src/main.rs
 package: scheduler-worker
+independent_deploy: false
 
 health_check:
   path: /healthz

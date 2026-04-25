@@ -36,4 +36,10 @@ per-tenant
 
 ### Replay
 
-✅ Replayable, 30-day retention, backward-compatible schema policy.
+依据 `services/counter-service/model.yaml`，当前声明语义为：
+
+- replayable: `true`
+- retention: `P30D`
+- compatibility_policy: `backward`
+
+这些字段目前以 service semantics 声明为准，不应被额外放大成“所有下游保留与 broker 策略都已完全落地”。

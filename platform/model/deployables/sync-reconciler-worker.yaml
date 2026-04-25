@@ -8,6 +8,11 @@ description: >
   reconciles divergent state. Supports CRDT-based and last-write-wins
   resolution strategies.
 
+current_status: stub
+target_status: independent
+planned_capabilities:
+  - real reconciliation engine beyond current stub implementation
+
 services: []
 
 resources:
@@ -15,6 +20,7 @@ resources:
 
 entry_point: workers/sync-reconciler/src/main.rs
 package: sync-reconciler-worker
+independent_deploy: false
 
 health_check:
   path: /healthz
