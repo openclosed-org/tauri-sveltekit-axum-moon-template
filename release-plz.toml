@@ -26,12 +26,14 @@ commit_parsers = [
 [[package]]
 name = "workspace-hack"
 release = false
+publish = false
 semver_check = false
 version_group = "template-repo"
 
 [[package]]
 name = "adapter-google"
 release = false
+publish = false
 semver_check = false
 version_group = "template-repo"
 
