@@ -214,7 +214,7 @@ tasks:
 
   # Build desktop binary once (cached for subsequent E2E runs)
   build-desktop-bin:
-    command: 'cargo build -p native-tauri --profile e2e --features e2e-testing'
+    command: 'cargo build --manifest-path apps/desktop/src-tauri/Cargo.toml --profile e2e --features e2e-testing --target-dir target'
     inputs:
       - 'apps/desktop/**/*'
       - 'packages/contracts/**/*'

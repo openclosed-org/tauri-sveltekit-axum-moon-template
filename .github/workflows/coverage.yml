@@ -27,7 +27,6 @@ on:
       - 'packages/authn/**'
       - 'packages/authz/**'
       - 'packages/observability/**'
-      - 'packages/sdk/**'
   workflow_dispatch:
 
 permissions:

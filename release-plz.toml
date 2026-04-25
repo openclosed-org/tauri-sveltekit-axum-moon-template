@@ -1,9 +1,10 @@
 [workspace]
 changelog_update = true
 dependencies_update = true
-git_only = true
+git_only = false
 git_release_enable = false
 git_tag_enable = false
+release = false
 pr_branch_prefix = "release-plz/"
 pr_labels = ["release", "automated"]
 publish_timeout = "10m"
@@ -29,12 +30,6 @@ semver_check = false
 version_group = "template-repo"
 
 [[package]]
-name = "native-tauri"
-release = false
-semver_check = false
-version_group = "template-repo"
-
-[[package]]
 name = "adapter-google"
 release = false
 semver_check = false
@@ -42,6 +37,7 @@ version_group = "template-repo"
 
 [[package]]
 name = "adapter-google-backend"
+release = false
 publish = false
 semver_check = false
 version_group = "template-repo"
@@ -60,6 +56,17 @@ version_group = "template-repo"
 git_tag_enable = true
 git_release_enable = true
 git_tag_name = "v{{ version }}"
+
+[[package]]
+name = "axum-harness"
+release = true
+publish = false
+semver_check = false
+git_only = true
+git_tag_enable = true
+git_release_enable = true
+git_tag_name = "v{{ version }}"
+changelog_path = "tools/repo-release/CHANGELOG.md"
 
 [[package]]
 name = "event-bus"
@@ -107,22 +114,6 @@ version_group = "template-repo"
 name = "worker-runtime"
 publish = false
 semver_check = false
-version_group = "template-repo"
-
-[[package]]
-name = "sdk-counter"
-publish = false
-version_group = "template-repo"
-
-[[package]]
-name = "sdk-counter-embedded"
-publish = false
-semver_check = false
-version_group = "template-repo"
-
-[[package]]
-name = "sdk-counter-http"
-publish = false
 version_group = "template-repo"
 
 [[package]]

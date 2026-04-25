@@ -23,7 +23,7 @@ semver-check BASELINE='' RELEASE_TYPE='minor':
     echo "Using SemVer baseline: $baseline"
     echo "Using release type: $release_type"
 
-    packages="contracts_api contracts_events contracts_errors contracts_auth sdk-counter"
+    packages="contracts_api contracts_events contracts_errors contracts_auth"
 
     for pkg in $packages; do
       if git cat-file -e "$baseline:$(cargo metadata --no-deps --format-version 1 | jq -r --arg pkg "$pkg" '.packages[] | select(.name == $pkg) | .manifest_path' | sed 's#^.*/tauri-sveltekit-axum-moon-template/##')" 2>/dev/null; then

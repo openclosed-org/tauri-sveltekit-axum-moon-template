@@ -27,7 +27,7 @@ platforms = [
 # These are only needed for the desktop app, not backend CI.
 # Using traversal-excludes prevents them from influencing workspace-hack features.
 [traversal-excludes]
-workspace-members = ["native-tauri", "adapter-google"]
+workspace-members = ["adapter-google"]
 
 # Write out exact versions rather than a semver range. (Defaults to false.)
 # exact-versions = true

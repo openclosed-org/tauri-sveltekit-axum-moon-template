@@ -1,7 +1,5 @@
 [workspace]
 members = [
-    # Apps
-    "apps/desktop/src-tauri",
     # Core
     "packages/workspace-hack",
     "packages/observability",
@@ -56,7 +54,9 @@ members = [
     "platform/validators/security-check",
     "platform/validators/observability-check",
     "platform/generators",
+    "tools/repo-release",
 ]
+exclude = ["apps/desktop/src-tauri"]
 resolver = "3"
 
 # ── Workspace Lints ──────────────────────────────────────────
@@ -83,33 +83,33 @@ rust-version = "1.94"
 
 [workspace.dependencies]
 # Internal crates
-data = { path = "packages/data" }
-data-traits = { path = "packages/data-traits" }
-worker-runtime = { path = "packages/worker-runtime" }
-kernel = { path = "packages/kernel" }
-platform = { path = "packages/platform" }
-runtime = { path = "packages/runtime" }
-contracts_api = { path = "packages/contracts/api" }
-contracts_auth = { path = "packages/contracts/auth" }
-contracts_events = { path = "packages/contracts/events" }
-contracts_errors = { path = "packages/contracts/errors" }
-adapter_telemetry_otel = { package = "adapter-telemetry-otel", path = "packages/observability/adapters/opentelemetry" }
-adapter_telemetry_tracing = { package = "adapter-telemetry-tracing", path = "packages/observability/adapters/tracing" }
-storage_surrealdb = { path = "packages/data-adapters/surrealdb" }
-storage_turso = { path = "packages/data-adapters/turso" }
-adapter-google = { path = "packages/authn/adapters/google" }
-adapter-google-backend = { path = "packages/authn/adapters/google-backend" }
-authz = { path = "packages/authz" }
-workspace-hack = { path = "packages/workspace-hack" }
-observability = { path = "packages/observability" }
-sdk-counter = { path = "packages/sdk/rust/counter" }
-sdk-counter-embedded = { path = "packages/sdk/rust/counter-embedded" }
-counter-service = { path = "services/counter-service" }
-tenant-service = { path = "services/tenant-service" }
-user-service = { path = "services/user-service" }
-auth-service = { path = "services/auth-service" }
-event-bus = { path = "packages/messaging" }
-web-bff = { path = "servers/bff/web-bff" }
+data = { path = "packages/data", version = "0.1.0" }
+data-traits = { path = "packages/data-traits", version = "0.1.0" }
+worker-runtime = { path = "packages/worker-runtime", version = "0.1.0" }
+kernel = { path = "packages/kernel", version = "0.1.0" }
+platform = { path = "packages/platform", version = "0.1.0" }
+runtime = { path = "packages/runtime", version = "0.1.0" }
+contracts_api = { path = "packages/contracts/api", version = "0.1.0" }
+contracts_auth = { path = "packages/contracts/auth", version = "0.1.0" }
+contracts_events = { path = "packages/contracts/events", version = "0.1.0" }
+contracts_errors = { path = "packages/contracts/errors", version = "0.1.0" }
+adapter_telemetry_otel = { package = "adapter-telemetry-otel", path = "packages/observability/adapters/opentelemetry", version = "0.1.0" }
+adapter_telemetry_tracing = { package = "adapter-telemetry-tracing", path = "packages/observability/adapters/tracing", version = "0.1.0" }
+storage_surrealdb = { path = "packages/data-adapters/surrealdb", version = "0.1.0" }
+storage_turso = { path = "packages/data-adapters/turso", version = "0.1.0" }
+adapter-google = { path = "packages/authn/adapters/google", version = "0.1.0" }
+adapter-google-backend = { path = "packages/authn/adapters/google-backend", version = "0.1.0" }
+authz = { path = "packages/authz", version = "0.1.0" }
+workspace-hack = { path = "packages/workspace-hack", version = "0.1.0" }
+observability = { path = "packages/observability", version = "0.1.0" }
+sdk-counter = { path = "packages/sdk/rust/counter", version = "0.1.0" }
+sdk-counter-embedded = { path = "packages/sdk/rust/counter-embedded", version = "0.1.0" }
+counter-service = { path = "services/counter-service", version = "0.1.0" }
+tenant-service = { path = "services/tenant-service", version = "0.1.0" }
+user-service = { path = "services/user-service", version = "0.1.0" }
+auth-service = { path = "services/auth-service", version = "0.1.0" }
+event-bus = { path = "packages/messaging", version = "0.1.0" }
+web-bff = { path = "servers/bff/web-bff", version = "0.1.0" }
 
 # Tauri
 tauri = { version = "2.10.3", features = ["tray-icon"] }

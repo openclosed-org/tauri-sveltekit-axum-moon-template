@@ -8,7 +8,7 @@ description = "Runtime abstraction ports and adapters for distributed systems"
 [dependencies]
 # Internal
 kernel = { workspace = true }
-contracts_events = { path = "../contracts/events" }
+contracts_events = { path = "../contracts/events", version = "0.1.0" }
 
 # Core
 serde = { workspace = true }

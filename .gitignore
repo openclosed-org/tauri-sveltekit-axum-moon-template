@@ -11,6 +11,7 @@ logs/
 *.db-wal
 *.db-shm
 .data/
+servers/bff/web-bff/file::memory*
 
 # --- Secrets / Environment ---
 .secrets/

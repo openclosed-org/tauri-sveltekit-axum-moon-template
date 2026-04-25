@@ -10,8 +10,8 @@ path = "src/main.rs"
 
 [dependencies]
 # Internal
-runtime = { path = "../../packages/runtime" }
-contracts_events = { path = "../../packages/contracts/events" }
+runtime = { path = "../../packages/runtime", version = "0.1.0" }
+contracts_events = { path = "../../packages/contracts/events", version = "0.1.0" }
 data = { workspace = true }
 observability = { workspace = true }
 

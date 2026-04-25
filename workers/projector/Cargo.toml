@@ -10,11 +10,11 @@ path = "src/main.rs"
 
 [dependencies]
 # Internal
-contracts_events = { path = "../../packages/contracts/events" }
-event-bus = { path = "../../packages/messaging" }
-runtime = { path = "../../packages/runtime" }
-storage_turso = { path = "../../packages/data-adapters/turso" }
-data = { path = "../../packages/data" }
+contracts_events = { path = "../../packages/contracts/events", version = "0.1.0" }
+event-bus = { path = "../../packages/messaging", version = "0.1.0" }
+runtime = { path = "../../packages/runtime", version = "0.1.0" }
+storage_turso = { path = "../../packages/data-adapters/turso", version = "0.1.0" }
+data = { path = "../../packages/data", version = "0.1.0" }
 worker-runtime = { workspace = true }
 observability = { workspace = true }
 platform = { workspace = true }

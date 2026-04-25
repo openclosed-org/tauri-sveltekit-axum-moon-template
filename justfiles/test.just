@@ -59,7 +59,7 @@ test-desktop:
 
 # 快速运行 E2E（使用 e2e profile,跳过优化编译）
 test-desktop-fast:
-    cargo build -p native-tauri --profile e2e --features e2e-testing
+    cargo build --manifest-path apps/desktop/src-tauri/Cargo.toml --profile e2e --features e2e-testing --target-dir target
     bun --cwd {{justfile_directory()}}/apps/desktop/tests/e2e run test:desktop:core
 
 # ── 聚合 ────────────────────────────────────────────────────
@@ -85,7 +85,7 @@ test-api-e2e-only:
 
 # 默认后端主链验证：counter-service + tenant-service + web-bff
 test-backend-primary:
-    cargo test -p kernel -p platform -p runtime -p contracts_api -p contracts_events -p contracts_errors -p adapter-telemetry-otel -p adapter-telemetry-tracing -p storage_turso -p user-service -p tenant-service -p counter-service -p event-bus -p web-bff -p data -p observability -p sdk-counter -p sdk-counter-embedded -p sdk-counter-http -- --test-threads=4
+    cargo test -p kernel -p platform -p runtime -p contracts_api -p contracts_events -p contracts_errors -p adapter-telemetry-otel -p adapter-telemetry-tracing -p storage_turso -p user-service -p tenant-service -p counter-service -p event-bus -p web-bff -p data -p observability -- --test-threads=4
 
 # 可选 auth lane 验证：auth-service + authz + auth contracts/adapters
 test-auth-optional:

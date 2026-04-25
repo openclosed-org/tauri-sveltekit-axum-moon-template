@@ -10,7 +10,7 @@ path = "src/main.rs"
 
 [dependencies]
 # Internal
-runtime = { path = "../../packages/runtime" }
+runtime = { path = "../../packages/runtime", version = "0.1.0" }
 observability = { workspace = true }
 
 # Core

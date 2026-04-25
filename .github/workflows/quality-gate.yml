@@ -31,7 +31,6 @@ on:
       - 'packages/authn/**'
       - 'packages/authz/**'
       - 'packages/observability/**'
-      - 'packages/sdk/**'
   push:
     branches: [main, develop]
     paths:
@@ -60,7 +59,6 @@ on:
       - 'packages/authn/**'
       - 'packages/authz/**'
       - 'packages/observability/**'
-      - 'packages/sdk/**'
   workflow_dispatch:
 
 permissions:
@@ -101,8 +99,9 @@ jobs:
           cargo deny
           --exclude-dev
           --exclude workspace-hack
-          --exclude native-tauri
-          --exclude runtime_tauri
+          --exclude sdk-counter
+          --exclude sdk-counter-embedded
+          --exclude sdk-counter-http
           --exclude adapter-google
           --exclude storage_surrealdb
           check advisories
@@ -213,23 +212,6 @@ jobs:
       - name: Contract drift check
         run: just drift-check
 
-  sdk-drift:
-    name: SDK Drift Check
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-
-    steps:
-      - uses: actions/checkout@v5
-
-      - name: Install Bun
-        uses: oven-sh/setup-bun@v2
-
-      - name: Install just
-        uses: taiki-e/install-action@just
-
-      - name: SDK drift check
-        run: just sdk-drift-check
-
   semver:
     name: Repository SemVer Check
     runs-on: ubuntu-latest
@@ -315,7 +297,7 @@ jobs:
     name: Quality Gate Summary
     runs-on: ubuntu-latest
     timeout-minutes: 2
-    needs: [security, governance-static, secondary-runtime, platform-drift, contract-drift, sdk-drift, semver, validation-scripts, supply-chain]
+    needs: [security, governance-static, secondary-runtime, platform-drift, contract-drift, semver, validation-scripts, supply-chain]
     if: always()
 
     steps:
@@ -330,7 +312,6 @@ jobs:
           echo "| Secondary Runtime Validation | ${{ needs.secondary-runtime.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Platform Drift Check | ${{ needs.platform-drift.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Contract Drift Check | ${{ needs.contract-drift.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| SDK Drift Check | ${{ needs.sdk-drift.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Repository SemVer Check | ${{ needs.semver.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Supply Chain Scan | ${{ needs.supply-chain.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -340,7 +321,6 @@ jobs:
              [ "${{ needs.secondary-runtime.result }}" = "success" ] && \
              [ "${{ needs.platform-drift.result }}" = "success" ] && \
              [ "${{ needs.contract-drift.result }}" = "success" ] && \
-             [ "${{ needs.sdk-drift.result }}" = "success" ] && \
              [ "${{ needs.semver.result }}" = "success" ] && \
              [ "${{ needs.validation-scripts.result }}" = "success" ] && \
              [ "${{ needs.supply-chain.result }}" = "success" ]; then

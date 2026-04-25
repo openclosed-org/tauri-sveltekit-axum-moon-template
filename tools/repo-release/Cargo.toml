@@ -1,0 +1,42 @@
+[package]
+name = "axum-harness"
+version = "0.2.0"
+edition = "2024"
+publish = false
+license = "Apache-2.0"
+description = "Repository-level release anchor for the axum-harness template"
+repository = "https://github.com/openclosed-org/axum-harness"
+include = [
+    "src/**",
+    "CHANGELOG.md",
+    "../../Cargo.toml",
+    "../../Cargo.lock",
+    "../../release-plz.toml",
+    "../../Justfile",
+    "../../justfiles/template.just",
+    "../../README.md",
+    "../../CONTRIBUTING.md",
+    "../../CHANGELOG.md",
+    "../../docs/**",
+    "../../servers/**",
+    "../../services/**",
+    "../../workers/**",
+    "../../platform/**",
+    "../../packages/contracts/**",
+    "../../packages/kernel/**",
+    "../../packages/platform/**",
+    "../../packages/runtime/**",
+    "../../packages/messaging/**",
+    "../../packages/data/**",
+    "../../packages/data-traits/**",
+    "../../packages/data-adapters/**",
+    "../../packages/authn/**",
+    "../../packages/authz/**",
+    "../../packages/observability/**",
+]
+
+[lib]
+path = "src/lib.rs"
+
+[lints]
+workspace = true
