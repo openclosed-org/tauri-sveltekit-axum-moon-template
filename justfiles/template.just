@@ -12,7 +12,7 @@ semver-check BASELINE='' RELEASE_TYPE='minor':
     release_type="{{RELEASE_TYPE}}"
 
     if [ -z "$baseline" ]; then
-      baseline="$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' | sort -V | tail -n 1)"
+      baseline="$(git tag -l 'axum-harness-v[0-9]*.[0-9]*.[0-9]*' | sort -V | tail -n 1)"
     fi
 
     if [ -z "$baseline" ]; then

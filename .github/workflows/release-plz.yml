@@ -57,11 +57,11 @@ jobs:
       - name: Detect official repository semver tags
         id: detect
         run: |
-          if git tag -l 'v[0-9]*.[0-9]*.[0-9]*' | grep -q .; then
+          if git tag -l 'axum-harness-v[0-9]*.[0-9]*.[0-9]*' | grep -q .; then
             echo "has_repo_tag=true" >> "$GITHUB_OUTPUT"
           else
             echo "has_repo_tag=false" >> "$GITHUB_OUTPUT"
-            echo "No official repository semver tag found yet. Bootstrap the first repository release manually with your chosen starting tag, then let release-plz continue from there." >> "$GITHUB_STEP_SUMMARY"
+            echo "No official repository semver tag found yet. Bootstrap the first repository release manually with an 'axum-harness-vX.Y.Z' tag, then let release-plz continue from there." >> "$GITHUB_STEP_SUMMARY"
           fi
 
   semver:
