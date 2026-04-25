@@ -44,6 +44,15 @@ struct DeployableModel {
     deployable_type: String,
     version: String,
     description: Option<String>,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    current_status: Option<String>,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    target_status: Option<String>,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    planned_capabilities: Vec<String>,
     services: Option<Vec<String>>,
     resources: Option<Vec<String>>,
     ports: Option<Vec<u16>>,

@@ -1,4 +1,9 @@
-//! Tenant service domain events.
+//! Tenant service-local domain events.
+//!
+//! These events are currently scoped to tenant-service orchestration and tests.
+//! If any tenant event is written to `event_outbox`, sent over HTTP/RPC, or
+//! consumed across a deployable boundary, promote it to `contracts_events::AppEvent`
+//! first instead of publishing this service-local type directly.
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};

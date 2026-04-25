@@ -6,6 +6,10 @@ description: >
   Aggregates reference services into view-oriented APIs and exposes
   the primary synchronous reference entrypoints.
 
+current_status: implemented
+target_status: independent
+planned_capabilities: []
+
 services:
   - counter-service
   - tenant-service
@@ -24,6 +28,7 @@ resources:
 
 entry_point: servers/bff/web-bff/src/main.rs
 package: web-bff
+independent_deploy: true
 
 health_check:
   path: /healthz

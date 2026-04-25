@@ -8,3 +8,21 @@ status: stub
 description: >
   Planned indexing and search capability placeholder.
   Reserved as a future derived-data boundary, not a first-wave reference module.
+
+authentication:
+  required: false
+  methods: []
+
+authorization:
+  required: false
+  model: none
+
+observability:
+  tracing:
+    enabled: true
+    sampler: parentbased_always_on
+  metrics:
+    enabled: true
+  logging:
+    level: info
+    format: json

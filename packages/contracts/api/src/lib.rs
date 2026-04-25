@@ -1,6 +1,8 @@
 //! contracts/api — Route-level shared DTOs.
 //! All types derive TS for automatic TypeScript generation.
 
+#![deny(unused_imports, unused_variables)]
+
 use serde::{Deserialize, Serialize, ser::SerializeStruct};
 use std::fmt;
 use ts_rs::TS;

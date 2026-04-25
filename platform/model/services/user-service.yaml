@@ -8,3 +8,23 @@ status: stub
 description: >
   Planned user profile and identity-related capability placeholder.
   Not part of the first-wave reference modules.
+
+authentication:
+  required: true
+  methods:
+    - bearer-jwt
+    - dev-headers
+
+authorization:
+  required: true
+  model: openfga
+
+observability:
+  tracing:
+    enabled: true
+    sampler: parentbased_always_on
+  metrics:
+    enabled: true
+  logging:
+    level: info
+    format: json

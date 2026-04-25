@@ -41,6 +41,8 @@ interface ServerModule {
   contractDependencies: string[];
 }
 
+type ContractUsageMap = Map<string, string[]>;
+
 interface ParsedArgs {
   mode: Mode;
 }
@@ -297,11 +299,61 @@ function extractContractDependencies(cargoTomlPath: string): string[] {
   }
 }
 
+function discoverWorkspaceContractUsage(): ContractUsageMap {
+  const usages = new Map<string, Set<string>>();
+  const roots = [
+    path.join(workspaceRoot, 'packages'),
+    path.join(workspaceRoot, 'services'),
+    path.join(workspaceRoot, 'servers'),
+    path.join(workspaceRoot, 'workers'),
+    path.join(workspaceRoot, 'apps', 'desktop', 'src-tauri'),
+    path.join(workspaceRoot, 'platform'),
+  ];
+
+  const visit = (currentPath: string): void => {
+    if (!existsSync(currentPath)) {
+      return;
+    }
+
+    const entries = readdirSync(currentPath, { withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.name === 'target' || entry.name === 'node_modules' || entry.name === '.git') {
+        continue;
+      }
+
+      const entryPath = path.join(currentPath, entry.name);
+      if (entry.isDirectory()) {
+        visit(entryPath);
+        continue;
+      }
+
+      if (entry.isFile() && entry.name === 'Cargo.toml' && !entryPath.startsWith(contractsDir)) {
+        const consumer = path.relative(workspaceRoot, path.dirname(entryPath));
+        const deps = extractContractDependencies(entryPath);
+        for (const dep of deps) {
+          const consumers = usages.get(dep) ?? new Set<string>();
+          consumers.add(consumer);
+          usages.set(dep, consumers);
+        }
+      }
+    }
+  };
+
+  for (const root of roots) {
+    visit(root);
+  }
+
+  return new Map(
+    Array.from(usages.entries(), ([dep, consumers]) => [dep, Array.from(consumers).sort()]),
+  );
+}
+
 // ── Validation Logic ──────────────────────────────────────────
 
 function validateContractCoverage(
   contractCrates: ContractCrate[],
   serverModules: ServerModule[],
+  workspaceUsage: ContractUsageMap,
   mode: Mode,
 ): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
@@ -311,11 +363,16 @@ function validateContractCoverage(
     const usedByServers = serverModules.filter((s) => s.contractDependencies.includes(contract.name));
 
     if (usedByServers.length === 0) {
-      // Not an error — contracts can be used by services or clients
+      const workspaceConsumers = workspaceUsage.get(contract.name) ?? [];
+      if (workspaceConsumers.length > 0) {
+        continue;
+      }
+
+      // Not an error — contracts can be used by future servers or external clients
       issues.push({
         level: 'warn',
         scope: contract.path,
-        message: `contract crate '${contract.name}' is not directly depended on by any server module`,
+        message: `contract crate '${contract.name}' is not directly depended on by any workspace crate`,
       });
     }
   }
@@ -526,10 +583,11 @@ async function main(): Promise<number> {
 
   // Discover server modules
   const serverModules = discoverServerModules();
+  const workspaceUsage = discoverWorkspaceContractUsage();
 
   // Run validation checks
   const issues: ValidationIssue[] = [
-    ...validateContractCoverage(contractCrates, serverModules, mode),
+    ...validateContractCoverage(contractCrates, serverModules, workspaceUsage, mode),
     ...validateOpenApiAlignment(serverModules, mode),
     ...validateTypeUsage(contractCrates, serverModules, mode),
   ];

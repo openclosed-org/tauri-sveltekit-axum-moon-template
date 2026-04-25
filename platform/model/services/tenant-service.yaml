@@ -8,3 +8,23 @@ status: reference
 description: >
   Reference service for multi-tenant isolation, multi-entity ownership,
   onboarding workflows, member management, and compensation-aware state transitions.
+
+authentication:
+  required: true
+  methods:
+    - bearer-jwt
+    - dev-headers
+
+authorization:
+  required: true
+  model: openfga
+
+observability:
+  tracing:
+    enabled: true
+    sampler: parentbased_always_on
+  metrics:
+    enabled: true
+  logging:
+    level: info
+    format: json

@@ -8,3 +8,23 @@ description: >
   Reference service for the smallest end-to-end business chain.
   Covers single aggregate ownership, CAS-style versioning,
   event publication, projection, and replay-oriented design.
+
+authentication:
+  required: true
+  methods:
+    - bearer-jwt
+    - dev-headers
+
+authorization:
+  required: true
+  model: openfga
+
+observability:
+  tracing:
+    enabled: true
+    sampler: parentbased_always_on
+  metrics:
+    enabled: true
+  logging:
+    level: info
+    format: json

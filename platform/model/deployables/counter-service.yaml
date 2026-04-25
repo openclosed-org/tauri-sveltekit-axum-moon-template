@@ -2,10 +2,16 @@ name: counter-service
 type: server
 version: 1.0.0
 description: >
-  Reference counter service — independently deployable unit.
+  Reference counter service capability. Currently hosted inside web-bff;
+  target state keeps an independent deployable boundary for topology evolution.
   Hosts the counter aggregate with CAS versioning, idempotency cache,
-  and unified event outbox. Can be deployed standalone or embedded
-  in a BFF (web-bff).
+  and unified event outbox.
+
+current_status: embedded
+target_status: independent
+planned_capabilities:
+  - standalone HTTP process for counter-only deployment
+  - dedicated counter service scaling separate from web-bff
 
 services:
   - counter-service
@@ -42,6 +48,6 @@ observability:
     endpoint: /readyz
     interval: 10s
 
-independent_deploy: true
+independent_deploy: false
 embedded_in:
   - web-bff

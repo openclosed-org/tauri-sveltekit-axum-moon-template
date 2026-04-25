@@ -3,16 +3,24 @@ type: gateway
 version: 1.0.0
 description: >
   Reverse proxy and edge gateway (Pingora-based).
-  Handles TLS termination, routing, rate limiting,
-  authentication passthrough, and load balancing across
-  backend services. Single ingress point for external traffic.
+  Currently handles local health/readiness and path-based routing to web-bff
+  and the web upstream. Target state may add edge security and traffic controls.
+
+current_status: implemented
+target_status: independent
+planned_capabilities:
+  - TLS termination
+  - rate limiting
+  - authentication passthrough
+  - multi-backend load balancing policy
 
 services: []
 
 resources: []
 
 entry_point: servers/gateway/src/main.rs
-package: edge-gateway
+package: pingora-gateway
+independent_deploy: true
 
 health_check:
   path: /healthz

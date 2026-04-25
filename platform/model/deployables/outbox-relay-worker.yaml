@@ -5,6 +5,10 @@ description: >
   Reference outbox relay worker. Polls pending outbox records,
   publishes them to the message backbone, and records delivery progress.
 
+current_status: implemented
+target_status: independent
+planned_capabilities: []
+
 services: []
 
 runtime_profile: async-delivery
@@ -22,6 +26,7 @@ resources:
 
 entry_point: workers/outbox-relay/src/main.rs
 package: outbox-relay-worker
+independent_deploy: true
 
 health_check:
   path: /healthz
