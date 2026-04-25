@@ -1,6 +1,6 @@
 # Backend-in-Rust Template and Reference Architecture
 
-[![Template version](https://img.shields.io/github/v/tag/openclosed-org/axum-harness?sort=semver&label=template%20version)](https://github.com/openclosed-org/axum-harness/tags)
+[![Template version](https://img.shields.io/github/v/tag/openclosed-org/axum-harness?sort=semver&label=template%20version&cacheSeconds=60)](https://github.com/openclosed-org/axum-harness/tags)
 [![Changelog](https://img.shields.io/badge/changelog-CHANGELOG.md-blue)](./CHANGELOG.md)
 [![Release notes](https://img.shields.io/badge/release%20notes-GitHub-blueviolet)](https://github.com/openclosed-org/axum-harness/releases)
 
