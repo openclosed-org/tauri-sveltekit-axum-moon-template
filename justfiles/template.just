@@ -12,7 +12,12 @@ semver-check BASELINE='' RELEASE_TYPE='minor':
     release_type="{{RELEASE_TYPE}}"
 
     if [ -z "$baseline" ]; then
-      baseline="$(git describe --tags --abbrev=0)"
+      baseline="$(git for-each-ref --sort=-creatordate --format='%(refname:short)' refs/tags | head -n 1)"
+    fi
+
+    if [ -z "$baseline" ]; then
+      echo "No repository tag found for SemVer baseline" >&2
+      exit 1
     fi
 
     echo "Using SemVer baseline: $baseline"
