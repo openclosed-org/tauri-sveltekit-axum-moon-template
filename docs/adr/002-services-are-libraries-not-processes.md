@@ -23,6 +23,7 @@ We defined `services/*` as **pure business logic libraries**, not independent pr
 - `servers/*` provides synchronous request entry (HTTP/BFF)
 - `workers/*` provides asynchronous execution units
 - Both `servers/*` and `workers/*` consume services as libraries
+- Some service crates may still temporarily contain concrete `infrastructure/` adapters while composition roots are being migrated outward; this is technical debt, not the target boundary
 
 ### Standard Service Structure
 ```
@@ -65,6 +66,6 @@ services/<name>/
 
 ## References
 - `agent/codemap.yml` Section 3.6 - Services rules
-- `services/auth-service/` - Reference implementation
-- `servers/web-bff/` - Example service consumer
+- `services/counter-service/` - Current default reference implementation
+- `servers/bff/web-bff/` - Example service consumer
 - `workers/` - Example async service consumer

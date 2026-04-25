@@ -20,6 +20,10 @@ principles:
     rule: service 的 owns_entities、commands、events、queries、consistency 等细粒度语义写在 services/<name>/model.yaml。
   - id: contracts-first
     rule: HTTP/Event/RPC/DTO/ErrorCode 变化先修改 packages/contracts。
+  - id: shared-contract-boundary
+    rule: 跨进程、跨 deployable、HTTP、消息或 event_outbox 边界的 DTO/Event/ErrorCode 必须进入 packages/contracts；service-local 类型只能用于 crate 内部编排。
+  - id: canonical-outbox-path
+    rule: 领域事件的 canonical relay path 是 event_outbox -> workers/outbox-relay -> EventBus/NATS -> consumers；runtime PubSub 只能作为兼容镜像或按需基础设施能力。
   - id: services-are-libraries
     rule: services 是能力边界与状态边界，不承载进程入口。
   - id: workers-are-first-class

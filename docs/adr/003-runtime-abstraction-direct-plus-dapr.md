@@ -2,79 +2,95 @@
 
 ## Status
 - [x] Proposed
-- [x] Accepted
+- [ ] Accepted
 - [x] Deprecated
 - [ ] Superseded
 
-> **Note**: This ADR describes an aspirational runtime abstraction layer (Direct + Dapr adapters).
-> In practice, the runtime package is no longer the default backend path. Services interact with
-> infrastructure through their own ports, and the event_outbox + outbox-relay chain handles async
-> communication. The 8-port + 3-adapter matrix was never fully implemented.
+> Historical note: this ADR records an earlier runtime-first direction.
+> It is **not** the current default backend path.
+> In current practice, services interact through their own ports, and async delivery is centered on
+> `event_outbox -> outbox-relay -> projector`.
+> The originally described direct + dapr runtime matrix was never fully implemented.
 
 ## Context
-The system needs to support multiple deployment topologies:
-1. **Local development**: Direct in-process calls, no external runtime
-2. **Single VPS**: Direct calls with optional message broker
-3. **K3s cluster**: Full microservices with distributed runtime
-4. **Dapr sidecar**: Service mesh with Dapr runtime
 
-Without a runtime abstraction layer, services would be tightly coupled to a specific runtime (direct calls OR Dapr OR message broker), making topology switching require code changes.
+The original goal was to support multiple deployment topologies:
+
+1. local development with mostly in-process execution
+2. single-node deployments with optional messaging
+3. cluster deployments with more explicit runtime boundaries
+4. a possible future Dapr sidecar path
+
+Without some form of runtime abstraction, topology switching looked likely to leak into business code.
 
 ## Decision
-We implemented a **dual-mode runtime abstraction** in `packages/runtime/`:
 
-### Ports Layer (`packages/runtime/ports/`)
-8 core runtime capabilities are abstracted as ports:
-- `invocation.rs` - Service-to-service calls
-- `pubsub.rs` - Publish/subscribe messaging
-- `state.rs` - State management
-- `workflow.rs` - Workflow orchestration
-- `lock.rs` - Distributed locking
-- `binding.rs` - Event bindings
-- `secret.rs` - Secret management
-- `queue.rs` - Queue operations
+We originally proposed a runtime abstraction layer in `packages/runtime/`.
 
-### Adapters Layer (`packages/runtime/adapters/`)
-- `memory/` - In-memory implementations for testing and local dev
-- `direct/` - Direct in-process calls for single-process deployment
-- `dapr/` - Dapr sidecar adapter for Kubernetes deployment
+Only part of that proposal survived into code:
 
-### Policy Engine (`packages/runtime/policy/`)
-- `timeout/` - Timeout policies
-- `retry/` - Retry policies
-- `idempotency/` - Idempotency guarantees
-- `backpressure/` - Backpressure handling
-- `circuit_breaker/` - Circuit breaker patterns
+1. runtime ports are present
+2. memory adapters exist for multiple ports
+3. a partial NATS pubsub adapter exists
 
-### Rationale
-1. **Topology independence**: Switch deployment topology without changing service code
-2. **Testability**: Memory adapters enable fast unit tests
-3. **Progressive deployment**: Start with direct, move to Dapr when needed
-4. **Policy consistency**: Retry, timeout, idempotency handled uniformly
-5. **Vendor isolation**: Dapr-specific code isolated in one adapter
+The following parts described in the original direction did **not** land as the default backend path:
+
+1. direct adapter family
+2. dapr adapter family
+3. a shared policy engine for retry/backpressure/circuit breaking
+
+### What exists today
+
+- `packages/runtime/ports/` defines runtime-oriented traits
+- `packages/runtime/adapters/memory/` contains in-memory implementations for several ports
+- `packages/runtime/adapters/nats/` contains a NATS pubsub adapter fragment
+
+### What does not exist today
+
+- `direct/` adapter family
+- `dapr/` adapter family
+- `packages/runtime/policy/` modules for timeout/retry/idempotency/backpressure/circuit breakers
+- a repository-wide rule that services must depend on runtime ports first
+
+### Current interpretation
+
+`packages/runtime` should now be read as a partial infrastructure package, not as the canonical backend foundation.
+
+The current canonical backend foundation is instead:
+
+1. service-local ports in `services/*`
+2. shared contracts in `packages/contracts/**`
+3. unified outbox in `packages/messaging/**`
+4. explicit server/worker composition
 
 ## Consequences
+
 ### What becomes easier
-- Testing: Memory adapters for fast tests
-- Local dev: Direct mode, no infrastructure needed
-- Production scaling: Dapr adapter for distributed systems
-- Policy management: Centralized retry/timeout/idempotency
+
+- keeping historical intent visible
+- reusing the small subset of runtime code that is still useful
 
 ### What becomes more difficult
-- Abstraction complexity: 8 ports × 3 adapters = 24 implementations
-- Feature parity: Memory adapter may not support all production features
-- Debugging: Indirection makes tracing harder
+
+- agents must not mistake this ADR for the current backend architecture
+- some runtime modules may need further narrowing or de-emphasis later
 
 ### Trade-offs
-- **Pros**: Topology independence, testability, progressive deployment
-- **Cons**: Abstraction overhead, feature parity challenges
+
+- **Pros**: historical context, partial reusable code
+- **Cons**: easy to misread unless clearly marked deprecated
 
 ### Implementation Status
-- ✅ All 8 runtime ports defined
-- ✅ Memory adapters implemented for all 8 ports
-- ⏳ Direct adapters deferred (can be implemented when needed)
-- ⏳ Dapr adapters deferred (can be implemented when deploying to K8s)
+
+- ✅ Runtime ports exist
+- ✅ Memory adapters exist for multiple ports
+- ✅ Partial NATS pubsub adapter exists
+- ❌ Direct adapters not implemented
+- ❌ Dapr adapters not implemented
+- ❌ Full policy engine not implemented
 
 ## References
-- `packages/runtime/ports/` - Runtime port definitions
-- `packages/runtime/adapters/memory/` - Memory implementations
+
+- `packages/runtime/ports/` - runtime port definitions
+- `packages/runtime/adapters/` - current adapter set
+- `docs/adr/009-canonical-monolith-first-topology-late-backend.md`

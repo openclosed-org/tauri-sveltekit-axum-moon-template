@@ -5,6 +5,8 @@
 > 状态：active plan
 >
 > 适用场景：按阶段推进后端主链、控制平台扩张节奏、避免未来工具选型散落到多份文档污染 agent 上下文。
+>
+> 重要：这是一份执行计划，不是当前实现状态真理源。涉及当前事实判断时，以代码、`docs/README.md`、`docs/operations/counter-service-reference-chain.md` 与 validators/gates 为准。
 
 ## 1. 计划定位
 
@@ -19,15 +21,15 @@
 5. 每个阶段主要修改哪些目录。
 6. 未来生态工具选型应该记录到哪里。
 
-## 2. 当前判断
+## 2. 当前工作判断
 
-当前项目状态应统一理解为：
+当前项目状态在计划层应统一理解为：
 
-1. `counter-service` 已经不是 demo，而是 `production-reference beta`。
+1. `counter-service` 已经不是 demo，而是当前最接近生产参考链的默认锚点。
 2. 业务主链已经形成：`web-bff -> counter-service -> outbox -> relay -> projector`。
 3. 工程横切链已经有真实落点：`platform model -> SOPS -> Kustomize -> Flux -> overlay -> validators`。
 4. 当前最合理目标不是直接追多节点 HA，而是先把“单节点近生产可验证”收敛完整。
-5. 未来多节点会影响代码形状的分布式语义，必须现在先定住。
+5. 未来多节点会影响代码形状的分布式语义，其中真正会影响重构成本的部分需要尽早定住。
 6. 不会改变当前代码形状的平台能力，不应继续扩张为新的活文档和新上下文入口。
 
 一句话：
@@ -108,7 +110,7 @@
 
 1. `packages/contracts/events/**`
 2. `packages/messaging/**`
-3. `packages/runtime/**`
+3. 按需涉及 `packages/runtime/**` 中仍被当前主链真实使用的部分
 4. `services/counter-service/**`
 5. `servers/bff/web-bff/**`
 6. `workers/projector/**`
@@ -253,6 +255,9 @@
 ### Phase 5：身份与授权正式接入
 
 目标：在语义定桩完成后，再把 auth 平台接进默认链路。
+
+> 2026-04 当前仓库内进度：`counter` 路径已真实走 `AuthzPort`，`web-bff` 已支持按配置切换 `MockAuthzAdapter` / `OpenFGA` adapter，且 `tenant/init` 会写入最小授权元组。
+> 仍未闭环的部分是外部系统事实：真实 OpenFGA store / model provisioning、Zitadel OIDC/JWKS 对接与凭据、以及相应环境级 secret/cluster 验证。
 
 本阶段要完成：
 

@@ -40,7 +40,7 @@
 │    templates/<env>/<deployable>.yaml   │  ← 模板（未加密）
 │    <env>/<deployable>.enc.yaml         │  ← 加密密钥（SOPS + age）
 │                                         │
-│  infra/kubernetes/base/                 │
+│  infra/k3s/base/                        │
 │    configmaps/<deployable>-config.yaml │  ← 公开配置（非敏感）
 └──────────────┬──────────────────────────┘
                │
@@ -71,7 +71,7 @@
 
 ### Cluster Path (Recommended)
 
-使用本地 K3s/K3d overlay 跑服务，通过 Kustomize/Flux 注入配置：
+使用仓库当前的 K3s overlay 路径跑服务，通过 Kustomize/Flux 注入配置：
 
 ```bash
 # 应用加密密钥到集群
@@ -98,6 +98,11 @@ just sops-run counter-service
 ```
 
 **这是 cluster path 的派生辅助命令，不是新的配置真理源。**
+
+同时需要注意：
+
+1. 当前默认后端运行形态仍以 `web-bff` 内嵌 `counter-service` 为主。
+2. `counter-service` 自身的独立 secret 路径已预留，但不是默认运行主路径。
 
 ---
 
@@ -238,7 +243,7 @@ export SOPS_AGE_KEY_FILE=~/.config/sops/age/key.txt
 ### 本地开发想用 `.env`
 
 **不允许。** 使用 `just sops-run <deployable>` 代替。
-这是生产级分布式系统的默认开发路径。
+这是当前仓库为后端主链维护的统一配置路径，不代表所有未来平台能力都已落地。
 
 ---
 

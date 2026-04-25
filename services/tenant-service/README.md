@@ -4,9 +4,9 @@
 
 ## 状态
 
-- status: `reference`
-- 角色：多实体、多租户、workflow 与补偿语义的参考 service
-- 说明：当新能力涉及租户隔离、长事务或补偿时，再把它作为参考样例
+- status: `reference-secondary`
+- 角色：多实体、多租户、workflow 与补偿语义的二级参考 service
+- 说明：它保留更复杂的语义样例，但不是默认生产参考链，也不是新 service 的默认起点
 
 ## 责任
 
@@ -22,6 +22,15 @@
 4. `src/ports/`：持久化与外部依赖抽象。
 5. `platform/model/workflows/tenant-onboarding.yaml`：与平台模型挂接的 workflow 参考。
 
+## Contracts Boundary
+
+`src/events/mod.rs` 中的 `TenantEvent` 当前是 service-local orchestration 类型，不是跨进程事件契约。边界规则：
+
+1. 写入 `event_outbox` 的 tenant 事件必须先进入 `packages/contracts/events` 的 `AppEvent`。
+2. 通过 HTTP/RPC/message 暴露的 DTO、Event、ErrorCode 必须先进入 `packages/contracts/**`。
+3. 只在 `tenant-service` crate 内部编排、测试或 workflow 草图中使用的类型可以留在 service 内。
+4. 当前 shared tenant events 只有 `TenantCreated` 与 `TenantMemberAdded` 已在 `contracts_events::AppEvent` 中表达。
+
 ## 验证
 
 ```bash
@@ -34,3 +43,4 @@ cargo test -p tenant-service
 1. 不要把它当成所有新 service 的默认起点；简单单聚合能力应先看 `counter-service`。
 2. 不要把 workflow、补偿和多实体边界机械复制到并不需要这些复杂度的能力上。
 3. 不要跳过 `model.yaml` 直接从实现代码倒推出语义边界。
+4. 不要把这里更完整的目标态语义写成当前仓库的默认后端主链。

@@ -11,6 +11,7 @@ This is an **experimental architecture template** — a semantic-first, topology
 2. **Generated artifacts**: `deployables.generated.yaml` and `architecture.generated.md` may drift after structural changes. Run `just commit-golden-baseline` to resync.
 3. **Secrets**: SOPS templates use `minioadmin` defaults. Production must use proper secret injection (SOPS/Kustomize/Flux), not `.env` files.
 4. **Stubs**: `auth-service`, `indexing-service`, `scheduler-worker`, `sync-reconciler-worker` are stubs — not production-ready.
+5. **Release flow**: release preparation is now handled by `release-plz` for the Rust workspace; prefer conventional commits for readable changelogs.
 
 ## Default Reading Order
 
@@ -29,6 +30,12 @@ When docs conflict with code, trust code, schemas, validators, and gates.
 
 New backend capabilities should align with `counter-service` first. Detailed status → `docs/operations/counter-service-reference-chain.md`.
 
+Current validation policy follows the same split:
+
+1. Default backend admission lane: `just verify-backend-primary` and `just test-backend-primary`
+2. Optional auth lane: `just verify-auth-optional` and `just test-auth-optional`
+3. Secondary/governance workflow: `.github/workflows/quality-gate.yml` covers secondary backend and governance validation, not the default business-chain admission lane
+
 ## Documentation Strategy
 
 Two types of docs enter the main context:
@@ -37,6 +44,13 @@ Two types of docs enter the main context:
 - **Class B**: reference chains, owner docs, runbooks — `docs/operations/`, `services/*/README.md`, `ops/runbooks/`
 
 Before deleting/archiving docs, confirm their toolchain info has entered Class A or B.
+
+## Current Refactor Guidance
+
+For the current architecture convergence work, read these two documents after the default backend anchor docs:
+
+1. `docs/architecture/refactor-backlog-monolith-first-topology-late.md` — executable refactor backlog
+2. `docs/adr/009-canonical-monolith-first-topology-late-backend.md` — canonical architecture statement
 
 ## Helper Scripts
 
