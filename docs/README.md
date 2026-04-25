@@ -60,11 +60,16 @@ Repository-level policy and project-level caveats live here instead of expanding
 
 This repository is versioned as a single template product.
 
-1. patch releases cover safe template iteration, docs fixes, tooling updates, and internal refactors
-2. minor releases add template capabilities without forcing adopters to restructure existing projects
-3. major releases are template-breaking and require adopter attention
+1. the current release line is `0.1.x` while the template contract is still converging
+2. `0.1.x` releases cover iterative template improvements, docs fixes, tooling updates, and internal refactors within the current pre-1.0 line
+3. `0.2.0` should only start a new pre-1.0 line when template structure, migration expectations, or public usage patterns change materially
+4. `1.0.0` should start only when the template is ready to make a stronger stability promise to adopters
 
-`release-plz` prepares repository releases, and `just semver-check` is the local visibility check for repository-level compatibility assumptions.
+Cargo crate versions still exist as workspace metadata, but they do not represent independent product release channels.
+
+Bootstrap the first official repository release manually as `v0.1.0`. After that, automation can continue the `0.1.x` line.
+
+`release-plz` prepares repository releases, and `just semver-check` is the local visibility check for repository-level compatibility assumptions within the active `0.1.x` line.
 
 ### Configuration
 
