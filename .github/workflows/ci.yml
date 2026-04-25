@@ -1,5 +1,7 @@
 name: CI
 
+# Backend-first default CI only. Desktop/Tauri validation stays opt-in and local.
+
 on:
   pull_request:
     branches: [main]

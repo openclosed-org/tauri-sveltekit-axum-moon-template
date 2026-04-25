@@ -1,5 +1,7 @@
 name: Quality Gate (Secondary/Governance)
 
+# Backend/platform governance only. Desktop/Tauri checks are intentionally excluded from default CI.
+
 on:
   pull_request:
     branches: [main]

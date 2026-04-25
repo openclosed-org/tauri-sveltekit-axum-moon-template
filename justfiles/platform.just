@@ -92,7 +92,8 @@ gen-sdk:
 # Clean generated SDKs
 clean-sdk:
     @echo "Cleaning generated SDKs..."
-    rm -rf packages/sdk/typescript/!(.gitkeep) packages/sdk/rust/!(.gitkeep) 2>/dev/null || true
+    @find packages/sdk/typescript -mindepth 1 -depth ! -name '.gitkeep' -exec rm -rf {} + 2>/dev/null || true
+    @echo "Skipping packages/sdk/rust cleanup because those files are tracked in-repo today"
     @echo "SDKs cleaned"
 
 # ── Golden Baseline Verification ──────────────────────────────
@@ -153,24 +154,24 @@ platform-doctor:
 
 # List all services defined in platform model
 platform-services:
-	@echo "Services defined in platform model:"
-	@for f in platform/model/services/*.yaml; do \
-		name=$$(basename "$$f" .yaml); \
-		echo "  - $$name"; \
-	done
+    @echo "Services defined in platform model:"
+    @for f in platform/model/services/*.yaml; do \
+        name=$(basename "$f" .yaml); \
+        echo "  - $name"; \
+    done
 
 # List all deployables defined in platform model
 platform-deployables:
-	@echo "Deployables defined in platform model:"
-	@for f in platform/model/deployables/*.yaml; do \
-		name=$$(basename "$$f" .yaml); \
-		echo "  - $$name"; \
-	done
+    @echo "Deployables defined in platform model:"
+    @for f in platform/model/deployables/*.yaml; do \
+        name=$(basename "$f" .yaml); \
+        echo "  - $name"; \
+    done
 
 # List all resources defined in platform model
 platform-resources:
-	@echo "Resources defined in platform model:"
-	@for f in platform/model/resources/*.yaml; do \
-		name=$$(basename "$$f" .yaml); \
-		echo "  - $$name"; \
-	done
+    @echo "Resources defined in platform model:"
+    @for f in platform/model/resources/*.yaml; do \
+        name=$(basename "$f" .yaml); \
+        echo "  - $name"; \
+    done

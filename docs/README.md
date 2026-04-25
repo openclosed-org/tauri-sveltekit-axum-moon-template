@@ -60,16 +60,16 @@ Repository-level policy and project-level caveats live here instead of expanding
 
 This repository is versioned as a single template product.
 
-1. the current release line is `0.1.x` while the template contract is still converging
-2. `0.1.x` releases cover iterative template improvements, docs fixes, tooling updates, and internal refactors within the current pre-1.0 line
-3. `0.2.0` should only start a new pre-1.0 line when template structure, migration expectations, or public usage patterns change materially
-4. `1.0.0` should start only when the template is ready to make a stronger stability promise to adopters
+1. the repository tag/release is the version contract template users should follow
+2. pre-`1.0.0` releases cover iterative template improvements, docs fixes, tooling updates, and internal refactors within the active pre-1.0 line
+3. bump the minor version when template structure, migration expectations, or public usage patterns change materially
+4. start `1.0.0` only when the template is ready to make a stronger stability promise to adopters
 
 Cargo crate versions still exist as workspace metadata, but they do not represent independent product release channels.
 
-Bootstrap the first official repository release manually as `v0.1.0`. After that, automation can continue the `0.1.x` line.
+If you derive a new repository from this template, bootstrap the first official repository release manually with your chosen starting tag, then let automation continue from there.
 
-`release-plz` prepares repository releases, and `just semver-check` is the local visibility check for repository-level compatibility assumptions within the active `0.1.x` line.
+`release-plz` prepares repository releases, and `just semver-check` is the local visibility check for repository-level compatibility assumptions within the active pre-1.0 line.
 
 ### Configuration
 
@@ -80,6 +80,14 @@ There are three different configuration paths and they should not be confused:
 3. local tooling or desktop convenience path: `.env`, which is not the canonical backend secrets path
 
 If you are working on backend deployables, prefer the first path by default.
+
+### Desktop Scope
+
+Desktop/Tauri is a local convenience shell in this repository, not part of the default backend CI contract.
+
+1. default GitHub CI covers backend, platform, contracts, and web-facing verification lanes
+2. desktop and Tauri validation stay opt-in and local because cross-platform packaging and debugging requirements are materially different across macOS, Linux, and Windows
+3. if you change `apps/desktop/**`, run the desktop checks explicitly instead of assuming the default CI lanes cover them
 
 ### Architecture Rules
 

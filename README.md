@@ -1,5 +1,9 @@
 # Backend-in-Rust Template and Reference Architecture
 
+[![Template version](https://img.shields.io/github/v/tag/openclosed-org/axum-harness?sort=semver&label=template%20version)](https://github.com/openclosed-org/axum-harness/tags)
+[![Changelog](https://img.shields.io/badge/changelog-CHANGELOG.md-blue)](./CHANGELOG.md)
+[![Release notes](https://img.shields.io/badge/release%20notes-GitHub-blueviolet)](https://github.com/openclosed-org/axum-harness/releases)
+
 > Backend-first, semantic-first, topology-late, agent-native template architecture — with DDD, CAS, unified outbox, projection, workflow, and a multi-agent AI harness. Built entirely in Rust.
 >
 > Single VPS → K3s cluster → multi-service topology. Same code, different platform model.
@@ -7,6 +11,8 @@
 **What this is:** A backend-first template and living reference architecture for building resilient Rust backends. Every service owns its state, every mutation uses CAS + idempotency, every event flows through a unified outbox, and every projection is rebuildable from source.
 
 **What makes it different:** A [multi-agent AI harness](#-for-ai-agents) that routes tasks to domain-specialized subagents, enforces architectural boundaries, and gates every change — humans and AI co-develop under the same protocol.
+
+> **Template version contract:** Track the repository tag/release as the template version. Individual Cargo crate versions are internal workspace metadata for tooling and do not represent separate product release channels.
 
 ## Reality Check
 
@@ -28,6 +34,12 @@ Use it as a strong starting point, not as proof that every pattern here is alrea
 - **Single VPS to K3s** — `platform/model/topologies/*.yaml` defines the deployment shape. Same binary, different topology.
 - **SOPS + Flux GitOps** — Backend secrets flow through SOPS/Kustomize/Flux, not `.env` files. `just sops-run <deployable>` injects env vars locally; Flux reconciles in-cluster.
 - **Multi-agent AI harness** — 8 specialized agents (planner, platform-ops, contract, service, server, worker, app-shell) with routing rules, scoped gates, and boundary checks.
+
+## Versioning and Changelog
+
+- **Template version source of truth** — the latest repository tag under GitHub [Tags](https://github.com/openclosed-org/axum-harness/tags) or [Releases](https://github.com/openclosed-org/axum-harness/releases).
+- **Change history** — the root [`CHANGELOG.md`](./CHANGELOG.md) is the repository-level entry point; GitHub Releases is the best public view for release notes.
+- **Derived projects** — if you use this repo as a template, you can keep repository-level tags if you want to preserve upstream upgrade visibility; if not, you can replace the release flow with your own product versioning.
 
 ## Architecture at a Glance
 
@@ -115,7 +127,7 @@ There are two primary user modes for this repository:
 
 Template users should treat the repository release as the main contract and keep only the parts relevant to their project.
 
-The current release strategy is one repository-level `0.1.x` line for the template as a whole. Cargo crate versions remain internal workspace metadata, not separate product release channels.
+The release strategy is repository-level SemVer for the template as a whole. Cargo crate versions remain internal workspace metadata, not separate product release channels.
 
 Contributors should treat the repository structure, gates, agent protocol, and documentation conventions as part of the design, not as optional extras.
 
@@ -124,24 +136,37 @@ A dedicated `just template-init` cleanup flow now exists as a conservative plann
 ## Quick Start
 
 ```bash
-# 1. Install toolchain
+# 1. Install and verify the toolchain
 just setup
 just setup-deps
 just doctor
 
-# 2. Start local infra (NATS, Valkey, MinIO)
+# 2. Optional: preview template cleanup scope
+just template-init backend-core dry-run
+
+# 3. Start local infra (NATS, Valkey, MinIO)
 bash infra/local/scripts/bootstrap.sh up
 
-# 3. Run the backend
-just dev-api          # web-bff
-just sops-run web-bff # with SOPS-decrypted secrets
+# 4. Run the backend
+just dev-api
 
-# 4. Run all quality checks
+# 5. Run stricter checks when you are ready
+just validate-platform
+just semver-check
 just verify
 
-# 5. Platform health
-just validate-platform
-just platform-doctor
+# Optional: run with SOPS-managed secrets after local SOPS setup
+just sops-run web-bff dev
+```
+
+Desktop/Tauri is intentionally kept out of the default CI and backend verification flow.
+Use it as a local-only shell when you specifically need desktop validation on your own machine.
+
+```bash
+# Optional: local desktop shell only
+just dev-desktop
+just dev-tauri
+just test-desktop
 ```
 
 ```bash
@@ -156,7 +181,7 @@ If you adopt this repository via GitHub "Use this template", the shortest useful
 2. `docs/operations/local-dev.md`
 3. `docs/operations/secret-management.md`
 4. `docs/operations/counter-service-reference-chain.md`
-5. `just template-init PROFILE=backend-core MODE=dry-run`
+5. `just template-init backend-core dry-run`
 
 The current `template-init` flow is intentionally conservative. It is meant to help derived projects identify upstream-maintainer artifacts to review or remove; it is not a code-pruning tool.
 

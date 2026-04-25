@@ -25,23 +25,24 @@ migrate-status:
     @echo "  - storage_surrealdb: Programmatic table creation"
     @echo ""
     @echo "Tables in embedded Turso:"
-    @if command -v sqlite3 &>/dev/null; then \
+    @if command -v sqlite3 >/dev/null 2>&1; then \
         sqlite3 servers/bff/web-bff/.data/web-bff.db ".tables" 2>/dev/null || echo "  (database not yet created)"; \
     else \
         echo "  sqlite3 not installed. Run: brew install sqlite"; \
     fi
 
 # Create a new migration file
+# Usage: just migrate-create add_counter_index
 migrate-create NAME='':
     @if [ -z "{{NAME}}" ]; then \
-        echo "Usage: just migrate-create <migration_name>"; \
+        echo "Usage: just migrate-create add_counter_index"; \
         exit 1; \
     fi
-    @TIMESTAMP=$$(date +%Y%m%d%H%M%S); \
-    MIGRATION_FILE="ops/migrations/api/$${TIMESTAMP}_{{NAME}}.sql"; \
+    @TIMESTAMP=$(date +%Y%m%d%H%M%S); \
+    MIGRATION_FILE="ops/migrations/api/${TIMESTAMP}_{{NAME}}.sql"; \
     mkdir -p ops/migrations/api; \
-    touch "$$MIGRATION_FILE"; \
-    echo "Created migration: $$MIGRATION_FILE"
+    touch "$MIGRATION_FILE"; \
+    echo "Created migration: $MIGRATION_FILE"
 
 # Reset database (dev only — DESTRUCTIVE)
 migrate-reset:
