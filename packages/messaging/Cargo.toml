@@ -20,10 +20,10 @@ tracing = { workspace = true }
 chrono = { workspace = true }
 uuid = { workspace = true, features = ["v7"] }
 thiserror = { workspace = true }
-async-nats = "0.38"
+async-nats = "0.47"
 
 # Phase 2: NATS (uncomment when ready)
-# async-nats = "0.38"
+# async-nats = "0.47"
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["macros", "rt", "sync"] }

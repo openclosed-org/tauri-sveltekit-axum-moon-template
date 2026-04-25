@@ -34,28 +34,6 @@ ignore = [
     # Fix: wait for pingora to upgrade prometheus to 0.14+ (uses protobuf 3.x)
     "RUSTSEC-2024-0437",
     
-    # rsa Marvin Attack (timing side-channel)
-    # Source: jsonwebtoken → rsa v0.9
-    # Fix: no safe upgrade available yet; workaround is to avoid RSA in 
-    #       network-observable settings (our usage is JWT signing, lower risk)
-    "RUSTSEC-2023-0071",
-
-    # rand unsoundness with custom logger + rand::rng()/thread_rng reseeding
-    # Source: backend dependency graph still resolves rand 0.8.x via upstream crates
-    # Fix: wait for backend dependencies to move to rand >= 0.9.3; our codebase uses
-    #      tracing, not a custom log::Log implementation that re-enters rand during logging
-    "RUSTSEC-2026-0097",
-
-    # rustls-webpki CRL distribution point matching (via async-nats, reqwest)
-    # Source: rustls-webpki 0.102.8 and 0.103.10 pulled by async-nats, reqwest
-    # Fix: wait for async-nats/reqwest to upgrade to rustls-webpki >= 0.103.12
-    "RUSTSEC-2026-0049",
-
-    # rustls-webpki URI name constraints accepted incorrectly
-    "RUSTSEC-2026-0098",
-
-    # rustls-webpki wildcard name constraints accepted incorrectly
-    "RUSTSEC-2026-0099",
 ]
 
 # ══════════════════════════════════════════════════════════════

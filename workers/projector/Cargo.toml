@@ -30,7 +30,7 @@ async-trait = { workspace = true }
 chrono = { workspace = true }
 uuid = { workspace = true, features = ["v7"] }
 anyhow = { workspace = true }
-async-nats = "0.38"
+async-nats = "0.47"
 futures-util = { workspace = true }
 
 # HTTP server for health checks

@@ -120,6 +120,9 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Install just
+        uses: taiki-e/install-action@just
+
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
         with:
@@ -275,7 +278,7 @@ jobs:
         run: just gate-imports strict
 
       - name: Boundary check
-        run: just boundary-check
+        run: bun run scripts/boundary-check.ts
 
   supply-chain:
     name: Supply Chain Scan
