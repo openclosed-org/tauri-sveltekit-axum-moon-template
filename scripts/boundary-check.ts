@@ -7,23 +7,40 @@ interface BoundaryRule {
   disallowedPattern: RegExp;
 }
 
-async function checkBoundary(rule: BoundaryRule): Promise<boolean> {
+interface CargoMetadata {
+  packages: Array<{
+    name: string;
+    dependencies: Array<{
+      name: string;
+      kind: string | null;
+    }>;
+  }>;
+}
+
+function collectDependencyLines(metadata: CargoMetadata, pkgName: string): string[] | null {
+  const pkg = metadata.packages.find((candidate) => candidate.name === pkgName);
+  if (!pkg) {
+    return null;
+  }
+
+  return pkg.dependencies
+    .filter((dependency) => dependency.kind === null || dependency.kind === 'normal')
+    .map((dependency) => dependency.name);
+}
+
+function checkBoundary(rule: BoundaryRule, dependencyLines: string[] | null): boolean {
   console.log(`=== Checking ${rule.pkgName} dependencies ===`);
 
-  const result = await run('cargo', ['tree', '-p', rule.pkgName, '--depth', '1']);
-
-  if (!result.success) {
-    console.warn(`Warning: Could not get dependency tree for ${rule.pkgName}`);
-    if (result.error) console.warn(result.error);
+  if (!dependencyLines) {
+    console.warn(`Warning: Could not get dependency metadata for ${rule.pkgName}`);
     return true;
   }
 
-  const lines = result.output.split(/\r?\n/);
   const violations: string[] = [];
 
-  for (const line of lines) {
+  for (const line of dependencyLines) {
     const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith(rule.pkgName)) continue;
+    if (!trimmed || trimmed === rule.pkgName) continue;
 
     const isAllowed = rule.allowedPatterns.some((pattern) => trimmed.includes(pattern));
     if (isAllowed) continue;
@@ -98,7 +115,15 @@ async function main(): Promise<number> {
   console.log('Rules: services MUST NOT depend on other services\n');
   console.log('Rules: contracts MUST be Single Source of Truth for shared types\n');
 
-  const results = await Promise.all(rules.map(checkBoundary));
+  const metadataResult = await run('cargo', ['metadata', '--no-deps', '--format-version', '1']);
+  if (!metadataResult.success) {
+    console.error('Fatal error: Could not read cargo metadata');
+    if (metadataResult.error) console.error(metadataResult.error);
+    return 1;
+  }
+
+  const metadata = JSON.parse(metadataResult.output) as CargoMetadata;
+  const results = rules.map((rule) => checkBoundary(rule, collectDependencyLines(metadata, rule.pkgName)));
 
   console.log('');
 
