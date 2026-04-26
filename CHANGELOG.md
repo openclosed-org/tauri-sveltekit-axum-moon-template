@@ -22,10 +22,11 @@ Preferred release views:
 - Reworked Quick Start and local development guidance to emphasize the backend-first path and remove stale or misleading command examples.
 - Fixed multiple broken or outdated `just` recipes in backend/platform workflows, including SemVer baseline detection, platform inventory commands, migration helpers, process utilities, and stale package/path references.
 - Added a repository-level changelog entry point so release notes have an explicit home in the template itself.
+- Replaced the hard-coded `axum-harness-v*` release lane with a runtime-configurable tag strategy so template consumers can control tag naming, tag matching, and bootstrap baselines through CI inputs or repository variables.
 
 ### Notes
 
-- The active baseline tag in this repository remains `v0.2.0`.
+- The legacy `v0.2.0` tag was retired because it pointed at an obsolete pre-template workspace layout and polluted repository-level release automation.
 - GitHub Releases remains the best public view for generated release notes once release automation runs.
 
 ## v0.2.0 - 2026-04-04

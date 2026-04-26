@@ -69,7 +69,7 @@ semver_check = false
 git_only = true
 git_tag_enable = true
 git_release_enable = true
-git_tag_name = "v{{ version }}"
+git_tag_name = "__REPOSITORY_TAG_TEMPLATE__"
 changelog_path = "tools/repo-release/CHANGELOG.md"
 
 [[package]]

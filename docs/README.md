@@ -67,7 +67,13 @@ This repository is versioned as a single template product.
 
 Cargo crate versions still exist as workspace metadata, but they do not represent independent product release channels.
 
-If you derive a new repository from this template, bootstrap the first official repository release manually with your chosen starting tag, then let automation continue from there.
+If you derive a new repository from this template, bootstrap the first official repository release manually with your chosen starting tag, then let automation continue from that baseline.
+
+Maintainers can override the default release tag strategy without changing tracked files:
+
+1. `RELEASE_TAG_TEMPLATE` controls the tag name written by `release-plz`, defaulting to `v{{ version }}`
+2. `RELEASE_TAG_GLOB` controls which tags CI treats as the current release line, defaulting to `v[0-9]*.[0-9]*.[0-9]*`
+3. `RELEASE_BOOTSTRAP_TAG` can pin an explicit existing tag as the release baseline until the next official tag is created
 
 `release-plz` prepares repository releases, and `just semver-check` is the local visibility check for repository-level compatibility assumptions within the active pre-1.0 line.
 

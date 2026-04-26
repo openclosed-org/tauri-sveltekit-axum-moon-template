@@ -40,6 +40,7 @@ Use it as a strong starting point, not as proof that every pattern here is alrea
 - **Template version source of truth** — the latest repository tag under GitHub [Tags](https://github.com/openclosed-org/axum-harness/tags) or [Releases](https://github.com/openclosed-org/axum-harness/releases).
 - **Change history** — the root [`CHANGELOG.md`](./CHANGELOG.md) is the repository-level entry point; GitHub Releases is the best public view for release notes.
 - **Derived projects** — if you use this repo as a template, you can keep repository-level tags if you want to preserve upstream upgrade visibility; if not, you can replace the release flow with your own product versioning.
+- **Tag strategy control** — release automation defaults to `v{{ version }}`, but maintainers or derived projects can override the tag template, tag detection glob, and bootstrap baseline through repository variables or `workflow_dispatch` inputs without editing the release workflow itself.
 
 ## Architecture at a Glance
 

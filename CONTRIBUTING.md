@@ -121,6 +121,7 @@ Only claim checks passed if you actually ran them.
 - The SemVer contract users should rely on first is the repository tag/release, because this repo is primarily shipped as a template rather than as a set of independently consumed crates.
 - Cargo crate versions are still required for workspace tooling, but they are not independent product version promises.
 - Use `just semver-check` locally when validating repository-level compatibility assumptions for the current template line.
+- Default release automation uses `v{{ version }}`, but maintainers can override the tag template, detection glob, and bootstrap baseline through repository variables or `workflow_dispatch` inputs.
 
 ## Reporting bugs and features
 

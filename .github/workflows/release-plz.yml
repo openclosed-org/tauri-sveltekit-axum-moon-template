@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/release-plz.yml'
       - 'release-plz.toml'
+      - 'release-plz.template.toml'
       - 'Cargo.toml'
       - 'Cargo.lock'
       - 'Justfile'
@@ -31,6 +32,19 @@ on:
       - 'CONTRIBUTING.md'
       - 'CHANGELOG.md'
   workflow_dispatch:
+    inputs:
+      release_tag_template:
+        description: Repository tag template used by release-plz (for example v{{ version }} or backend-v{{ version }})
+        required: false
+        type: string
+      release_tag_glob:
+        description: Git tag glob used to detect the current release baseline (for example v[0-9]*.[0-9]*.[0-9]*)
+        required: false
+        type: string
+      baseline_tag:
+        description: Explicit existing tag to use as the SemVer baseline for this run
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -47,6 +61,9 @@ jobs:
 
     outputs:
       has_repo_tag: ${{ steps.detect.outputs.has_repo_tag }}
+      baseline_tag: ${{ steps.detect.outputs.baseline_tag }}
+      release_tag_template: ${{ steps.detect.outputs.release_tag_template }}
+      release_tag_glob: ${{ steps.detect.outputs.release_tag_glob }}
 
     steps:
       - name: Checkout
@@ -54,14 +71,42 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Detect official repository semver tags
+      - name: Resolve repository release strategy
         id: detect
+        env:
+          INPUT_RELEASE_TAG_TEMPLATE: ${{ inputs.release_tag_template }}
+          INPUT_RELEASE_TAG_GLOB: ${{ inputs.release_tag_glob }}
+          INPUT_BASELINE_TAG: ${{ inputs.baseline_tag }}
+          VAR_RELEASE_TAG_TEMPLATE: ${{ vars.RELEASE_TAG_TEMPLATE }}
+          VAR_RELEASE_TAG_GLOB: ${{ vars.RELEASE_TAG_GLOB }}
+          VAR_RELEASE_BOOTSTRAP_TAG: ${{ vars.RELEASE_BOOTSTRAP_TAG }}
         run: |
-          if git tag -l 'axum-harness-v[0-9]*.[0-9]*.[0-9]*' | grep -q .; then
+          release_tag_template="${INPUT_RELEASE_TAG_TEMPLATE:-${VAR_RELEASE_TAG_TEMPLATE:-v{{ version }}}}"
+          release_tag_glob="${INPUT_RELEASE_TAG_GLOB:-${VAR_RELEASE_TAG_GLOB:-v[0-9]*.[0-9]*.[0-9]*}}"
+          baseline_tag="${INPUT_BASELINE_TAG:-${VAR_RELEASE_BOOTSTRAP_TAG:-}}"
+
+          if [ -n "$baseline_tag" ] && ! git rev-parse -q --verify "refs/tags/$baseline_tag" >/dev/null; then
+            echo "Configured baseline tag does not exist: $baseline_tag" >&2
+            exit 1
+          fi
+
+          if [ -z "$baseline_tag" ]; then
+            baseline_tag="$(git tag -l "$release_tag_glob" | sort -V | tail -n 1)"
+          fi
+
+          echo "release_tag_template=$release_tag_template" >> "$GITHUB_OUTPUT"
+          echo "release_tag_glob=$release_tag_glob" >> "$GITHUB_OUTPUT"
+          echo "baseline_tag=$baseline_tag" >> "$GITHUB_OUTPUT"
+
+          echo "Release tag template: $release_tag_template" >> "$GITHUB_STEP_SUMMARY"
+          echo "Release tag glob: $release_tag_glob" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ -n "$baseline_tag" ]; then
             echo "has_repo_tag=true" >> "$GITHUB_OUTPUT"
+            echo "Release baseline tag: $baseline_tag" >> "$GITHUB_STEP_SUMMARY"
           else
             echo "has_repo_tag=false" >> "$GITHUB_OUTPUT"
-            echo "No official repository semver tag found yet. Bootstrap the first repository release manually with an 'axum-harness-vX.Y.Z' tag, then let release-plz continue from there." >> "$GITHUB_STEP_SUMMARY"
+            echo "No matching repository release tag exists yet. Create your preferred bootstrap tag manually or set workflow_dispatch inputs / repository variables, then let release-plz continue from that baseline." >> "$GITHUB_STEP_SUMMARY"
           fi
 
   semver:
@@ -85,7 +130,7 @@ jobs:
         uses: taiki-e/install-action@cargo-semver-checks
 
       - name: Run repository semver check
-        run: just semver-check
+        run: just semver-check '${{ needs.release-line.outputs.baseline_tag }}' minor '${{ needs.release-line.outputs.release_tag_glob }}'
 
   release-pr:
     name: Release PR
@@ -103,11 +148,18 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Render release-plz config
+        env:
+          RELEASE_TAG_TEMPLATE: ${{ needs.release-line.outputs.release_tag_template }}
+        run: |
+          RELEASE_TAG_TEMPLATE="$RELEASE_TAG_TEMPLATE" perl -0pe 's/__REPOSITORY_TAG_TEMPLATE__/$ENV{RELEASE_TAG_TEMPLATE}/g' release-plz.template.toml > .github/release-plz.runtime.toml
+
       - name: Run release-plz release-pr
         uses: release-plz/action@v0.5
         with:
           command: release-pr
           manifest_path: tools/repo-release/Cargo.toml
+          config: .github/release-plz.runtime.toml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -127,11 +179,18 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Render release-plz config
+        env:
+          RELEASE_TAG_TEMPLATE: ${{ needs.release-line.outputs.release_tag_template }}
+        run: |
+          RELEASE_TAG_TEMPLATE="$RELEASE_TAG_TEMPLATE" perl -0pe 's/__REPOSITORY_TAG_TEMPLATE__/$ENV{RELEASE_TAG_TEMPLATE}/g' release-plz.template.toml > .github/release-plz.runtime.toml
+
       - name: Run release-plz release
         uses: release-plz/action@v0.5
         with:
           command: release
           manifest_path: tools/repo-release/Cargo.toml
+          config: .github/release-plz.runtime.toml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
