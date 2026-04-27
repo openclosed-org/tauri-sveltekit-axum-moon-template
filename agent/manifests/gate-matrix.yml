@@ -1,154 +1,309 @@
 # Gate Matrix
-# Maps subagents to their required gates
-# Used by planner to determine which gates to run after subagent completes
+# Select gates from changed paths, risk category, and evidence level.
+# Subagent identity routes work; it does not make a gate required.
 
-version: 1
-updated: "2026-04-14"
+version: 2
+updated: "2026-04-27"
 
-# Gate definitions
+strengths:
+  advisory:
+    blocking: false
+    purpose: Early signal, optional lanes, non-default shells, or exploratory checks.
+  guardrail:
+    blocking: true
+    purpose: Normal PR protection for boundaries, drift, default backend-core, contracts, and path-scoped validation.
+  invariant:
+    blocking: true
+    purpose: P0 correctness and release readiness only; requires executable evidence.
+
+evidence_levels:
+  declared:
+    source: Metadata or prose only.
+    can_be_claimed_from_yaml_only: true
+  checked:
+    source: Schema validation, static validation, typecheck, drift check, or boundary check.
+    can_be_claimed_from_yaml_only: false
+  tested:
+    source: Unit, integration, contract, replay, resilience, or end-to-end tests.
+    can_be_claimed_from_yaml_only: false
+  proven:
+    source: Executed gate or test evidence appropriate for the claimed invariant.
+    can_be_claimed_from_yaml_only: false
+
 gates:
-  typegen:
-    command: ["moon", "run", "repo:typegen"]
-    label: "Type generation"
-    scope: contract
+  verify_backend_primary:
+    command: ["just", "verify-backend-primary"]
+    label: Default backend-core static guardrail
+    strength: guardrail
+    scope: backend-core
 
-  drift_check:
-    command: ["git", "diff", "--exit-code", "packages/contracts/generated/"]
-    label: "Contract drift check"
-    scope: contract
+  test_backend_primary:
+    command: ["just", "test-backend-primary"]
+    label: Default backend-core tests
+    strength: guardrail
+    scope: backend-core
 
-  typecheck:
-    command: ["just", "typecheck"]
-    label: "Type check"
-    scope: global
+  verify_repo:
+    command: ["just", "verify"]
+    label: Repo-wide backend-core verify
+    strength: guardrail
+    scope: repo
+    note: Use when broader confidence is needed; not a default requirement for every change.
 
   boundary_check:
     command: ["just", "boundary-check"]
-    label: "Boundary check"
-    scope: global
+    label: Boundary check
+    strength: guardrail
+    scope: repo
 
-  cargo_check:
-    command: ["cargo", "check", "-p", "<package>"]
-    label: "Cargo check"
-    scope: rust
-    variable: "package"
+  typecheck:
+    command: ["just", "typecheck"]
+    label: Type check
+    strength: guardrail
+    scope: repo
 
-  cargo_test:
-    command: ["cargo", "test", "-p", "<package>"]
-    label: "Cargo test"
-    scope: rust
-    variable: "package"
-
-  contract_check:
-    command: ["just", "contracts-check"]
-    label: "Contract checks"
+  contracts_check:
+    command: ["just", "contracts-check", "strict"]
+    label: Contract validation
+    strength: guardrail
     scope: contract
 
-  resilience_check:
-    command: ["bun", "run", "scripts/validate-resilience.ts", "--mode", "warn"]
-    label: "Resilience checks"
-    scope: worker
+  typegen:
+    command: ["just", "typegen"]
+    label: Contract type generation
+    strength: guardrail
+    scope: contract
 
-  validate_state:
-    command: ["just", "validate-state", "strict"]
-    label: "State validation"
-    scope: platform
+  drift_check:
+    command: ["just", "drift-check"]
+    label: Contract generated drift check
+    strength: guardrail
+    scope: contract
 
-  validate_workflows:
-    command: ["just", "validate-workflows", "strict"]
-    label: "Workflow validation"
-    scope: platform
-
-  verify_replay:
-    command: ["just", "verify-replay", "strict"]
-    label: "Replay verification"
-    scope: worker
-
-  verify_counter_delivery:
-    command: ["just", "verify-counter-delivery", "strict"]
-    label: "Counter delivery verification"
-    scope: platform
+  sdk_drift_check:
+    command: ["just", "sdk-drift-check"]
+    label: SDK drift check
+    strength: guardrail
+    scope: contract
 
   validate_platform:
     command: ["just", "validate-platform"]
-    label: "Platform validation"
+    label: Platform model validation
+    strength: guardrail
     scope: platform
+
+  validate_state:
+    command: ["just", "validate-state", "strict"]
+    label: State metadata validation
+    strength: guardrail
+    scope: platform
+    note: Checks declarations; does not prove runtime state correctness by itself.
+
+  validate_workflows:
+    command: ["just", "validate-workflows", "strict"]
+    label: Workflow metadata validation
+    strength: guardrail
+    scope: platform
+    note: Checks declarations; does not prove workflow runtime correctness by itself.
 
   validate_topology:
     command: ["just", "validate-topology"]
-    label: "Topology validation"
+    label: Topology validation
+    strength: guardrail
     scope: platform
 
   verify_generated:
     command: ["just", "verify-generated"]
-    label: "Generated drift checks"
+    label: Generated artifact drift check
+    strength: guardrail
     scope: platform
 
-  validate_deps:
-    command: ["just", "validate-deps"]
-    label: "Local/infra validation"
-    scope: platform
+  verify_replay:
+    command: ["just", "verify-replay", "strict"]
+    label: Replay verification
+    strength: invariant
+    scope: worker
 
-  verify:
-    command: ["just", "verify"]
-    label: "Total verify"
-    scope: global
-    note: "Always run as final gate"
+  verify_counter_delivery:
+    command: ["just", "verify-counter-delivery", "strict"]
+    label: Counter delivery admission verification
+    strength: invariant
+    scope: delivery
 
-# Subagent → gate mapping
-subagent_gates:
-  contract-agent:
+  validate_resilience:
+    command: ["bun", "run", "scripts/validate-resilience.ts", "--mode", "warn"]
+    label: Resilience checks
+    strength: advisory
+    scope: worker
+
+  gate_release:
+    command: ["just", "gate-release"]
+    label: Release gate
+    strength: invariant
+    scope: release
+
+path_rules:
+  - match:
+      - AGENTS.md
+      - agent/**
+      - docs/architecture/**
+    recommended:
+      - boundary_check
+    required: []
+    note: Coordination-only changes should not trigger heavy platform or release gates by default.
+
+  - match:
+      - justfile
+      - justfiles/**
+      - moon.yml
+      - package.json
+      - scripts/**
+    recommended:
+      - boundary_check
+      - typecheck
     required:
+      - verify_backend_primary
+    note: Shared tooling can affect the backend-core lane; prefer scoped checks before repo-wide verify.
+
+  - match:
+      - packages/contracts/**
+      - docs/contracts/**
+    recommended:
       - typegen
       - drift_check
+      - sdk_drift_check
       - typecheck
       - boundary_check
-    conditional: []
+    required:
+      - contracts_check
 
-  app-shell-agent:
+  - match:
+      - services/**
+    recommended:
+      - verify_backend_primary
+      - test_backend_primary
+      - boundary_check
     required: []
-    conditional: []
+    note: Add contract, replay, or invariant gates only when the actual service change affects those risks.
 
-  server-agent:
-    required:
-      - cargo_check
-      - typecheck
+  - match:
+      - servers/**
+    recommended:
+      - verify_backend_primary
       - boundary_check
-    conditional:
-      - gate: contract_check
-        when: "packages/contracts/ changed"
+    required: []
+    note: Add contracts_check when request/response/error shapes change.
 
-  service-agent:
-    required:
-      - cargo_check
-      - cargo_test
-      - validate_state
-      - typecheck
+  - match:
+      - workers/**
+    recommended:
+      - verify_backend_primary
       - boundary_check
-    conditional: []
+      - validate_resilience
+    required: []
+    note: Escalate to verify_replay when checkpoint, replay, projection rebuild, outbox, or idempotency behavior changes.
 
-  worker-agent:
-    required:
-      - cargo_check
-      - cargo_test
-      - verify_replay
-      - resilience_check
-      - boundary_check
-    conditional: []
-
-  platform-ops-agent:
-    required:
+  - match:
+      - platform/schema/**
+      - platform/model/**
+      - platform/validators/**
+      - platform/generators/**
+    recommended:
       - validate_platform
       - validate_state
       - validate_workflows
-      - validate_topology
-      - verify_counter_delivery
-      - verify_generated
-      - validate_deps
       - boundary_check
-    conditional: []
+    required: []
+    note: These gates validate declarations and generators; invariant claims need tests or stricter delivery evidence.
 
-# Global gates (always run after all subagents complete)
-global_gates:
-  - verify           # just verify
-  - boundary_check   # just boundary-check
+  - match:
+      - infra/**
+      - ops/**
+    recommended:
+      - validate_platform
+      - validate_topology
+      - boundary_check
+    required: []
+    note: Escalate for secrets, topology, GitOps, or production delivery changes.
+
+  - match:
+      - verification/**
+      - fixtures/**
+    recommended:
+      - verify_backend_primary
+      - boundary_check
+    required: []
+    note: Run the specific verification lane being changed.
+
+  - match:
+      - apps/**
+      - packages/ui/**
+    recommended: []
+    required: []
+    note: App shells use their own local command surface; root backend-core gates should not depend on them by default.
+
+risk_rules:
+  contract_compatibility:
+    when: External DTO, event, RPC, OpenAPI, SDK, or error-code shape changes.
+    add_recommended:
+      - contracts_check
+      - typegen
+      - drift_check
+      - sdk_drift_check
+    minimum_evidence: checked
+
+  backend_core_behavior:
+    when: Default counter/tenant/web-bff backend behavior changes without distributed semantics risk.
+    add_recommended:
+      - verify_backend_primary
+      - test_backend_primary
+      - boundary_check
+    minimum_evidence: tested
+
+  distributed_semantics:
+    when: Idempotency, retry, checkpoint, replay, ordering, projection rebuild, outbox delivery, workflow, or ownership semantics change.
+    add_required:
+      - verify_replay
+    add_recommended:
+      - validate_state
+      - validate_workflows
+      - test_backend_primary
+    minimum_evidence: proven
+
+  topology_or_delivery:
+    when: Topology, deployable identity, secrets, SOPS, GitOps, delivery path, or production resource binding changes.
+    add_required:
+      - validate_topology
+    add_recommended:
+      - validate_platform
+      - verify_counter_delivery
+    minimum_evidence: checked
+
+  release_readiness:
+    when: Preparing a release, changing release automation, or claiming release readiness.
+    add_required:
+      - gate_release
+    add_recommended:
+      - verify_repo
+      - verify_generated
+    minimum_evidence: proven
+
+  p0_correctness:
+    when: A failure could corrupt data, bypass authorization, leak secrets, break recovery, or invalidate delivery correctness.
+    add_required:
+      - gate_release
+    add_recommended:
+      - verify_repo
+      - verify_replay
+      - verify_counter_delivery
+    minimum_evidence: proven
+
+selection_rules:
+  - Start from changed paths, then add risk-specific gates.
+  - Advisory gates do not block unless a maintainer explicitly promotes them for the change.
+  - Guardrail gates may block normal PRs.
+  - Invariant gates are reserved for P0 correctness and release readiness.
+  - Do not claim a gate passed unless it was executed in this change context.
+  - Do not claim semantic correctness from YAML-only changes.
+  - Prefer `just verify-backend-primary` for ordinary backend-core work.
+  - Use `just verify` for broader repo-wide confidence, not as an automatic final gate for every change.

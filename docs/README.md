@@ -17,9 +17,10 @@ For general readers and template adopters:
 For maintainers and agent-assisted development:
 
 1. `AGENTS.md`
-2. `agent/codemap.yml`
-3. `docs/adr/**`
-4. `docs/governance/docs-lifecycle.md`
+2. `docs/architecture/harness-philosophy.md`
+3. `agent/codemap.yml`
+4. `docs/adr/**`
+5. `docs/governance/docs-lifecycle.md`
 
 ## What Belongs Here
 

@@ -4,8 +4,8 @@
  *
  * This script:
  * 1. Checks that modified files are within the subagent's writable boundaries
- * 2. Runs the subagent's scoped gates
- * 3. Reports readiness for total verify
+ * 2. Prints gate-selection guidance
+ * 3. Reports readiness for path/risk/evidence-based verification
  *
  * Usage:
  *   bun run scripts/verify-handoff.ts contract-agent
@@ -119,7 +119,7 @@ async function main(): Promise<number> {
 
   if (paths.length === 0) {
     console.log('No modified files to verify.');
-    console.log('Run scoped gates anyway...');
+    console.log('Print gate-selection guidance anyway...');
   }
 
   console.log(`Modified files: ${paths.length}`);
@@ -148,22 +148,22 @@ async function main(): Promise<number> {
     console.log('Validate retained app shells from their own local command surface if those directories remain in the repo.');
     console.log('\n=== Handoff Verified ===');
     console.log(`${agent} changes are ready for convergence.`);
-    console.log('Next step: run total verify (just verify)');
+    console.log('Next step: select gates by changed paths, risk, and evidence level.');
     return 0;
   }
 
-  // Run scoped gates
-  console.log('\n--- Scoped Gates ---');
+  // Gate selection guidance. Gates are no longer required solely by subagent identity.
+  console.log('\n--- Gate Selection Guidance ---');
   const result = await run('bun', ['run', 'scripts/run-scoped-gates.ts', agent]);
 
   if (!result.success) {
-    console.error('\n✗ Scoped gates failed — handoff not ready');
+    console.error('\n✗ Gate selection guidance failed — handoff not ready');
     return 1;
   }
 
   console.log('\n=== Handoff Verified ===');
   console.log(`${agent} changes are ready for convergence.`);
-  console.log('Next step: run total verify (just verify)');
+  console.log('Next step: run gates selected by changed paths, risk, and evidence level.');
 
   return 0;
 }

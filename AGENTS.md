@@ -1,54 +1,50 @@
 # AGENTS.md
 
 > Thin coordination protocol for this repository. All agents read this first.
-> This file contains cross-cutting rules, constraints, and indexes — not descriptions of current state.
-> Current-state guidance lives in `docs/README.md`; machine-readable rules live in `agent/codemap.yml`.
+> This file contains stable cross-cutting rules only. Harness philosophy lives in `docs/architecture/harness-philosophy.md`; current-state guidance lives in `docs/README.md`.
 
 ## 1. Language Preference
 
-Communication **MUST** be Chinese
+Communication **MUST** be Chinese.
 
-Code, commands, config keys, logs, and protocol fields always remain in their original language.
+Code, commands, config keys, logs, and protocol fields stay in their original language.
 
 ## 2. Default Reading Order
 
 Backend tasks:
 
 1. `AGENTS.md`
-2. `agent/codemap.yml`
-3. `agent/manifests/routing-rules.yml`
-4. `agent/manifests/gate-matrix.yml`
-5. `docs/operations/counter-service-reference-chain.md`
+2. `docs/architecture/harness-philosophy.md`
+3. `agent/codemap.yml`
+4. `agent/manifests/routing-rules.yml`
+5. `agent/manifests/gate-matrix.yml`
 
 Documentation / audit tasks: also read `docs/README.md`.
 
-## 3. Source-of-Truth Priority
+## 3. Truth Hierarchy
 
-When determining the current state, gather evidence in this order:
+When determining current state, gather evidence in this order:
 
-1. Code, schemas, validators, gates, scripts
-2. `agent/codemap.yml`
-3. `agent/manifests/routing-rules.yml`
-4. `agent/manifests/gate-matrix.yml`
-5. `docs/operations/counter-service-reference-chain.md`
-6. `docs/adr/**` and `.agents/skills/*/SKILL.md`
+1. code, schemas, validators, tests, gates, scripts, and command output
+2. generated artifacts only when produced from current sources and checked for drift
+3. `platform/model/**` and `services/*/model.yaml`
+4. `agent/**` manifests
+5. prose documentation
 
 Hard rules:
 
-1. When docs conflict with code, trust code and executable verification.
+1. When docs or YAML conflict with executable sources, trust executable sources.
 2. Never infer a file or module exists solely from target-state documentation.
-3. Conclusions about the current state must point to a real file, directory, or command output.
+3. YAML declarations can describe intent; they do not prove semantic correctness.
+4. `declared`, `checked`, `tested`, and `proven` claims must cite executable evidence when raised above `declared`.
 
-## 4. Planner Responsibilities
+## 4. Routing
 
-**Does**: understand goals, audit directories, dispatch subagents per `routing-rules.yml`, advance changes in dependency order, converge results.
-**Does NOT**: design non-existent modules, merge multi-domain patches into one, replace gates/scripts with prose.
+Full mapping lives in `agent/manifests/routing-rules.yml`.
 
-## 5. Routing
+Quick reference:
 
-Full mapping lives in `agent/manifests/routing-rules.yml`. Quick reference:
-
-| Path                                                            | Subagent           |
+| Path                                                            | Primary owner      |
 | --------------------------------------------------------------- | ------------------ |
 | `platform/model/**`, `platform/schema/**`, `infra/**`, `ops/**` | platform-ops-agent |
 | `packages/contracts/**`, `docs/contracts/**`                    | contract-agent     |
@@ -56,41 +52,41 @@ Full mapping lives in `agent/manifests/routing-rules.yml`. Quick reference:
 | `servers/**`                                                    | server-agent       |
 | `workers/**`                                                    | worker-agent       |
 | `apps/**`, `packages/ui/**`                                     | app-shell-agent    |
-| `AGENTS.md`, `agent/**`, root config                            | planner            |
+| `AGENTS.md`, `agent/**`, root config, `docs/architecture/**`    | planner            |
 
-Multi-domain dispatch order: platform-ops → contract → service → server/worker → app-shell → final verification.
-Only split when directory, responsibility, or verification boundaries genuinely differ.
+Multi-domain dispatch order: platform-ops -> contract -> service -> server/worker -> app-shell -> verification.
+
+Only split work when directory, responsibility, or verification boundaries genuinely differ.
+
+## 5. Gate Selection
+
+Gate selection is based on changed paths, risk category, and evidence level, not subagent identity.
+
+Use `agent/manifests/gate-matrix.yml` to choose advisory, guardrail, or invariant gates.
+
+Default backend-core development should prefer path-scoped guardrails and `just verify-backend-primary`. `just verify` is the default repo-wide backend-core gate when broader confidence is needed, not a requirement that every change run every platform, frontend, desktop, production, or release gate.
+
+P0 invariants and release readiness require executable evidence. Metadata alone is never sufficient.
 
 ## 6. Global Hard Constraints
 
 1. Read before changing; evidence before judgment; search before guessing.
-2. Prioritize the smallest causal closed loop: identify the violated invariant and root-cause boundary first, then make the minimal complete repair; no unrelated refactoring.
-3. Passing tests are evidence, not the goal. The goal is restored behavior, restored invariants, and executable verification that would fail without the fix.
-4. Verification that wasn't executed cannot be claimed as passed.
+2. Fix the smallest causal closed loop that restores the violated invariant.
+3. Passing tests are evidence, not the goal; restored behavior and restored invariants are the goal.
+4. Verification that was not executed cannot be claimed as passed.
 5. Mark uncertainty explicitly; never dress up guesses as conclusions.
-6. "Solving" by deleting, skipping, weakening validation, swallowing errors, bypassing gates, or faking success is forbidden.
+6. Do not solve by deleting, skipping, weakening validation, swallowing errors, bypassing gates, or faking success.
 7. Generated artifact directories are read-only; modify the source and regenerate.
-8. Escalate risk when: the change conflicts with architecture ADRs, spans multiple core directories, changes critical dependencies, affects distributed semantics, or involves 4+ subagents with complex dependencies.
+8. Escalate risk when a change affects distributed semantics, authorization, secrets, topology, contract compatibility, or release correctness.
 
-## 7. Bug Fix and Repair Protocol
+## 7. Bug Fix Protocol
 
-Use this protocol for bug reports, failing gates, regressions, and suspicious behavior:
+For bug reports, failing gates, regressions, and suspicious behavior:
 
 1. Reproduce or localize the failure with code, schema, validator, gate, script, or command-output evidence when feasible.
-2. Identify the violated invariant, not only the failing line, failing test, or surface symptom.
+2. Identify the violated invariant, not only the failing line or symptom.
 3. Determine the causal boundary: contract, service, server, worker, platform, infra, app, or cross-boundary.
-4. Fix the smallest causal closed loop that restores the invariant.
+4. Make the minimal complete repair at that boundary.
 5. Add or update regression verification at the same semantic level as the bug.
-6. Run the relevant gates; state explicitly when a gate was not run.
-7. If only a tactical fix is safe in the current turn, state the residual architectural or operational risk explicitly.
-
-Bug-fix shortcuts are forbidden:
-
-1. Do not delete, skip, or weaken tests to pass.
-2. Do not swallow errors or replace failures with defaults unless the domain explicitly defines that fallback.
-3. Do not edit generated artifacts directly.
-4. Do not move logic across ownership boundaries to avoid fixing the owner.
-5. Do not satisfy a gate by bypassing the behavior the gate was meant to protect.
-6. Do not optimize for the smallest diff; optimize for the smallest correct causal repair.
-
-Escalate instead of patching locally when a bug affects distributed semantics, including consistency, idempotency, retry, checkpoint/replay, event ordering, outbox delivery, projection rebuildability, ownership, authorization, secrets, topology, or contract compatibility.
+6. Run relevant gates and state explicitly when a gate was not run.
+7. If only a tactical fix is safe, state the residual risk.

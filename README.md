@@ -33,7 +33,7 @@ Use it as a strong starting point, not as proof that every pattern here is alrea
 - **Platform model as truth source** — `platform/model/*` declares deployables, workflows, topologies, resources, environments. No implicit infrastructure.
 - **Single VPS to K3s** — `platform/model/topologies/*.yaml` defines the deployment shape. Same binary, different topology.
 - **SOPS + Flux GitOps** — Backend secrets flow through SOPS/Kustomize/Flux, not `.env` files. `just sops-run <deployable>` injects env vars locally; Flux reconciles in-cluster.
-- **Multi-agent AI harness** — 8 specialized agents (planner, platform-ops, contract, service, server, worker, app-shell) with routing rules, scoped gates, and boundary checks.
+- **Multi-agent AI harness** — 8 specialized agents (planner, platform-ops, contract, service, server, worker, app-shell) with routing rules, path/risk-based gates, and boundary checks.
 
 ## Versioning and Changelog
 
@@ -187,17 +187,19 @@ For backend-only derived projects, `just template-init backend-core dry-run` sho
 
 This repository has a built-in multi-agent collaboration protocol.
 
-- `AGENTS.md` — master protocol: reading order, truth source hierarchy, routing rules, global constraints
-- `agent/codemap.yml` — module boundaries, dependency rules, anti-patterns, required files per entity type
+- `AGENTS.md` — thin protocol: reading order, truth hierarchy, routing, gate-selection rules, global constraints
+- `docs/architecture/harness-philosophy.md` — harness boundaries, metadata limits, evidence levels, and gate strength
+- `agent/codemap.yml` — compact navigation map for boundaries, source-of-truth pointers, generated-readonly paths, anti-patterns, and modification order
 - `agent/manifests/routing-rules.yml` — path → subagent dispatch map
-- `agent/manifests/gate-matrix.yml` — subagent → gate mapping (typecheck, boundary, drift, replay, resilience)
+- `agent/manifests/gate-matrix.yml` — changed paths / risk / evidence level → advisory, guardrail, or invariant gates
 
-Gates enforce architectural boundaries. Every agent dispatch ends with scoped verification:
+Gates are selected from changed paths, risk, and evidence level, not from subagent identity:
 
 ```bash
 bun run scripts/route-task.ts              # Route a task to the right subagent
-bun run scripts/run-scoped-gates.ts <agent> # Run gates for a specific agent
-just verify                                 # Total verification (final gate)
+bun run scripts/run-scoped-gates.ts --list  # Show gate-selection guidance
+just verify-backend-primary                 # Default backend-core guardrail
+just verify                                 # Broader repo-wide guardrail when needed
 ```
 
 More repository policy and documentation-boundary details live in `docs/README.md`.
