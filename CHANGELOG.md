@@ -15,6 +15,15 @@ Preferred release views:
 
 ## Unreleased
 
+### Changed
+
+- Consolidated release-plz changelog output into the root `CHANGELOG.md` so the template has one public change history.
+- Clarified that the root `axum-harness` package is an upstream maintainer release anchor, not a required derived-project runtime contract.
+
+### Fixed
+
+- Extended `template-init backend-core apply` so derived projects can remove the upstream release-plz workflow, runtime config, repo-release helper, and root release anchor together.
+
 ## v0.3.0 - 2026-04-27
 
 ### Added

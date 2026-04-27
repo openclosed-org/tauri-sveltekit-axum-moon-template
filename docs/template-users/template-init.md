@@ -72,14 +72,17 @@ Current implementation supports `backend-core` dry-run and apply. Other profiles
 1. `docs/governance/**`
 2. `docs/archive/**`
 3. `release-plz.toml`
-4. `.github/ISSUE_TEMPLATE/**`
-5. `.github/pull_request_template.md`
-6. `apps/**`
-7. `packages/ui/**`
-8. `verification/e2e/**`
-9. `scripts/dev-desktop.ts`
-10. `scripts/test/run-frontend.ts`
-11. `scripts/e2e/**`
+4. `release-plz.template.toml`
+5. `.github/workflows/release-plz.yml`
+6. `tools/repo-release/**`
+7. `.github/ISSUE_TEMPLATE/**`
+8. `.github/pull_request_template.md`
+9. `apps/**`
+10. `packages/ui/**`
+11. `verification/e2e/**`
+12. `scripts/dev-desktop.ts`
+13. `scripts/test/run-frontend.ts`
+14. `scripts/e2e/**`
 
 ### Review manually
 
@@ -101,6 +104,10 @@ When `apply` mode is used, it should:
 4. refuse to run if the worktree is dirty unless the user explicitly acknowledges the risk
 5. stay focused on backend-core template cleanup instead of guessing business requirements
 6. be followed by `just audit-backend-core strict` and `just verify`
+
+Set `TEMPLATE_INIT_ALLOW_DIRTY=1` only when you have reviewed the pending changes and intentionally want to apply cleanup in a dirty worktree.
+
+The `backend-core` apply path also removes the upstream `axum-harness` release anchor from the root `Cargo.toml`. That anchor exists only so the upstream template can maintain repository-level tags, GitHub Releases, and the root changelog; derived projects do not need to inherit it unless they intentionally keep and rename the release-plz setup.
 
 ## Backend-core proof
 

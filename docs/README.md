@@ -59,16 +59,16 @@ Repository-level policy and project-level caveats live here instead of expanding
 
 ### Versioning
 
-This repository is versioned as a single template product.
+This upstream repository is versioned as a single template product. The release tooling exists to record template changes for maintainers; derived projects can keep it, rename it, or remove it without changing the backend-core runtime contract.
 
 1. the repository tag/release is the version contract template users should follow
 2. pre-`1.0.0` releases cover iterative template improvements, docs fixes, tooling updates, and internal refactors within the active pre-1.0 line
 3. bump the minor version when template structure, migration expectations, or public usage patterns change materially
 4. start `1.0.0` only when the template is ready to make a stronger stability promise to adopters
 
-Cargo crate versions still exist as workspace metadata, but they do not represent independent product release channels.
+Cargo crate versions still exist as workspace metadata, but they do not represent independent product release channels. The root `axum-harness` package is a maintainer-only release anchor with `publish = false`; it is not required for projects derived from the template.
 
-If you derive a new repository from this template, bootstrap the first official repository release manually with your chosen starting tag, then let automation continue from that baseline.
+If you derive a new repository from this template and want to keep release automation, rename the root release anchor to your project identity, bootstrap the first official repository release manually with your chosen starting tag, then let automation continue from that baseline. If you do not want upstream release automation, run or follow `just template-init backend-core apply` to remove the release-plz workflow, config, and root release anchor.
 
 Maintainers can override the default release tag strategy without changing tracked files:
 
@@ -76,7 +76,7 @@ Maintainers can override the default release tag strategy without changing track
 2. `RELEASE_TAG_GLOB` controls which tags CI treats as the current release line, defaulting to `v[0-9]*.[0-9]*.[0-9]*`
 3. `RELEASE_BOOTSTRAP_TAG` can pin an explicit existing tag as the release baseline until the next official tag is created
 
-`release-plz` prepares repository releases, and `just semver-check` is the local visibility check for repository-level compatibility assumptions within the active pre-1.0 line.
+`release-plz` prepares repository releases and updates the root `CHANGELOG.md`. `just semver-check` is the local visibility check for repository-level compatibility assumptions within the active pre-1.0 line.
 
 ### Configuration
 
