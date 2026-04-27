@@ -15,19 +15,42 @@ Preferred release views:
 
 ## Unreleased
 
+## v0.3.0 - 2026-04-27
+
+### Added
+
+- Added a `backend-core` template audit path so maintainers and adopters can prove the root command surface no longer depends on optional app-shell directories.
+- Added `docs/architecture/harness-philosophy.md` to define harness boundaries, truth hierarchy, evidence levels, metadata limits, and gate strength.
+- Added configurable release tag strategy inputs so maintainers can override tag template, tag glob, and bootstrap baseline without editing tracked files.
+
 ### Changed
 
-- Aligned repository release automation and SemVer checks with the latest real template baseline instead of the old hard-coded `v0.1.x` line.
-- Clarified in README and maintainer docs that repository tags are the template version contract and that desktop/Tauri validation is local-only, not part of the default backend CI admission flow.
-- Reworked Quick Start and local development guidance to emphasize the backend-first path and remove stale or misleading command examples.
-- Fixed multiple broken or outdated `just` recipes in backend/platform workflows, including SemVer baseline detection, platform inventory commands, migration helpers, process utilities, and stale package/path references.
-- Added a repository-level changelog entry point so release notes have an explicit home in the template itself.
-- Replaced the hard-coded `axum-harness-v*` release lane with a runtime-configurable tag strategy so template consumers can control tag naming, tag matching, and bootstrap baselines through CI inputs or repository variables.
+- Decoupled optional web, desktop, mobile, and UI shell surfaces from the default backend-core template contract.
+- Reworked root `just`, `moon`, and shared scripts so backend-core commands do not require SvelteKit, Tauri, `apps/**`, or `packages/ui/**` by default.
+- Reframed `agent/codemap.yml` as a compact navigation map instead of a full system model or heavyweight architecture constitution.
+- Rebuilt `agent/manifests/gate-matrix.yml` around changed paths, risk categories, and evidence levels instead of subagent identity.
+- Clarified that `services/<name>/model.yaml`, `platform/model/**`, and agent YAML declarations are semantic summaries or metadata, not formal proof of system correctness.
+- Clarified that `advisory`, `guardrail`, and `invariant` gates have different blocking strength, and that invariant gates are reserved for P0 correctness and release readiness.
+- Clarified that `just verify-backend-primary` is the default backend-core guardrail and `just verify` is a broader repo-wide guardrail, not an automatic requirement to run every platform, frontend, desktop, production, or release gate.
+- Strengthened the root agent protocol around bug fixes: reproduce or localize failures, identify violated invariants, make minimal causal repairs, add regression evidence, and never claim unrun gates as passed.
 
-### Notes
+### Fixed
 
-- The legacy `v0.2.0` tag was retired because it pointed at an obsolete pre-template workspace layout and polluted repository-level release automation.
-- GitHub Releases remains the best public view for generated release notes once release automation runs.
+- Fixed release-plz workflow scoping so release PRs are prepared from the repository-level release anchor instead of unrelated workspace packages.
+- Fixed release baseline comparison to use the active template tag line instead of stale hard-coded assumptions.
+- Fixed release-plz worktree hygiene so generated release state does not leave the repository dirty during automation.
+- Fixed backend-core root entrypoint drift by removing stale app-shell command exposure from shared validation and development lanes.
+
+### Documentation
+
+- Updated README, CONTRIBUTING, docs index, and agent docs to describe path/risk/evidence-based gate selection.
+- Documented that metadata-only changes can raise a claim to `declared`, but `checked`, `tested`, and `proven` claims require executable evidence such as validators, tests, gates, or command output.
+
+### Migration Notes
+
+- Use `just verify-backend-primary` for ordinary backend-core development and add path-specific guardrails from `agent/manifests/gate-matrix.yml` when contracts, platform model, workers, topology, delivery, or release risk is involved.
+- Use `bun run scripts/run-scoped-gates.ts --list` as compatibility guidance only; it no longer runs heavyweight gates just because a subagent handled a change.
+- Treat app-shell validation as local to retained app shells. Root backend-core admission should remain independent from optional frontend and desktop surfaces.
 
 ## v0.2.0 - 2026-04-04
 
