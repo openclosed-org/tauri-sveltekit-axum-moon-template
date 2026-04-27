@@ -63,10 +63,36 @@ msedgedriver.exe
 
 # --- Tauri generated ---
 apps/desktop/src-tauri/target/
-apps/desktop/src-tauri/gen/
+apps/desktop/src-tauri/gen/*
+!apps/desktop/src-tauri/gen/schemas/
+!apps/desktop/src-tauri/gen/schemas/acl-manifests.json
+!apps/desktop/src-tauri/gen/schemas/capabilities.json
+!apps/desktop/src-tauri/gen/schemas/desktop-schema.json
+!apps/desktop/src-tauri/gen/schemas/macOS-schema.json
 
 # ts-rs intermediate output
-packages/contracts/*/bindings/
+packages/contracts/*/bindings/**
+!packages/contracts/api/bindings/
+!packages/contracts/api/bindings/api/
+!packages/contracts/api/bindings/api/AdminDashboardStats.ts
+!packages/contracts/api/bindings/api/AgentConfig.ts
+!packages/contracts/api/bindings/api/ChatMessage.ts
+!packages/contracts/api/bindings/api/HealthResponse.ts
+!packages/contracts/api/bindings/api/InitTenantRequest.ts
+!packages/contracts/api/bindings/api/InitTenantResponse.ts
+!packages/contracts/api/bindings/api/ToolCall.ts
+!packages/contracts/api/bindings/serde_json/
+!packages/contracts/api/bindings/serde_json/JsonValue.ts
+!packages/contracts/auth/bindings/
+!packages/contracts/auth/bindings/auth/
+!packages/contracts/auth/bindings/auth/OAuthCallback.ts
+!packages/contracts/auth/bindings/auth/TokenPair.ts
+!packages/contracts/auth/bindings/auth/UserProfile.ts
+!packages/contracts/auth/bindings/auth/UserSession.ts
+!packages/contracts/events/bindings/
+!packages/contracts/events/bindings/events/
+!packages/contracts/events/bindings/events/TenantCreated.ts
+!packages/contracts/events/bindings/events/TenantMemberAdded.ts
 
 # --- Local tool binaries ---
 tools/nats/nats-server
