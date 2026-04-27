@@ -1,280 +1,234 @@
-version: 2
+version: 3
+
 repo:
   name: axum-harness
   mode: agent-first-distributed-harness
   purpose: >
-    为后端优先的 agent 协作提供稳定目录边界、真理源分层与默认参考锚点，
-    让后续修改优先沿 `counter-service` reference chain 与既有 gate/tooling 推进。
+    Provide a compact navigation map for agent collaboration: stable directory
+    boundaries, source-of-truth pointers, generated-readonly locations,
+    anti-patterns, and modification order.
 
-notes: >
-  本文档描述当前稳定边界与默认开发轨道，不把未落地模块写成既成事实。
-  service 的细粒度分布式语义归属 services/<name>/model.yaml，
-  platform/model/* 只保留平台级元数据、全局规则、deployable、workflow、topology、resource、environment。
+notes:
+  - codemap.yml is a map, not a complete system model.
+  - services/<name>/model.yaml is a service semantic summary, not proof.
+  - platform/model/** carries platform-level metadata and global shape, not service-local formal semantics.
+  - Claims above declared require executable evidence from tests, gates, validators, or command output.
 
-principles:
-  - id: schema-before-model
-    rule: 需要新增语义表达时，先扩展 platform/schema，再修改 model。
-  - id: platform-model-first
-    rule: 平台级能力先修改 platform/model，再考虑 infra 与生成物。
-  - id: service-local-semantics
-    rule: service 的 owns_entities、commands、events、queries、consistency 等细粒度语义写在 services/<name>/model.yaml。
-  - id: contracts-first
-    rule: HTTP/Event/RPC/DTO/ErrorCode 变化先修改 packages/contracts。
-  - id: shared-contract-boundary
-    rule: 跨进程、跨 deployable、HTTP、消息或 event_outbox 边界的 DTO/Event/ErrorCode 必须进入 packages/contracts；service-local 类型只能用于 crate 内部编排。
-  - id: canonical-outbox-path
-    rule: 领域事件的 canonical relay path 是 event_outbox -> workers/outbox-relay -> EventBus/NATS -> consumers；runtime PubSub 只能作为兼容镜像或按需基础设施能力。
-  - id: services-are-libraries
-    rule: services 是能力边界与状态边界，不承载进程入口。
-  - id: workers-are-first-class
-    rule: 所有异步执行逻辑必须进入 workers，并显式声明幂等、重试、checkpoint/replay。
-  - id: vendor-in-adapters-only
-    rule: vendor 依赖只能出现在 adapters 或 *-adapters 目录。
-  - id: generated-readonly
-    rule: 所有生成物目录只读，不允许手工维护。
-  - id: topology-no-semantic-change
-    rule: topology 只能改变承载形态，不得改变状态语义。
-  - id: single-owner-per-entity
-    rule: 每个核心实体必须存在唯一 owner service。
-  - id: projection-must-rebuild
-    rule: projection 必须可删可重建。
-  - id: workflow-for-long-transactions
-    rule: 跨 service 多步状态变更必须 workflow 化。
+truth_hierarchy:
+  - code, schemas, validators, tests, gates, scripts, and command output
+  - generated artifacts only when produced from current sources and checked for drift
+  - platform/model/** and services/*/model.yaml
+  - agent manifests
+  - prose documentation
+
+source_of_truth:
+  contracts:
+    paths:
+      - packages/contracts/**
+    note: External DTO, event, RPC, and error shapes live here before implementation changes.
+  platform_shape:
+    paths:
+      - platform/schema/**
+      - platform/model/**
+      - platform/validators/**
+      - platform/generators/**
+    note: Platform-level metadata, schemas, validators, generators, topology, resources, deployables, and global policy.
+  service_semantics:
+    paths:
+      - services/*/model.yaml
+      - services/**/src/**
+      - services/**/tests/**
+    note: Service-local ownership, commands, events, queries, policies, consistency summaries, and executable behavior.
+  runtime_entrypoints:
+    paths:
+      - servers/**
+      - workers/**
+    note: Servers adapt synchronous protocols; workers handle async execution, projectors, schedulers, replay, and recovery.
+  verification:
+    paths:
+      - verification/**
+      - scripts/**
+      - justfiles/**
+      - moon.yml
+    note: Evidence comes from executable checks, not metadata declarations.
 
 layers:
   - name: root
     paths:
-      - ".mise.toml"
-      - "justfile"
-      - "moon.yml"
-      - "Cargo.toml"
-      - "package.json"
-      - ".github/**"
-    role: 根配置与入口层
+      - .mise.toml
+      - justfile
+      - justfiles/**
+      - moon.yml
+      - Cargo.toml
+      - package.json
+      - .github/**
+    role: Root configuration, shared commands, and CI wiring.
 
   - name: agent
     paths:
-      - "agent/**"
-    role: agent 规则、模板、决策树、反模式、交接协议
+      - AGENTS.md
+      - agent/**
+      - .agents/**
+    role: Agent coordination, routing, gate selection guidance, and skills.
 
-  - name: platform-model
+  - name: platform
     paths:
-      - "platform/schema/**"
-      - "platform/model/**"
-      - "platform/generators/**"
-      - "platform/validators/**"
-      - "platform/catalog/**"
-    role: 平台控制面、schema、validator、generator、catalog
-    notes: >
-      platform/model/* 只保留平台级元数据、全局规则、deployable、workflow、topology、resource、environment。
+      - platform/schema/**
+      - platform/model/**
+      - platform/generators/**
+      - platform/validators/**
+      - platform/catalog/**
+    role: Platform control plane, schema, validators, generators, and generated catalog.
 
-  - name: apps
+  - name: contracts
     paths:
-      - "apps/**"
-    role: Web/Desktop/Mobile 客户端壳层
-
-  - name: servers
-    paths:
-      - "servers/**"
-    role: 同步请求入口层
+      - packages/contracts/**
+      - docs/contracts/**
+    role: Shared protocol and generated contract source-of-truth.
 
   - name: services
     paths:
-      - "services/**"
-    role: 业务能力与状态边界层
-    notes: >
-      每个 service 目录必须包含 model.yaml，由 service-agent 负责维护 service-local distributed semantics。
+      - services/**
+    role: Business capabilities and state boundaries as pure libraries.
+
+  - name: servers
+    paths:
+      - servers/**
+    role: Synchronous request entrypoints and protocol adaptation.
 
   - name: workers
     paths:
-      - "workers/**"
-    role: 异步执行、projection、replay、恢复层
+      - workers/**
+    role: Async execution, outbox relay, projection, scheduling, replay, and recovery.
 
-  - name: packages
+  - name: apps
     paths:
-      - "packages/kernel/**"
-      - "packages/platform/**"
-      - "packages/contracts/**"
-      - "packages/sdk/**"
-      - "packages/runtime/**"
-      - "packages/authn/**"
-      - "packages/authz/**"
-      - "packages/data/**"
-      - "packages/data-traits/**"
-      - "packages/data-adapters/**"
-      - "packages/messaging/**"
-      - "packages/cache/**"
-      - "packages/cache-traits/**"
-      - "packages/cache-adapters/**"
-      - "packages/storage/**"
-      - "packages/storage-traits/**"
-      - "packages/storage-adapters/**"
-      - "packages/observability/**"
-      - "packages/security/**"
-      - "packages/ui/**"
-      - "packages/devx/**"
-      - "packages/workspace-hack/**"
-    role: 共享抽象、traits、adapters、sdk、tooling
+      - apps/**
+      - packages/ui/**
+    role: Optional web, desktop, mobile, and shared UI shells.
 
-  - name: infra
+  - name: shared-packages
     paths:
-      - "infra/**"
-    role: 基础设施声明与交付层
+      - packages/kernel/**
+      - packages/platform/**
+      - packages/runtime/**
+      - packages/sdk/**
+      - packages/authn/**
+      - packages/authz/**
+      - packages/data/**
+      - packages/data-traits/**
+      - packages/data-adapters/**
+      - packages/messaging/**
+      - packages/cache/**
+      - packages/cache-traits/**
+      - packages/cache-adapters/**
+      - packages/storage/**
+      - packages/storage-traits/**
+      - packages/storage-adapters/**
+      - packages/observability/**
+      - packages/security/**
+      - packages/devx/**
+      - packages/workspace-hack/**
+    role: Shared abstractions, runtime libraries, adapters, SDKs, security, observability, and tooling.
 
-  - name: ops
+  - name: infra-ops
     paths:
-      - "ops/**"
-    role: 运维执行层
+      - infra/**
+      - ops/**
+    role: Infrastructure declarations, local dependencies, delivery manifests, and operations runbooks.
 
   - name: verification
     paths:
-      - "verification/**"
-    role: 跨层验证、compatibility、replay、golden 层
+      - verification/**
+      - fixtures/**
+      - tools/**
+    role: Cross-layer verification, fixtures, diagnostics, replay, contract, topology, and resilience evidence.
 
   - name: docs
     paths:
-      - "docs/**"
-    role: ADR、架构和运维文档层
+      - docs/**
+    role: Durable architecture, operations, adoption, governance, and archive documents.
 
-  - name: fixtures
-    paths:
-      - "fixtures/**"
-    role: 测试数据、事件样例、authz tuples、demo 数据
+generated_readonly:
+  - infra/kubernetes/rendered/**
+  - docs/generated/**
+  - platform/catalog/**
+  - packages/contracts/generated/**
 
-  - name: tools
-    paths:
-      - "tools/**"
-    role: 本地工具与诊断层
-
-reference_modules:
-  services:
-    - name: auth-service
-      path: services/auth-service
-      role: 认证服务占位
-      status: stub
-    - name: counter-service
-      path: services/counter-service
-      role: 默认后端参考锚点，承载业务主链与工程横切链的最小参考样例
-      status: reference
-    - name: indexing-service
-      path: services/indexing-service
-      role: 索引服务规划占位，仅保留语义边界，不参与 workspace 或 release-plz
-      status: planned
-    - name: tenant
-      path: services/tenant-service
-      role: 多租户、多实体、workflow、补偿样例
-      status: reference
-    - name: user-service
-      path: services/user-service
-      role: 用户画像服务，跨服务读 tenant-membership 投影
-      status: stub
-
-  servers:
-    - name: web-bff
-      path: servers/bff/web-bff
-      role: BFF 同步请求入口
-      status: reference
-    - name: gateway
-      path: servers/gateway
-      role: 网关入口
-      status: reference
-
-  workers:
-    - name: indexer
-      path: workers/indexer
-      role: 索引 worker 占位
-      status: stub
-    - name: outbox-relay
-      path: workers/outbox-relay
-      role: 至少一次投递、去重、checkpoint、retry 样例；当前已具结构参考价值但未完全收敛
-      status: reference
-    - name: projector
-      path: workers/projector
-      role: projection、rebuild、replay、lag SLO 样例骨架；当前仍需继续补齐
-      status: reference
-    - name: scheduler
-      path: workers/scheduler
-      role: 调度 worker 占位
-      status: stub
-    - name: sync-reconciler
-      path: workers/sync-reconciler
-      role: 同步协调 worker 占位
-      status: stub
-
-planned_or_stub_domains:
-  services:
-    - auth
-    - indexing
-    - user
-  note: >
-    这些域可以存在为 stub 或 planned，但默认学习路径仍应优先从 counter-service 开始。
-
-ownership:
-  generated_readonly:
-    - infra/kubernetes/rendered/**
-    - docs/generated/**
-    - platform/catalog/**
-
-  human_authored:
-    - agent/**
-    - packages/sdk/rust/**
-    - platform/schema/**
-    - platform/model/**
-    - packages/contracts/**
-    - services/**
-    - servers/**
-    - workers/**
-    - verification/**
-    - docs/architecture/**
-    - docs/operations/**
-    - docs/adr/**
+human_authored:
+  - AGENTS.md
+  - agent/**
+  - docs/architecture/**
+  - docs/operations/**
+  - docs/adr/**
+  - platform/schema/**
+  - platform/model/**
+  - platform/generators/**
+  - platform/validators/**
+  - packages/contracts/**
+  - services/**
+  - servers/**
+  - workers/**
+  - verification/**
+  - fixtures/**
+  - scripts/**
+  - justfiles/**
 
 write_boundaries:
-  - area: planner
+  planner:
     may_modify:
+      - AGENTS.md
       - agent/**
       - docs/**
+      - root config
     must_not_modify:
-      - infra/kubernetes/rendered/**
+      - generated_readonly
 
-  - area: platform-model
+  platform-ops-agent:
     may_modify:
       - platform/schema/**
       - platform/model/**
       - platform/generators/**
       - platform/validators/**
+      - infra/**
+      - ops/**
       - docs/operations/**
-      - docs/platform-model/**
     must_not_modify:
       - services/*/src/**
       - apps/**
-    notes: >
-      platform-ops-agent 负责平台级元数据与全局规则，不直接承载 service 细粒度语义实现。
+      - generated_readonly
 
-  - area: services
+  contract-agent:
+    may_modify:
+      - packages/contracts/**
+      - docs/contracts/**
+      - verification/contract/**
+    must_not_modify:
+      - services/*/src/domain/**
+      - servers/**/src/handlers/**
+      - generated_readonly
+
+  service-agent:
     may_modify:
       - services/**
-      - packages/contracts/**
       - fixtures/**
       - verification/**
     must_not_modify:
       - infra/**
       - platform/catalog/**
-      - platform/model/**
-    notes: >
-      service-agent 必须在 services/<name>/model.yaml 中维护该 service 的 distributed semantics。
+      - apps/**
+    note: Contract shape changes still start in packages/contracts/**.
 
-  - area: servers
+  server-agent:
     may_modify:
       - servers/**
-      - packages/contracts/**
       - verification/contract/**
     must_not_modify:
-      - services/*/domain/**
+      - services/*/src/domain/**
       - infra/**
-    notes: server 只能做协议适配与聚合。
+      - apps/**
 
-  - area: workers
+  worker-agent:
     may_modify:
       - workers/**
       - verification/resilience/**
@@ -283,299 +237,81 @@ write_boundaries:
     must_not_modify:
       - apps/**
       - infra/**
-    notes: worker 必须声明幂等、重试、checkpoint/replay、恢复顺序。
 
-  - area: infra
+  app-shell-agent:
     may_modify:
-      - infra/local/**
-      - infra/kubernetes/base/**
-      - infra/kubernetes/addons/**
-      - infra/gitops/**
-      - infra/security/**
-      - infra/images/**
-      - ops/**
+      - apps/**
+      - packages/ui/**
+      - verification/e2e/**
     must_not_modify:
-      - infra/kubernetes/rendered/**
-    notes: rendered 为生成目录，只能通过生成器刷新。
+      - services/**
+      - servers/**
+      - workers/**
 
-rules:
-  imports:
-    - name: apps-cannot-import-services
-      from: apps/**
-      disallow:
-        - services/**
-
-    - name: apps-cannot-import-workers
-      from: apps/**
-      disallow:
-        - workers/**
-
-    - name: services-cannot-import-other-services
-      from: services/**
-      disallow:
-        - services/**
-      except_same_module: true
-
-    - name: services-cannot-import-concrete-adapters
-      from: services/**
-      disallow:
-        - packages/data-adapters/**
-        - packages/cache-adapters/**
-        - packages/storage-adapters/**
-        - packages/authz-adapters/**
-        - packages/authn/adapters/**
-        - packages/observability/adapters/**
-        - infra/**
-        - ops/**
-      except:
-        # Integration tests need concrete adapters (dev-dependencies only).
-        - "services/counter-service:packages/data-adapters/turso"
-
-    - name: servers-can-import-services-and-packages
-      from: servers/**
-      allow:
-        - services/**
-        - packages/**
-
-    - name: workers-can-import-services-and-packages
-      from: workers/**
-      allow:
-        - services/**
-        - packages/**
-
-    - name: platform-cannot-import-runtime-business
-      from: platform/**
-      disallow:
-        - services/**
-        - servers/**
-        - workers/**
-        - apps/**
-
-state_rules:
-  owner_service:
-    description: 每个核心实体必须存在唯一 owner service
-    required: true
-
-  cross_service_writes:
-    description: 非 owner service 禁止直接写主状态
-    default: forbidden
-    escape_hatch: 仅允许通过 command 或 workflow 间接变更
-
-  consistency:
-    description: query、authz check、workflow dependent read 必须声明 consistency level
-    allowed_values:
-      - strong
-      - read-your-write
-      - monotonic-read
-      - bounded-staleness
-      - eventual
-
-  projection:
-    description: projection 必须可删可重建
-    required_fields:
-      - source
-      - checkpoint_key
-      - rebuildable
-      - replayable
-
-  idempotency:
-    description: 跨进程副作用必须声明 idempotency key 与 dedupe 语义
-    required_for:
-      - commands_with_side_effects
-      - workers
-      - workflows
-      - relays
-
-messaging_rules:
-  delivery_assumption: 默认至少一次；消费逻辑必须默认接受重复、重试、延迟与重放
-  forbidden_assumptions:
-    - 默认 exactly-once
-    - 默认全局顺序
-    - 默认永不重复
-    - 默认消息必达且准时
-  event_required_fields:
-    - producer
-    - ordering_scope
-    - dedupe_rule
-    - replayable
-    - schema_version
-    - compatibility_policy
-
-workflow_rules:
-  use_workflow_when:
-    - 跨 service 多步状态变更
-    - 有重试与补偿需求
-    - 需要 durable execution
-    - 需要人工介入恢复点
-  required_fields:
-    - trigger
-    - idempotency_key
-    - timeout
-    - checkpoint_policy
-    - compensation
-    - recovery
-  forbidden_patterns:
-    - HTTP handler 串多个 service 并 try/catch 回滚
-    - worker 中手写隐式长事务但没有模型
-    - 运维脚本充当长期恢复逻辑
-
-deployable_rules:
-  statefulness:
-    allowed_values:
-      - stateless
-      - checkpointed
-      - stateful
-  stable_identity_required_when:
-    - 拥有持久本地状态
-    - 需要唯一实例持有语义
-    - checkpoint 与实例身份绑定
-    - 运行分区或 shard owner
-  required_fields:
-    - kind
-    - hosts_services
-    - runtime_profile
-    - statefulness
-    - required_identity
-    - required_storage
-    - resource_bindings
-    - failure_domain
-
-decision_tree:
-  add_new_logic:
-    ask_in_order:
-      - 这是新业务能力，还是现有 service 的扩展？
-      - 核心实体归哪个 owner service？
-      - 这是 command、event、query，还是 workflow？
-      - 是否跨 service 多步状态变更？若是，必须 workflow 化。
-      - 是否需要 projection？若是，必须声明可重建。
-      - 是否涉及外部副作用？若是，必须声明 idempotency key。
-      - 是否需要稳定身份、持久存储、checkpoint？
-      - 是否引入新的 consistency requirement？
-
-  add_new_service:
-    must_create: 参见 `required_files.service`
-    must_update:
-      - platform/model/services/<name>.yaml
-      - platform/model/state/ownership-map.yaml
-      - agent/codemap.yml
-
-  add_new_worker:
-    must_create: 参见 `required_files.worker`
-    must_update:
-      - platform/model/deployables/<name>.yaml
-      - platform/model/workflows/ 或 services/*/model.yaml
-      - verification/replay/ 或 verification/resilience/
-
-change_playbooks:
-  change_contract:
-    steps:
-      - 先修改 packages/contracts
-      - 同步修改 services/<name>/model.yaml 中的 commands/events/queries
-      - 运行 contract compatibility validator
-      - 再修改 servers/workers/services 实现
-      - 最后生成 sdk
-
-  change_state_owner:
-    steps:
-      - 修改 services/<name>/model.yaml 的 owns_entities
-      - 更新 platform/model/state/ownership-map.yaml
-      - 检查 workflow 与 projection 影响
-      - 更新 replay/compatibility tests
-    risk: high
-
-  change_topology:
-    steps:
-      - 修改 platform/model/topologies
-      - 检查 deployables 与 failures
-      - 验证 topology 不改变状态语义
-      - 更新 verification/topology
-      - 再生成 infra rendered
-    risk: medium
+dependency_direction:
+  - from: apps/**
+    must_not_import:
+      - services/**
+      - workers/**
+    note: Apps consume SDKs, contracts, or HTTP APIs, not service libraries.
+  - from: services/**
+    must_not_import:
+      - services/**
+      - infra/**
+      - ops/**
+      - packages/data-adapters/**
+      - packages/cache-adapters/**
+      - packages/storage-adapters/**
+    note: Services are pure libraries and use ports/traits at boundaries.
+  - from: servers/**
+    may_import:
+      - services/**
+      - packages/**
+    note: Servers compose services and adapt protocols; they do not own domain logic.
+  - from: workers/**
+    may_import:
+      - services/**
+      - packages/**
+    note: Workers compose services for async execution and must make recovery behavior explicit in code and tests.
+  - from: platform/**
+    must_not_import:
+      - services/**
+      - servers/**
+      - workers/**
+      - apps/**
+    note: Platform tooling validates and generates metadata; it does not depend on runtime business code.
 
 anti_patterns:
-  - id: direct-db-from-server
-    description: server 直接操作数据库
-    severity: error
-  - id: cross-service-import
-    description: service 直接依赖其他 service
-    severity: error
-  - id: cross-service-direct-write
-    description: 非 owner service 直接写主状态
-    severity: error
-  - id: handler-long-transaction
-    description: 在 handler 里串多个 service 形成长事务
-    severity: error
-  - id: projection-as-source-of-truth
-    description: 把 projection 当真相源
-    severity: error
-  - id: hidden-idempotency
-    description: 幂等逻辑只存在代码中，没有模型声明
-    severity: warn
-  - id: topology-changing-semantics
-    description: 通过 topology 改变状态语义
+  - id: yaml-as-proof
+    description: Treating YAML declarations as proof of semantic correctness.
     severity: error
   - id: generated-manual-edit
-    description: 手改 generated 目录
+    description: Editing generated directories by hand instead of changing sources and regenerating.
     severity: error
-  - id: event-bus-as-domain-service
-    description: 把纯基础设施能力伪装成业务 service
+  - id: subagent-bound-gates
+    description: Requiring gates only because a subagent touched a change, instead of using changed paths, risk, and evidence level.
+    severity: error
+  - id: all-gates-for-all-changes
+    description: Making ordinary development run release, production, frontend, desktop, or platform-full gates by default.
+    severity: error
+  - id: cross-service-import
+    description: A service directly depends on another service instead of contracts, ports, events, commands, or workflows.
+    severity: error
+  - id: server-owns-domain-logic
+    description: Handler or server code owns business state transitions that belong in services.
+    severity: error
+  - id: hidden-distributed-semantics
+    description: Idempotency, retry, checkpoint, replay, consistency, or ownership behavior exists only implicitly and lacks tests or gate evidence.
     severity: warn
+  - id: topology-changing-semantics
+    description: Topology or deployable metadata changes business state semantics without service-level implementation and verification.
+    severity: error
 
-required_files:
-  service:
-    - model.yaml
-    - Cargo.toml
-    - src/lib.rs
-    - src/domain/
-    - src/application/
-    - src/policies/
-    - src/ports/
-    - src/events/
-    - src/contracts/
-    - tests/
-    - migrations/
-    - README.md
-
-  server:
-    - Cargo.toml
-    - openapi.yaml
-    - src/main.rs
-    - src/handlers/
-    - src/middleware/
-    - src/routes/
-    - src/composition/
-    - README.md
-
-  worker:
-    - Cargo.toml
-    - src/main.rs
-    - src/config.rs
-    - src/job_or_consumer/
-    - src/checkpoint/
-    - src/dedupe/
-    - src/retry/
-    - src/metrics/
-    - README.md
-
-validation:
-  commands:
-    - just doctor
-    - just lint
-    - just test
-    - just validate-platform
-    - just validate-state
-    - just validate-workflows
-    - just validate-contracts
-    - just validate-topology
-    - just verify-generated
-    - just verify-replay
-    - just verify-compat
-    - just verify-resilience
-
-entry_rules:
-  - 变更顺序：先确认是否需要改 platform/schema
-  - 变更顺序：再改 platform/model 或 services/<name>/model.yaml
-  - 变更顺序：再改 packages/contracts
-  - 变更顺序：再改 services/**
-  - 变更顺序：再改 servers/** 和 workers/**
-  - 变更顺序：最后改 infra/**、生成物和补充文档
+modification_order:
+  - If a new metadata shape is needed, update schema and validators before model files.
+  - If external protocol shape changes, update packages/contracts/** before implementation.
+  - If service semantics change, update services/<name>/model.yaml as a summary and add executable verification for the behavior.
+  - Change service libraries before server or worker composition that consumes them.
+  - Change server and worker entrypoints before app shells that depend on their APIs.
+  - Change platform model before infra rendering, and never edit generated rendered output directly.
+  - Select gates from agent/manifests/gate-matrix.yml based on changed paths, risk, and evidence level.

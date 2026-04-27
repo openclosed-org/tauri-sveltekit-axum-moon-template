@@ -73,23 +73,19 @@ Desktop/Tauri is not part of the default CI contract for this repository. If you
 Common commands:
 
 ```bash
-just fmt
-just lint
-just typecheck
-just test
-just validate-platform
-just validate-state strict
-just validate-workflows strict
-just verify-replay strict
-just verify-counter-delivery strict
+just verify-backend-primary
+just test-backend-primary
+just boundary-check
+just contracts-check strict
 just verify
 ```
 
-Agent- and domain-specific validation is also available:
+Heavier platform, replay, delivery, and release gates are selected by changed paths, risk, and evidence level. Do not run or require them for every ordinary backend-core change.
+
+Gate-selection guidance is available here:
 
 ```bash
-just gate-scoped AGENT=service-agent
-bun run scripts/run-scoped-gates.ts service-agent
+bun run scripts/run-scoped-gates.ts --list
 ```
 
 Only claim checks passed if you actually ran them.
