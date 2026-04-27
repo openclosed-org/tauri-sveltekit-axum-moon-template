@@ -62,8 +62,8 @@ servers/api/tests/e2e/report.xml
 msedgedriver.exe
 
 # --- Tauri generated ---
-apps/client/native/src-tauri/target/
-apps/client/native/src-tauri/gen/
+apps/desktop/src-tauri/target/
+apps/desktop/src-tauri/gen/
 
 # ts-rs intermediate output
 packages/contracts/*/bindings/

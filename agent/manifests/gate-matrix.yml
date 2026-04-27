@@ -27,28 +27,6 @@ gates:
     label: "Boundary check"
     scope: global
 
-  web_check:
-    command: ["just", "web:check"]
-    label: "Frontend type check"
-    scope: app
-
-  web_lint:
-    command: ["just", "web:lint"]
-    label: "Frontend lint"
-    scope: app
-
-  test_e2e:
-    command: ["just", "test-e2e"]
-    label: "E2E tests"
-    scope: app
-    condition: "apps/ changed"
-
-  test_desktop:
-    command: ["just", "test-desktop"]
-    label: "Desktop tests"
-    scope: app
-    condition: "apps/desktop/ changed"
-
   cargo_check:
     command: ["cargo", "check", "-p", "<package>"]
     label: "Cargo check"
@@ -128,15 +106,8 @@ subagent_gates:
     conditional: []
 
   app-shell-agent:
-    required:
-      - web_check
-      - web_lint
-      - boundary_check
-    conditional:
-      - gate: test_e2e
-        when: "apps/ changed"
-      - gate: test_desktop
-        when: "apps/desktop/ changed"
+    required: []
+    conditional: []
 
   server-agent:
     required:

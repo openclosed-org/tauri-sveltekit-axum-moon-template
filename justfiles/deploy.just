@@ -94,10 +94,6 @@ logs-api:
 check-storage-turso:
     cargo check -p web-bff
 
-# 构建桌面 E2E 二进制
-build-desktop-bin:
-    cargo build --manifest-path apps/desktop/src-tauri/Cargo.toml --profile e2e --features e2e-testing --target-dir target
-
 # 生成 systemd service 文件（需在目标服务器执行）
 # 需要 BIN_PATH, ENV_FILE, USER, GROUP 变量
 generate-service BIN_PATH='' ENV_FILE='' USER='root' GROUP='root':

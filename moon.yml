@@ -56,7 +56,6 @@ tasks:
     script: 'bun install'
     inputs:
       - 'package.json'
-      - 'package-lock.json'
 
   bootstrap:
     deps:
@@ -82,30 +81,12 @@ tasks:
   # DEVELOPMENT TASKS
   # ==========================================================================
 
-  dev-web:
-    script: 'cd apps/web && bun run dev'
-    inputs:
-      - 'apps/web/**/*'
-
-  dev-desktop:
-    script: 'bun run scripts/dev-desktop.ts'
-    inputs:
-      - 'apps/desktop/**/*'
-      - 'servers/bff/web-bff/**/*'
-      - 'scripts/dev-desktop.ts'
-      - 'scripts/lib/spawn.ts'
-
   dev-api:
     command: 'cargo run -p web-bff'
     deps:
       - 'check'
     inputs:
       - 'servers/bff/web-bff/**/*'
-
-  dev-fullstack:
-    deps:
-      - 'dev-api'
-      - 'dev-web'
 
   # ==========================================================================
   # QUALITY GATE TASKS
@@ -114,17 +95,14 @@ tasks:
   fmt:
     deps:
       - 'format'
-      - 'web:format'
 
   quality-lint:
     deps:
       - 'lint'
-      - 'web:lint'
 
   typecheck:
     deps:
       - 'check'
-      - 'web:check'
 
   contracts-check:
     script: |
@@ -137,14 +115,6 @@ tasks:
       else
         echo "DRIFT CHECK PASSED: packages/contracts/generated/"
       fi
-      if git diff --name-only apps/web/src/lib/generated/ 2>/dev/null | grep -q .; then
-        echo "FRONTEND DRIFT DETECTED: frontend types changed but generated files not committed"
-        echo "Run 'just typegen' then recommit the generated files"
-        git diff --name-only apps/web/src/lib/generated/
-        exit 1
-      else
-        echo "FRONTEND DRIFT CHECK PASSED: apps/web/src/lib/generated/"
-      fi
       echo "=== No drift detected. Regenerating to verify alignment ==="
       moon run repo:typegen
       echo "=== Re-verifying post-regeneration ==="
@@ -155,13 +125,6 @@ tasks:
         exit 1
       else
         echo "POST-REGEN DRIFT CHECK PASSED"
-      fi
-      if git diff --name-only apps/web/src/lib/generated/ 2>/dev/null | grep -q .; then
-        echo "POST-REGEN FRONTEND DRIFT DETECTED: typegen produces different frontend types"
-        git diff --name-only apps/web/src/lib/generated/
-        exit 1
-      else
-        echo "POST-REGEN FRONTEND CHECK PASSED"
       fi
       echo "=== All contract drift checks passed ==="
     inputs:
@@ -209,45 +172,6 @@ tasks:
   test-integration:
     command: 'cargo test --workspace -- --ignored'
 
-  test-e2e:
-    script: 'cd apps/web && bun run test:e2e'
-
-  # Build desktop binary once (cached for subsequent E2E runs)
-  build-desktop-bin:
-    command: 'cargo build --manifest-path apps/desktop/src-tauri/Cargo.toml --profile e2e --features e2e-testing --target-dir target'
-    inputs:
-      - 'apps/desktop/**/*'
-      - 'packages/contracts/**/*'
-      - 'packages/kernel/**/*'
-      - 'servers/bff/web-bff/**/*'
-      - 'Cargo.toml'
-      - 'Cargo.lock'
-    outputs:
-      - 'target/e2e/native-tauri.exe'
-
-  test-desktop:
-    script: 'cd apps/desktop/tests/e2e && bun run test:desktop:core'
-    inputs:
-      - 'apps/desktop/tests/e2e/**/*.ts'
-      - 'apps/desktop/tests/e2e/package.json'
-      - 'apps/desktop/**/*'
-      - 'apps/web/**/*'
-    deps:
-      - '~:build-desktop-bin'
-      - '~:setup'
-
-  # Full E2E gate: preflight + Web + Desktop (parallel lanes)
-  test-e2e-full:
-    deps:
-      - '~:check-storage-turso'
-    script: 'bun run scripts/e2e/run-e2e-gate.ts'
-    inputs:
-      - 'scripts/e2e/run-e2e-gate.ts'
-      - 'scripts/e2e/runtime-preflight.ts'
-      - 'scripts/lib/spawn.ts'
-      - 'apps/web/**'
-      - 'apps/desktop/tests/e2e/**'
-
   check-storage-turso:
     command: 'cargo check -p web-bff'
     inputs:
@@ -261,13 +185,6 @@ tasks:
       - 'test-nextest'
       - 'test-coverage'
       - 'test-hack'
-
-  test-all-frontend:
-    deps:
-      - 'web:check'
-      - 'web:lint'
-      - 'test-e2e'
-      - 'test-desktop'
 
   boundary-check:
     script: 'bun run scripts/boundary-check.ts'

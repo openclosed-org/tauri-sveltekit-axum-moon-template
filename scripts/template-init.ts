@@ -1,4 +1,5 @@
 import process from "node:process";
+import { rmSync } from "node:fs";
 
 type Mode = "dry-run" | "apply";
 type Profile = "backend-core" | "backend-desktop" | "full-research";
@@ -49,11 +50,16 @@ const PROFILE_PLANS: Record<
       "CODE_OF_CONDUCT.md",
       "docs/template-users/**",
       ".github/workflows/**",
-      "apps/**",
       "verification/**",
       "services/tenant-service/**",
     ],
     removeCandidates: [
+      "apps/**",
+      "packages/ui/**",
+      "verification/e2e/**",
+      "scripts/dev-desktop.ts",
+      "scripts/test/run-frontend.ts",
+      "scripts/e2e/**",
       "docs/governance/**",
       "docs/archive/**",
       "release-plz.toml",
@@ -155,6 +161,12 @@ function printList(title: string, values: string[]): void {
   }
 }
 
+function removePathPattern(pattern: string): void {
+  const path = pattern.endsWith("/**") ? pattern.slice(0, -3) : pattern;
+  rmSync(path, { recursive: true, force: true });
+  console.log(`  removed ${path}`);
+}
+
 function main(): number {
   const args = parseArgs(process.argv.slice(2));
   const plan = PROFILE_PLANS[args.profile];
@@ -162,22 +174,23 @@ function main(): number {
   console.log("=== Template Init Plan ===");
   console.log(`profile: ${args.profile}`);
   console.log(`mode: ${args.mode}`);
-  console.log("scope: upstream-maintainer/open-source cleanup only");
+  console.log("scope: backend-core template cleanup");
 
   printList("Keep", plan.keep);
   printList("Review manually", plan.review);
   printList("Removal candidates", plan.removeCandidates);
 
   if (args.mode === "apply") {
-    console.error("\napply mode is not implemented yet.");
-    console.error("Use this output as a review plan first.");
-    return 1;
+    console.log("\nApplying removal candidates:");
+    for (const pattern of plan.removeCandidates) {
+      removePathPattern(pattern);
+    }
+    console.log("\nApply complete. Run `just audit-backend-core` and `just verify` next.");
+    return 0;
   }
 
   console.log("\nDry-run only. No files were changed.");
-  console.log(
-    "This preview is intentionally conservative and does not propose broad code-tree deletion.",
-  );
+  console.log("Run with MODE=apply only after reviewing the removal candidates.");
   console.log(
     "See docs/template-users/template-init.md for the current design contract.",
   );

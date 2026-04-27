@@ -12,20 +12,6 @@ ps:
         lsof -i :3010 2>/dev/null | grep LISTEN || echo "  [STOPPED]"; \
     fi
     @echo ""
-    @echo "--- Vite Dev Server (port 5173) ---"
-    @if [ "{{os_family()}}" = "windows" ]; then \
-        powershell -NoProfile -Command "Get-NetTCPConnection -LocalPort 5173 -ErrorAction SilentlyContinue | Select-Object OwningProcess | Where-Object OwningProcess -gt 0 | ForEach-Object { Get-Process -Id $_.OwningProcess -ErrorAction SilentlyContinue | Select-Object Id,ProcessName,StartTime }" 2>/dev/null || echo "  [STOPPED]"; \
-    else \
-        lsof -i :5173 2>/dev/null | grep LISTEN || echo "  [STOPPED]"; \
-    fi
-    @echo ""
-    @echo "--- Tauri Desktop App ---"
-    @if [ "{{os_family()}}" = "windows" ]; then \
-        powershell -NoProfile -Command "Get-Process -Name 'native-tauri' -ErrorAction SilentlyContinue | Select-Object Id,ProcessName,StartTime" 2>/dev/null || echo "  [STOPPED]"; \
-    else \
-        pgrep -la "native-tauri" 2>/dev/null || echo "  [STOPPED]"; \
-    fi
-    @echo ""
     @echo "--- 孤儿/无响应进程 ---"
     @if [ "{{os_family()}}" = "windows" ]; then \
         powershell -NoProfile -Command "Get-Process | Where-Object { $_.Responding -eq $false } | Select-Object Id,ProcessName,Responding" 2>/dev/null || echo "  [NONE]"; \
@@ -38,18 +24,10 @@ stop:
     @echo "正在停止所有开发进程..."
     @if [ "{{os_family()}}" = "windows" ]; then \
         powershell -NoProfile -Command "Get-Process | Where-Object { $_.CommandLine -match 'cargo run' -or $_.ProcessName -match 'web-bff' } | Stop-Process -Force -ErrorAction SilentlyContinue" 2>/dev/null; echo "  [BFF servers stopped]"; \
-        powershell -NoProfile -Command "Get-Process | Where-Object { $_.CommandLine -match 'cargo tauri dev' } | Stop-Process -Force -ErrorAction SilentlyContinue" 2>/dev/null; echo "  [Tauri dev stopped]"; \
-        powershell -NoProfile -Command "Get-Process -Name 'native-tauri' -ErrorAction SilentlyContinue | Stop-Process -Force" 2>/dev/null; echo "  [native-tauri stopped]"; \
-        powershell -NoProfile -Command "Get-Process | Where-Object { $_.CommandLine -match 'vite dev' -or $_.CommandLine -match 'bun run dev' } | Stop-Process -Force -ErrorAction SilentlyContinue" 2>/dev/null; echo "  [Vite dev stopped]"; \
         powershell -NoProfile -Command "Get-Process | Where-Object { $_.CommandLine -match 'moon run repo:dev' } | Stop-Process -Force -ErrorAction SilentlyContinue" 2>/dev/null; echo "  [moon tasks stopped]"; \
     else \
         pkill -f "cargo run -p web-bff" 2>/dev/null && echo "  ✓ Web BFF stopped" || echo "  - Web BFF not running"; \
         pkill -f "web-bff" 2>/dev/null && echo "  ✓ web-bff stopped" || true; \
-        pkill -f "cargo tauri dev" 2>/dev/null && echo "  ✓ Tauri dev stopped" || echo "  - Tauri dev not running"; \
-        pkill -f "native-tauri" 2>/dev/null && echo "  ✓ native-tauri stopped" || echo "  - native-tauri not running"; \
-        pkill -f "cd ../web/app && bun run dev" 2>/dev/null && echo "  ✓ Vite (Tauri child) stopped" || true; \
-        pkill -f "cd apps/client/web/app && bun run dev" 2>/dev/null && echo "  ✓ Vite (standalone) stopped" || true; \
-        pkill -f "vite dev" 2>/dev/null && echo "  ✓ vite dev stopped" || true; \
         pkill -f "moon run repo:dev" 2>/dev/null && echo "  ✓ moon tasks stopped" || true; \
     fi
     @echo "清理完成"
@@ -92,20 +70,6 @@ ports:
         powershell -NoProfile -Command "Get-NetTCPConnection -LocalPort 3010 -ErrorAction SilentlyContinue | ForEach-Object { Get-Process -Id $_.OwningProcess -ErrorAction SilentlyContinue | Select-Object Id,ProcessName }" 2>/dev/null || echo "  [FREE]"; \
     else \
         lsof -i :3010 2>/dev/null | grep -v COMMAND || echo "  [FREE]"; \
-    fi
-    @echo ""
-    @echo "Port 5173 (Vite):"
-    @if [ "{{os_family()}}" = "windows" ]; then \
-        powershell -NoProfile -Command "Get-NetTCPConnection -LocalPort 5173 -ErrorAction SilentlyContinue | ForEach-Object { Get-Process -Id $_.OwningProcess -ErrorAction SilentlyContinue | Select-Object Id,ProcessName }" 2>/dev/null || echo "  [FREE]"; \
-    else \
-        lsof -i :5173 2>/dev/null | grep -v COMMAND || echo "  [FREE]"; \
-    fi
-    @echo ""
-    @echo "Port 1420 (Tauri fallback):"
-    @if [ "{{os_family()}}" = "windows" ]; then \
-        powershell -NoProfile -Command "Get-NetTCPConnection -LocalPort 1420 -ErrorAction SilentlyContinue | ForEach-Object { Get-Process -Id $_.OwningProcess -ErrorAction SilentlyContinue | Select-Object Id,ProcessName }" 2>/dev/null || echo "  [FREE]"; \
-    else \
-        lsof -i :1420 2>/dev/null | grep -v COMMAND || echo "  [FREE]"; \
     fi
 
 # ── Worker Management ─────────────────────────────────────────

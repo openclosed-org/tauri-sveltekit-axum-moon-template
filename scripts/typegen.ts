@@ -1,7 +1,7 @@
 /**
  * Typegen - Contract Binding Generation
- * 
- * Generates TypeScript type bindings from Rust contracts and syncs to frontend
+ *
+ * Generates TypeScript type bindings from Rust contracts.
  * Stage: Code generation
  */
 
@@ -9,7 +9,7 @@ import { run } from './lib/spawn.ts';
 import process from 'node:process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { existsSync, mkdirSync, cpSync, rmSync, readdirSync } from 'node:fs';
+import { existsSync, mkdirSync, cpSync, rmSync } from 'node:fs';
 
 interface BindingPath {
   src: string;
@@ -24,8 +24,6 @@ const contractDirs: BindingPath[] = [
   { src: 'packages/contracts/auth/bindings/auth', dest: 'packages/contracts/generated/auth' },
   { src: 'packages/contracts/events/bindings/events', dest: 'packages/contracts/generated/events' },
 ];
-
-const frontendDest = 'apps/web/src/lib/generated';
 
 function safeCopy(src: string, dest: string): void {
   if (!existsSync(src)) {
@@ -43,19 +41,12 @@ function safeCopy(src: string, dest: string): void {
   }
 }
 
-function listDirectory(dir: string): void {
-  if (!existsSync(dir)) {
-    console.log(`  (directory does not exist: ${dir})`);
-    return;
-  }
-
-  const files = readdirSync(dir, { withFileTypes: true });
-  for (const file of files) {
-    console.log(`  ${file.isDirectory() ? '📁' : '📄'} ${file.name}`);
-  }
-}
-
 async function main(): Promise<number> {
+  if (process.argv.length > 2) {
+    console.error('Usage: bun run scripts/typegen.ts');
+    return 1;
+  }
+
   console.log('=== Running typegen ===\n');
 
   // Step 1: Generate contract bindings
@@ -93,19 +84,13 @@ async function main(): Promise<number> {
   }
   console.log('');
 
-  // Step 4: Sync to frontend
-  console.log('[4/4] Syncing to frontend...');
-  const fullFrontendDest = path.join(workspaceRoot, frontendDest);
-  mkdirSync(fullFrontendDest, { recursive: true });
-
-  for (const { dest } of contractDirs) {
-    const fullSrc = path.join(workspaceRoot, dest);
-    safeCopy(fullSrc, fullFrontendDest);
-  }
-
+  // Step 4: Print the backend destinations for drift checks and downstream consumers.
+  console.log('[4/4] Backend generated types ready.');
   console.log('\n=== Typegen complete ===\n');
-  console.log('Frontend generated types:');
-  listDirectory(fullFrontendDest);
+  console.log('Backend generated types:');
+  for (const { dest } of contractDirs) {
+    console.log(`  ${dest}`);
+  }
 
   return 0;
 }

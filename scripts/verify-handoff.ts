@@ -32,7 +32,7 @@ const SUBAGENT_BOUNDARIES: Record<string, SubagentBoundary> = {
     readonly: ['packages/sdk/', 'docs/generated/', 'infra/kubernetes/rendered/', 'platform/catalog/'],
   },
   'app-shell-agent': {
-    writable: ['apps/', 'packages/ui/', 'verification/e2e/'],
+    writable: [],
     readonly: ['services/', 'workers/', 'infra/', 'packages/sdk/'],
   },
   'server-agent': {
@@ -142,6 +142,15 @@ async function main(): Promise<number> {
   }
 
   console.log(`✓ All ${valid.length} modified files are within writable boundaries`);
+
+  if (agent === 'app-shell-agent') {
+    console.log('\nNo root-scoped verification is defined for app-shell-agent.');
+    console.log('Validate retained app shells from their own local command surface if those directories remain in the repo.');
+    console.log('\n=== Handoff Verified ===');
+    console.log(`${agent} changes are ready for convergence.`);
+    console.log('Next step: run total verify (just verify)');
+    return 0;
+  }
 
   // Run scoped gates
   console.log('\n--- Scoped Gates ---');

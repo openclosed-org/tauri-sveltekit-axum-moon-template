@@ -12,6 +12,5 @@ ensuring feature parity and consistent behavior.
 
 ## Running
 
-```bash
-just test-e2e-full
-```
+This suite is outside the root backend-core contract.
+If a derived project keeps the desktop and web shells, it should run this suite from shell-local tooling rather than root `just` commands.

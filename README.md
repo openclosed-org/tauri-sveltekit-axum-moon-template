@@ -116,7 +116,8 @@ agent/             Multi-agent AI harness rules
   codemap.yml      Module constraints, dependency rules, anti-patterns
   manifests/       Routing rules, gate matrix
 
-apps/              Optional frontend shells (web, desktop, mobile)
+apps/              Optional frontend shells (web, desktop, mobile); removable for backend-core users
+packages/ui/       Optional shared UI package; not part of the backend reference chain
 ```
 
 ## Who This Repo Is For
@@ -132,7 +133,9 @@ The release strategy is repository-level SemVer for the template as a whole. Car
 
 Contributors should treat the repository structure, gates, agent protocol, and documentation conventions as part of the design, not as optional extras.
 
-A dedicated `just template-init` cleanup flow now exists as a conservative planning/dry-run entrypoint. It does **not** delete files yet; it previews which upstream-maintainer and open-source governance materials a derived project may want to remove after adopting the template.
+A dedicated `just template-init` cleanup flow exists for derived projects. The `backend-core` profile treats `apps/**` and `packages/ui/**` as optional shell surface that can be removed after reviewing the dry-run output.
+
+The root backend-core contract does not require SvelteKit, Tauri, mobile shells, or `packages/ui`. App shells may exist in the repository, but they are not part of the root development, verification, or code generation surface.
 
 ## Quick Start
 
@@ -144,6 +147,7 @@ just doctor
 
 # 2. Optional: preview template cleanup scope
 just template-init backend-core dry-run
+just audit-backend-core strict
 
 # 3. Start local infra (NATS, Valkey, MinIO)
 bash infra/local/scripts/bootstrap.sh up
@@ -160,15 +164,8 @@ just verify
 just sops-run web-bff dev
 ```
 
-Desktop/Tauri is intentionally kept out of the default CI and backend verification flow.
-Use it as a local-only shell when you specifically need desktop validation on your own machine.
-
-```bash
-# Optional: local desktop shell only
-just dev-desktop
-just dev-tauri
-just test-desktop
-```
+Desktop/Tauri and web shells are intentionally kept out of the root backend-core contract.
+If a derived project keeps `apps/**`, that shell should own its own local commands and validation surface instead of extending the root backend contract.
 
 ```bash
 just --list    # See all available commands
@@ -184,7 +181,7 @@ If you adopt this repository via GitHub "Use this template", the shortest useful
 4. `docs/operations/counter-service-reference-chain.md`
 5. `just template-init backend-core dry-run`
 
-The current `template-init` flow is intentionally conservative. It is meant to help derived projects identify upstream-maintainer artifacts to review or remove; it is not a code-pruning tool.
+For backend-only derived projects, `just template-init backend-core dry-run` shows the removable app-shell surface and `just template-init backend-core apply` removes those candidates. Run `just audit-backend-core strict` and `just verify` after applying the profile.
 
 ## For AI Agents
 

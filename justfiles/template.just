@@ -4,6 +4,10 @@
 template-init PROFILE='backend-core' MODE='dry-run':
     bun run scripts/template-init.ts --profile "{{PROFILE}}" --mode "{{MODE}}"
 
+# Verify the default backend-core lane is independent from optional app shells.
+audit-backend-core MODE='dry-run':
+    bun run scripts/audit-backend-core.ts {{MODE}}
+
 # Repository-level SemVer check for the current template release line.
 semver-check BASELINE='' RELEASE_TYPE='minor' RELEASE_TAG_GLOB='v[0-9]*.[0-9]*.[0-9]*':
     #!/usr/bin/env bash

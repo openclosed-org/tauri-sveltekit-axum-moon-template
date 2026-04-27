@@ -1,7 +1,7 @@
 # Template Init Design
 
-> Status: partially scaffolded.
-> `just template-init` currently exists as a conservative planning/dry-run entrypoint.
+> Status: active for the `backend-core` profile.
+> `just template-init backend-core dry-run` previews the cleanup set; `MODE=apply` removes the listed candidates.
 
 ## Goal
 
@@ -38,7 +38,7 @@ Supported parameters:
 ### MODE
 
 1. `dry-run` — print what would be removed or kept; default and safest mode
-2. `apply` — later phase; will require explicit opt-in once the rules are stable
+2. `apply` — remove the selected profile's removal candidates after explicit opt-in
 
 ### PROFILE
 
@@ -46,7 +46,7 @@ Supported parameters:
 2. `backend-desktop` — future profile; keep backend plus desktop-related app paths
 3. `full-research` — keep everything; useful as a no-op baseline for contributors
 
-Current implementation only documents and previews the `backend-core` profile.
+Current implementation supports `backend-core` dry-run and apply. Other profiles are still planning surfaces.
 
 ## backend-core profile
 
@@ -74,6 +74,12 @@ Current implementation only documents and previews the `backend-core` profile.
 3. `release-plz.toml`
 4. `.github/ISSUE_TEMPLATE/**`
 5. `.github/pull_request_template.md`
+6. `apps/**`
+7. `packages/ui/**`
+8. `verification/e2e/**`
+9. `scripts/dev-desktop.ts`
+10. `scripts/test/run-frontend.ts`
+11. `scripts/e2e/**`
 
 ### Review manually
 
@@ -81,19 +87,33 @@ Current implementation only documents and previews the `backend-core` profile.
 2. `CODE_OF_CONDUCT.md`
 3. `docs/template-users/**`
 4. `.github/workflows/**`
-5. optional apps or extra modules your derived project may or may not keep
+5. optional extra modules your derived project may or may not keep
 
 ## Safety rules
 
-Before `apply` mode exists, the command should only emit a clear plan.
+Before using `apply`, run the dry-run and review the exact removal candidates.
 
-When `apply` mode is added later, it should:
+When `apply` mode is used, it should:
 
 1. require explicit `MODE=apply`
 2. print the selected profile
 3. print the exact paths to remove
 4. refuse to run if the worktree is dirty unless the user explicitly acknowledges the risk
-5. stay focused on upstream-maintainer/open-source cleanup instead of broad code deletion
+5. stay focused on backend-core template cleanup instead of guessing business requirements
+6. be followed by `just audit-backend-core strict` and `just verify`
+
+## Backend-core proof
+
+The backend-core profile is considered safe only when these commands pass without requiring `apps/**` or `packages/ui/**`:
+
+```bash
+just audit-backend-core strict
+just typecheck
+just contracts-check strict
+just verify
+```
+
+Root cleanup is only complete when the backend-core contract no longer exposes root-level app-shell commands, app-specific Moon tasks, or app-aware type generation paths.
 
 ## Why profiles exist
 

@@ -86,9 +86,7 @@ source infra/local/generated/auth.env
 
 ```bash
 just dev
-just dev-web
 just dev-api
-just dev-desktop
 just auth-bootstrap
 just auth-up
 just auth-down
@@ -96,19 +94,17 @@ just auth-down
 
 其中：
 
-1. `just dev-web` 对应 web 开发主路径。
-2. `just dev-api` 是更贴近后端默认视角的入口之一。
-3. 是否需要同时启动前端壳层，取决于当前任务，不应作为所有后端任务的默认要求。
-4. `just dev-desktop` 是桌面壳层开发入口，仅在需要 Tauri 验证时使用。
-5. `just auth-bootstrap` 会把本地 `Zitadel/OpenFGA` 起起来，并生成 `infra/local/generated/auth.env` 供 `web-bff` 直接读取。
-6. `just verify-backend-primary` / `just test-backend-primary` 对应默认后端 admission lane。
-7. `just verify-auth-optional` / `just test-auth-optional` 仅在 auth lane 变更时需要额外运行。
+1. `just dev-api` 是更贴近后端默认视角的入口之一。
+2. root backend-core contract 不再暴露前端或桌面壳层入口。
+3. `just auth-bootstrap` 会把本地 `Zitadel/OpenFGA` 起起来，并生成 `infra/local/generated/auth.env` 供 `web-bff` 直接读取。
+4. `just verify-backend-primary` / `just test-backend-primary` 对应默认后端 admission lane。
+5. `just verify-auth-optional` / `just test-auth-optional` 仅在 auth lane 变更时需要额外运行。
 
 补充约束：
 
-1. `just dev-desktop` / `just dev-tauri` / `just test-desktop` 是本地可选入口，不属于默认 CI。
-2. 如果你的任务不涉及 `apps/desktop/**`，不要把 Tauri 当成必须前置条件。
-3. 如果你的任务涉及桌面壳层，请在本机对应操作系统上显式验证，不要假设 Ubuntu CI 能替代 macOS / Windows 行为。
+1. 如果你的任务不涉及 `apps/desktop/**`，不要把 Tauri 当成必须前置条件。
+2. 如果你的任务涉及桌面壳层，请在对应 shell 自己的目录和命令面上验证，不要把这些要求带回 root backend-core contract。
+3. 不要假设 Ubuntu CI 能替代 macOS / Windows 桌面行为。
 
 ### 3.3.1 后端优先的最小调试模式
 

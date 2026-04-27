@@ -1,9 +1,7 @@
 projects:
   # Root project (this repo)
   repo: '.'
-  # Active projects (have moon.yml or package.json)
-  desktop-tauri: 'apps/desktop/src-tauri'
-  web: 'apps/web'
+  # Default backend projects. Optional app shells are invoked by explicit just lanes.
   kernel: 'packages/kernel'
   contracts-api: 'packages/contracts/api'
 

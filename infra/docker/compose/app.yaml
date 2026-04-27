@@ -5,8 +5,7 @@
 #   podman compose -f infra/docker/compose/app.yaml down
 #
 # This starts the BFF services with SurrealDB sidecar and Pingora gateway.
-# The SvelteKit web frontend and Tauri desktop app run
-# natively on the host (via `just dev-web` / `just dev-desktop`).
+# Optional shell applications, if retained, should run from their own local command surface.
 #
 # Stack:
 #   - gateway:3000        — Pingora reverse proxy (entry point)

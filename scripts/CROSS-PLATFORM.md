@@ -9,13 +9,9 @@ They work on Windows, macOS, and Linux with automatic platform detection via `sc
 | Script | Purpose | Stage |
 |--------|---------|-------|
 | `scripts/doctor.ts` | Toolchain and config health check | Setup |
-| `scripts/dev-desktop.ts` | Desktop dev environment (API + Tauri) | Development |
-| `scripts/typegen.ts` | Generate contract bindings and sync to frontend | Codegen |
+| `scripts/typegen.ts` | Generate backend contract bindings | Codegen |
 | `scripts/boundary-check.ts` | Architecture dependency validation | Quality Gate |
 | `scripts/test/run.ts` | Rust test runner (nextest, coverage, hack, mutants) | Testing |
-| `scripts/test/run-frontend.ts` | Frontend test runner (check, lint, unit, e2e) | Testing |
-| `scripts/e2e/runtime-preflight.ts` | E2E preflight gate (API + ports + types) | E2E |
-| `scripts/e2e/run-e2e-gate.ts` | Full E2E pipeline orchestrator | E2E |
 | `scripts/lib/spawn.ts` | Shared cross-platform spawn utilities | Library |
 
 ## Usage
@@ -25,19 +21,15 @@ They work on Windows, macOS, and Linux with automatic platform detection via `sc
 moon run repo:doctor
 moon run repo:typegen
 moon run repo:boundary-check
-moon run repo:test-e2e-full
 
 # Run via just (recommended for humans)
 just doctor
 just typegen
 just verify
-just dev-desktop
 
 # Run directly with bun
 bun run scripts/doctor.ts
 bun run scripts/test/run.ts all
-bun run scripts/test/run-frontend.ts all
-bun run scripts/e2e/runtime-preflight.ts
 ```
 
 ## Shared Library

@@ -306,7 +306,6 @@ function discoverWorkspaceContractUsage(): ContractUsageMap {
     path.join(workspaceRoot, 'services'),
     path.join(workspaceRoot, 'servers'),
     path.join(workspaceRoot, 'workers'),
-    path.join(workspaceRoot, 'apps', 'desktop', 'src-tauri'),
     path.join(workspaceRoot, 'platform'),
   ];
 

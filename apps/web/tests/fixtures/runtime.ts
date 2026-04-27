@@ -99,7 +99,7 @@ export async function ensureWebE2EPreflight(
   const typesDir = path.join(workspaceRoot, WEB_TYPES_DIR);
   if (!existsSync(typesDir)) {
     throw new Error(
-      `[runtime] missing SvelteKit type artifacts at ${typesDir}; run: rtk bun run --cwd apps/client/web/app check`,
+      `[runtime] missing SvelteKit type artifacts at ${typesDir}; run: rtk bun run --cwd apps/web check`,
     );
   }
 }

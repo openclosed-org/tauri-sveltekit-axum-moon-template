@@ -28,10 +28,6 @@ build-macos-aarch64:
 build-api:
     cargo build -p web-bff --release
 
-# Build Tauri desktop app
-build-tauri:
-    cargo tauri build --manifest-path apps/desktop/src-tauri/Cargo.toml
-
 # Analyze binary size
 bloat:
     cargo bloat --release --crates

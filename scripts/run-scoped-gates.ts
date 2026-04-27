@@ -40,15 +40,8 @@ const SUBAGENT_GATES: Record<string, SubagentGates> = {
     conditional: [],
   },
   'app-shell-agent': {
-    required: [
-      { label: 'Frontend type check', cmd: 'just', args: ['web:check'] },
-      { label: 'Frontend lint', cmd: 'just', args: ['web:lint'] },
-      { label: 'Boundary check', cmd: 'just', args: ['boundary-check'] },
-    ],
-    conditional: [
-      { label: 'E2E tests', cmd: 'just', args: ['test-e2e'], when: 'apps/ changed' },
-      { label: 'Desktop tests', cmd: 'just', args: ['test-desktop'], when: 'apps/desktop/ changed' },
-    ],
+    required: [],
+    conditional: [],
   },
   'server-agent': {
     required: [
@@ -130,7 +123,8 @@ async function main(): Promise<number> {
     console.log('\n=== Available Subagents and Gates ===\n');
     for (const [agent, gates] of Object.entries(SUBAGENT_GATES)) {
       console.log(`${agent}:`);
-      console.log(`  Required:   ${gates.required.map((g) => g.label).join(', ')}`);
+      const required = gates.required.map((g) => g.label).join(', ') || '(none at root)';
+      console.log(`  Required:   ${required}`);
       if (gates.conditional.length > 0) {
         console.log(`  Conditional: ${gates.conditional.map((c) => `${c.label} (when: ${c.when})`).join(', ')}`);
       }
@@ -159,6 +153,12 @@ async function main(): Promise<number> {
   }
 
   console.log(`\n=== Running scoped gates for ${agent} ===`);
+
+  if (agent === 'app-shell-agent') {
+    console.log('No root-scoped gates for app-shell-agent. Validate retained app shells from their own local command surface.');
+    console.log('Full gate definitions: agent/manifests/gate-matrix.yml');
+    return 0;
+  }
 
   const failures: string[] = [];
 

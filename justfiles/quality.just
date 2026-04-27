@@ -1,6 +1,6 @@
 # Quality — fmt, lint, typecheck, verify, contracts
 
-# 格式化代码（Rust + Web）
+# 格式化代码（默认 backend lane）
 fmt:
     moon run repo:fmt
 
@@ -8,11 +8,11 @@ fmt:
 fmt-fix:
     moon run repo:format-fix
 
-# Lint（Rust clippy + Web biome）
+# Lint（默认 backend lane）
 lint:
     moon run repo:quality-lint
 
-# 类型检查（Rust check + Web svelte-check）
+# 类型检查（默认 backend lane）
 typecheck:
     moon run repo:typecheck
 

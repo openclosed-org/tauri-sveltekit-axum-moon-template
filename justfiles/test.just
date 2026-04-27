@@ -43,31 +43,6 @@ test-coverage-clean:
     just _require cargo-llvm-cov "cargo install cargo-llvm-cov"
     moon run repo:test-coverage-clean
 
-# ── E2E 测试 ────────────────────────────────────────────────
-
-# Web Playwright E2E
-test-e2e:
-    moon run repo:test-e2e
-
-# 运行仓库全量 E2E 门禁（runtime preflight + Web + Tauri）
-test-e2e-full:
-    moon run repo:test-e2e-full
-
-# 运行 Tauri 桌面 E2E（tauri-playwright）
-test-desktop:
-    moon run repo:test-desktop
-
-# 快速运行 E2E（使用 e2e profile,跳过优化编译）
-test-desktop-fast:
-    cargo build --manifest-path apps/desktop/src-tauri/Cargo.toml --profile e2e --features e2e-testing --target-dir target
-    bun --cwd {{justfile_directory()}}/apps/desktop/tests/e2e run test:desktop:core
-
-# ── 聚合 ────────────────────────────────────────────────────
-
-# 所有前端测试（check + lint + unit + e2e + desktop）
-test-all-frontend:
-    moon run repo:test-all-frontend
-
 # ── Newman API E2E 测试 ────────────────────────────────────
 
 # Newman API E2E 测试（自动启动服务器 → 运行测试 → 清理）

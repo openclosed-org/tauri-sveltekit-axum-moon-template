@@ -1,9 +1,5 @@
 {
   "name": "axum-harness",
   "packageManager": "bun@1.3.12",
-  "private": true,
-  "workspaces": [
-    "apps/web",
-    "apps/desktop/tests/e2e"
-  ]
+  "private": true
 }
