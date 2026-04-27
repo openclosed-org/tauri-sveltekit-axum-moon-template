@@ -1,5 +1,6 @@
 import process from "node:process";
-import { rmSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 
 type Mode = "dry-run" | "apply";
 type Profile = "backend-core" | "backend-desktop" | "full-research";
@@ -37,7 +38,7 @@ const PROFILE_PLANS: Record<
       "packages/data-adapters/turso/**",
       "packages/observability/**",
       "infra/**",
-      "justfile",
+      "Justfile",
       "justfiles/setup.just",
       "justfiles/dev.just",
       "justfiles/test.just",
@@ -63,6 +64,9 @@ const PROFILE_PLANS: Record<
       "docs/governance/**",
       "docs/archive/**",
       "release-plz.toml",
+      "release-plz.template.toml",
+      ".github/workflows/release-plz.yml",
+      "tools/repo-release/**",
       ".github/ISSUE_TEMPLATE/**",
       ".github/pull_request_template.md",
     ],
@@ -167,6 +171,61 @@ function removePathPattern(pattern: string): void {
   console.log(`  removed ${path}`);
 }
 
+function ensureSafeToApply(): void {
+  if (process.env.TEMPLATE_INIT_ALLOW_DIRTY === "1") {
+    console.log("\nDirty worktree check bypassed by TEMPLATE_INIT_ALLOW_DIRTY=1.");
+    return;
+  }
+
+  const gitProbe = spawnSync("git", ["rev-parse", "--is-inside-work-tree"], {
+    encoding: "utf8",
+  });
+  if (gitProbe.status !== 0 || gitProbe.stdout.trim() !== "true") {
+    console.log("\nNo git worktree detected; skipping dirty worktree check.");
+    return;
+  }
+
+  const status = spawnSync("git", ["status", "--porcelain"], {
+    encoding: "utf8",
+  });
+  if (status.status !== 0) {
+    console.error("Unable to inspect git worktree status; refusing to apply cleanup.");
+    process.exit(1);
+  }
+
+  if (status.stdout.trim().length > 0) {
+    console.error("Refusing to apply template cleanup with a dirty worktree.");
+    console.error("Commit or stash local changes first, or set TEMPLATE_INIT_ALLOW_DIRTY=1 after reviewing the risk.");
+    process.exit(1);
+  }
+}
+
+function removeRepositoryReleaseAnchor(): void {
+  const cargoTomlPath = "Cargo.toml";
+  if (!existsSync(cargoTomlPath)) {
+    return;
+  }
+
+  const original = readFileSync(cargoTomlPath, "utf8");
+  if (!original.includes('name = "axum-harness"')) {
+    return;
+  }
+
+  let next = original.replace(
+    /^\[package\]\nname = "axum-harness"\n[\s\S]*?\n(?=\[workspace\]\n)/,
+    "",
+  );
+  next = next.replace(
+    /\n\[lib\]\npath = "tools\/repo-release\/src\/lib\.rs"\n\n\[lints\]\nworkspace = true\n/,
+    "\n",
+  );
+
+  if (next !== original) {
+    writeFileSync(cargoTomlPath, next);
+    console.log("  removed repository release anchor from Cargo.toml");
+  }
+}
+
 function main(): number {
   const args = parseArgs(process.argv.slice(2));
   const plan = PROFILE_PLANS[args.profile];
@@ -181,9 +240,13 @@ function main(): number {
   printList("Removal candidates", plan.removeCandidates);
 
   if (args.mode === "apply") {
+    ensureSafeToApply();
     console.log("\nApplying removal candidates:");
     for (const pattern of plan.removeCandidates) {
       removePathPattern(pattern);
+    }
+    if (args.profile === "backend-core") {
+      removeRepositoryReleaseAnchor();
     }
     console.log("\nApply complete. Run `just audit-backend-core` and `just verify` next.");
     return 0;

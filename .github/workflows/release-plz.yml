@@ -176,7 +176,11 @@ jobs:
           BASELINE_TAG: ${{ needs.release-line.outputs.baseline_tag }}
         run: |
           mkdir -p "$RUNNER_TEMP/release-plz/baseline"
-          git show "${BASELINE_TAG}:tools/repo-release/Cargo.toml" > "$RUNNER_TEMP/release-plz/baseline/Cargo.toml"
+          if git show "${BASELINE_TAG}:Cargo.toml" | grep -q 'name = "axum-harness"'; then
+            git show "${BASELINE_TAG}:Cargo.toml" > "$RUNNER_TEMP/release-plz/baseline/Cargo.toml"
+          else
+            git show "${BASELINE_TAG}:tools/repo-release/Cargo.toml" > "$RUNNER_TEMP/release-plz/baseline/Cargo.toml"
+          fi
 
       - name: Run release-plz release-pr
         env:
@@ -185,7 +189,7 @@ jobs:
           release-plz release-pr \
             --git-token "${GITHUB_TOKEN}" \
             --repo-url "https://github.com/${GITHUB_REPOSITORY}" \
-            --manifest-path tools/repo-release/Cargo.toml \
+            --manifest-path Cargo.toml \
             --registry-manifest-path "$RUNNER_TEMP/release-plz/baseline/Cargo.toml" \
             --package axum-harness \
             --forge github \
@@ -236,7 +240,11 @@ jobs:
           BASELINE_TAG: ${{ needs.release-line.outputs.baseline_tag }}
         run: |
           mkdir -p "$RUNNER_TEMP/release-plz/baseline"
-          git show "${BASELINE_TAG}:tools/repo-release/Cargo.toml" > "$RUNNER_TEMP/release-plz/baseline/Cargo.toml"
+          if git show "${BASELINE_TAG}:Cargo.toml" | grep -q 'name = "axum-harness"'; then
+            git show "${BASELINE_TAG}:Cargo.toml" > "$RUNNER_TEMP/release-plz/baseline/Cargo.toml"
+          else
+            git show "${BASELINE_TAG}:tools/repo-release/Cargo.toml" > "$RUNNER_TEMP/release-plz/baseline/Cargo.toml"
+          fi
 
       - name: Run release-plz release
         env:
@@ -246,7 +254,7 @@ jobs:
           release-plz release \
             --git-token "${GITHUB_TOKEN}" \
             --repo-url "https://github.com/${GITHUB_REPOSITORY}" \
-            --manifest-path tools/repo-release/Cargo.toml \
+            --manifest-path Cargo.toml \
             --forge github \
             --config "$RUNNER_TEMP/release-plz/release-plz.runtime.toml" \
             -o json
