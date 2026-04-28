@@ -8,15 +8,15 @@ The default path is intentionally lightweight. Runtime topology can grow from lo
 
 ## Choose Your Path
 
-| Goal                               | Start here                                           |
-| ---------------------------------- | ---------------------------------------------------- |
-| Use this as a template             | `docs/template-users/README.md`                      |
-| Run locally                        | `docs/operations/local-dev.md`                       |
-| Manage secrets                     | `docs/operations/secret-management.md`               |
-| Contribute upstream                | `CONTRIBUTING.md`                                    |
-| Understand the reference chain     | `docs/operations/counter-service-reference-chain.md` |
-| Understand architecture principles | `docs/architecture/harness-philosophy.md`            |
-| Browse all docs                    | `docs/README.md`                                     |
+| Goal | Start here |
+| --- | --- |
+| Use this as a template | `docs/template-users/README.md` |
+| Run locally | `docs/operations/local-dev.md` |
+| Manage secrets | `docs/operations/secret-management.md` |
+| Contribute upstream | `CONTRIBUTING.md` |
+| Understand the reference chain | `docs/operations/counter-service-reference-chain.md` |
+| Understand architecture principles | `docs/architecture/harness-philosophy.md` |
+| Browse all docs | `docs/README.md` |
 
 ## What This Repo Is
 
