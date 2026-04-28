@@ -1,0 +1,59 @@
+name: Architecture RFC
+description: Discuss a high-risk architecture or policy change
+title: "RFC: "
+labels:
+  - rfc
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this for high-risk architecture, policy, topology, contract, event, gate, or default runtime changes.
+
+  - type: textarea
+    id: decision
+    attributes:
+      label: Proposed decision
+    validations:
+      required: true
+
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Motivation
+      description: What future rewrite, correctness gap, or ROI issue does this address?
+    validations:
+      required: true
+
+  - type: textarea
+    id: non_goals
+    attributes:
+      label: Non-goals
+      description: What should this RFC explicitly not change?
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: affected
+    attributes:
+      label: Affected boundaries
+      options:
+        - label: Service boundary
+        - label: Public contracts
+        - label: Event contracts
+        - label: Topology profile
+        - label: Secrets strategy
+        - label: Gate matrix
+        - label: Agent protocol
+        - label: Release promise
+        - label: Default runtime dependencies
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence or experiments needed
+      description: Which executable checks, prototypes, gates, or operational evidence would make this safe to adopt?

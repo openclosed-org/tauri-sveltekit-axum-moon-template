@@ -1,0 +1,64 @@
+name: Contribution proposal
+description: Propose an upstream change before opening a PR
+title: "proposal: "
+labels:
+  - needs-triage
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this before opening an upstream PR when the change is not a small, obvious Core Path patch.
+
+  - type: dropdown
+    id: path
+    attributes:
+      label: Contribution path
+      options:
+        - Core Path
+        - Reference Chain
+        - Topology Profile
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or invariant
+      description: What problem does this solve? What invariant does it protect?
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Proposed scope
+      description: Which paths do you expect to change?
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: risk
+    attributes:
+      label: Risk areas
+      options:
+        - label: Public API contract
+        - label: Event contract
+        - label: Idempotency / CAS / outbox semantics
+        - label: Tenant / auth boundary
+        - label: Topology default
+        - label: Gate matrix
+        - label: Generated artifacts
+        - label: Directory semantics
+        - label: Default runtime dependency
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Expected evidence
+      description: Which tests, gates, or scripts should prove this change?
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered

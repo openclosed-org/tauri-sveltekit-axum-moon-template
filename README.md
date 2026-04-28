@@ -120,20 +120,41 @@ apps/              Optional frontend shells (web, desktop, mobile); removable fo
 packages/ui/       Optional shared UI package; not part of the backend reference chain
 ```
 
-## Who This Repo Is For
+## Choose Your Path
 
-There are two primary user modes for this repository:
+This repository serves two groups. Start with the path that matches your goal.
 
-1. **Template users** — teams that want to click "Use this template" and start a backend project from a pre-structured foundation.
-2. **Contributors / maintainers** — people who want to evolve the template itself, improve the architecture, and keep the repository publishable as an open-source project.
+### I want to use this as a template
+
+Start here:
+
+1. `docs/template-users/README.md`
+2. `docs/operations/local-dev.md`
+3. `docs/operations/secret-management.md`
+4. `docs/operations/counter-service-reference-chain.md`
+5. `docs/template-users/template-init.md`
 
 Template users should treat the repository release as the main contract and keep only the parts relevant to their project.
 
-The release strategy is repository-level SemVer for the template as a whole. Cargo crate versions remain internal workspace metadata, not separate product release channels.
+A dedicated `just template-init` cleanup flow exists for derived projects. The `backend-core` profile treats `apps/**` and `packages/ui/**` as optional shell surface that can be removed after reviewing the dry-run output.
+
+You do not need to preserve all upstream maintainer docs, GitHub issue templates, PR templates, release automation, or agent governance files in your derived project.
+
+### I want to contribute to axum-harness itself
+
+Start here:
+
+1. `CONTRIBUTING.md`
+2. `AGENTS.md`
+3. `agent/codemap.yml`
+4. `docs/operations/counter-service-reference-chain.md`
+5. `docs/governance/maintainer-decision-guide.md`
 
 Contributors should treat the repository structure, gates, agent protocol, and documentation conventions as part of the design, not as optional extras.
 
-A dedicated `just template-init` cleanup flow exists for derived projects. The `backend-core` profile treats `apps/**` and `packages/ui/**` as optional shell surface that can be removed after reviewing the dry-run output.
+Issues and PRs should declare their contribution path, risk level, and evidence level.
+
+The release strategy is repository-level SemVer for the template as a whole. Cargo crate versions remain internal workspace metadata, not separate product release channels.
 
 The root backend-core contract does not require SvelteKit, Tauri, mobile shells, or `packages/ui`. App shells may exist in the repository, but they are not part of the root development, verification, or code generation surface.
 

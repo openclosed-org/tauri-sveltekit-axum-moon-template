@@ -64,7 +64,7 @@ start_services() {
     
     # Check service health
     local unhealthy=0
-    for container in $("COMPOSE_CMD" -f "$COMPOSE_FILE" -p "$PROJECT_NAME" ps -q); do
+    for container in $($COMPOSE_CMD -f "$COMPOSE_FILE" -p "$PROJECT_NAME" ps -q); do
         local health=$($COMPOSE_CMD -f "$COMPOSE_FILE" -p "$PROJECT_NAME" ps --format json | grep -o '"Health":"[^"]*"' | cut -d'"' -f4)
         if [[ "$health" == "unhealthy" ]]; then
             unhealthy=1

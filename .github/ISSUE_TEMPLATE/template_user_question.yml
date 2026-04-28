@@ -1,0 +1,54 @@
+name: Template user question
+description: Ask about using axum-harness as a template
+title: "template: "
+labels:
+  - template-user
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this for questions about adopting the template in your own project.
+        For upstream contribution proposals, use "Contribution proposal" instead.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Getting started
+        - template-init
+        - Local development
+        - Backend-core cleanup
+        - Secrets / SOPS
+        - Counter-service reference chain
+        - Release / versioning
+        - Optional app shells
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: What are you trying to do?
+      description: Describe the project outcome you want, not only the command that failed.
+    validations:
+      required: true
+
+  - type: textarea
+    id: commands
+    attributes:
+      label: Commands run
+      render: shell
+
+  - type: textarea
+    id: output
+    attributes:
+      label: Relevant output or error
+      render: shell
+
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Constraints
+      description: Optional details such as OS, target runtime, backend-only needs, single VPS, K3s, or team requirements.
