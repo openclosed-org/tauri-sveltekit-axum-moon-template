@@ -420,13 +420,13 @@ counter 链路要求：
 
 新增后端 service 时，默认按以下路径执行，不给 agent 摇摆空间：
 
-1. 建立  作为 service-local semantics 真理源。
-2. 默认按 counter-service 的 DDD 分层：, , , 。
-3. 默认持久化走 ，不引入额外存储抽象。
-4. mutation 成功后写统一 （schema 由  拥有），不创建私有  表。
-5. service 不直接碰 broker（EventBus / PubSub），只写 outbox。
-6. outbox-relay 负责从  异步发布到 EventBus + PubSub。
-7. projection 必须 replayable / rebuildable，从  做 checkpoint。
-8. 跨 service 长事务必须 workflow 化。
-9. stub / future 包必须在  和  中标记 。
-10. 默认完成后至少通过 （含 , , , ）。
+1. 建立 `services/<name>/model.yaml` 作为 service-local semantics 真理源。
+2. 默认按 `counter-service` 的 DDD 分层：`domain/`、`application/`、`ports/`、`infrastructure/`。
+3. 默认持久化走 `LibSqlPort` / repository adapter，不引入额外存储抽象，除非先说明 capability slot 和验证边界。
+4. mutation 成功后写统一 `event_outbox`，schema 由 `packages/messaging` 拥有，不创建私有 `<service>_outbox` 表。
+5. service 不直接碰 broker runtime（NATS / PubSub）；service 只负责事务性状态变更与 outbox write。
+6. `workers/outbox-relay` 负责从 `event_outbox` 异步发布到当前消息骨干。
+7. projection 必须 replayable / rebuildable，默认从 `event_outbox` 做 replay source 和 checkpoint。
+8. 跨 service 长事务必须 workflow 化，不用同步调用伪装成分布式事务。
+9. stub / future 包必须在 `model.yaml`、README 或平台元数据中标记当前成熟度，不能写成已生产完备。
+10. 默认完成后至少运行 path-scoped guardrails；涉及 contract、replay、delivery、topology 或 P0 correctness 时按 `agent/manifests/gate-matrix.yml` 升级验证。

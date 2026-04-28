@@ -9,6 +9,38 @@ body:
       value: |
         Thanks for reporting a bug. Please provide enough detail to reproduce.
 
+  - type: dropdown
+    id: user_type
+    attributes:
+      label: User type
+      description: Are you using the template, or contributing to the upstream repository?
+      options:
+        - Template user
+        - Upstream contributor / maintainer
+        - Not sure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Getting started / setup
+        - Local development
+        - Template init
+        - Counter reference chain
+        - Contracts / generated artifacts
+        - Services
+        - Servers / BFF
+        - Workers / replay / delivery
+        - Platform model / topology
+        - Secrets / SOPS / GitOps
+        - Frontend or desktop shell
+        - Other
+    validations:
+      required: true
+
   - type: textarea
     id: description
     attributes:

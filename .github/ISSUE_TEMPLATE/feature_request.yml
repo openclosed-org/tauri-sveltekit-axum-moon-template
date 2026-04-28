@@ -8,6 +8,19 @@ body:
     attributes:
       value: |
         Thanks for the suggestion. Keep it focused, evidence-based, and aligned with the repository boundaries.
+        If this is an upstream implementation proposal, consider using "Contribution proposal" instead.
+        If this is a high-risk architecture or policy change, use "Architecture RFC" instead.
+
+  - type: dropdown
+    id: user_type
+    attributes:
+      label: User type
+      options:
+        - Template user
+        - Upstream contributor / maintainer
+        - Not sure
+    validations:
+      required: true
 
   - type: textarea
     id: problem

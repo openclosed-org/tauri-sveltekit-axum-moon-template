@@ -20,7 +20,8 @@ For maintainers and agent-assisted development:
 2. `docs/architecture/harness-philosophy.md`
 3. `agent/codemap.yml`
 4. `docs/adr/**`
-5. `docs/governance/docs-lifecycle.md`
+5. `docs/governance/maintainer-decision-guide.md`
+6. `docs/governance/docs-lifecycle.md`
 
 ## What Belongs Here
 

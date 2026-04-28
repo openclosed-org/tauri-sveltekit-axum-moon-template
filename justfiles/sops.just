@@ -112,11 +112,46 @@ sops-validate:
     fi
     @echo "✓ .sops.yaml exists"
     @if [ ! -f ~/.config/sops/age/key.txt ]; then \
-        echo "WARNING: Age key not found. Generate with: just sops-gen-age-key"; \
-    else \
-        echo "✓ Age key exists"; \
+        echo "ERROR: Age key not found. Generate with: just sops-gen-age-key"; \
+        exit 1; \
     fi
+    @echo "✓ Age key exists"
+    @KEY=$(grep '# public key:' ~/.config/sops/age/key.txt | sed 's/# public key: //'); \
+    if [ -z "$KEY" ]; then \
+        echo "ERROR: Could not read public key from ~/.config/sops/age/key.txt"; \
+        exit 1; \
+    fi; \
+    if grep -q "$KEY" .sops.yaml; then \
+        echo "✓ Age public key matches .sops.yaml"; \
+    else \
+        echo "ERROR: Age public key is not present in .sops.yaml"; \
+        echo "       Run: just sops-show-age-key"; \
+        echo "       Then update .sops.yaml creation_rules for the target environment"; \
+        exit 1; \
+    fi
+    @if ! command -v sops >/dev/null 2>&1; then \
+        echo "ERROR: sops is not installed. Run: mise install"; \
+        exit 1; \
+    fi
+    @if ! command -v yq >/dev/null 2>&1; then \
+        echo "ERROR: yq is not installed. Run: mise install"; \
+        exit 1; \
+    fi
+    @echo "✓ sops available"
+    @echo "✓ yq available"
     @find infra/security/sops -name "*.enc.yaml" | wc -l | tr -d ' ' | xargs -I{} echo "✓ Encrypted secrets: {} files"
+    @SAMPLE=$(find infra/security/sops/dev -name "*.enc.yaml" | sort | head -n 1); \
+    if [ -n "$SAMPLE" ]; then \
+        if bash infra/security/sops/scripts/decrypt-env.sh "$SAMPLE" >/dev/null; then \
+            echo "✓ Sample decrypt succeeded: $SAMPLE"; \
+        else \
+            echo "ERROR: Sample decrypt failed: $SAMPLE"; \
+            echo "       Check that ~/.config/sops/age/key.txt matches recipients in .sops.yaml"; \
+            exit 1; \
+        fi; \
+    else \
+        echo "WARNING: no dev encrypted secrets found under infra/security/sops/dev"; \
+    fi
     @echo ""
     @echo "SOPS configuration valid"
 

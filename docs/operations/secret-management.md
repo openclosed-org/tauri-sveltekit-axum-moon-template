@@ -75,6 +75,25 @@ just sops-show-age-key
 
 然后更新根目录 `.sops.yaml` 中对应环境的 public key。
 
+当前建议立刻再跑一次：
+
+```bash
+just sops-validate
+```
+
+这条命令现在应同时回答四件事：
+
+1. `.sops.yaml` 是否存在。
+2. `~/.config/sops/age/key.txt` 是否存在。
+3. 当前 age public key 是否真的出现在 `.sops.yaml` 的 `creation_rules` 中。
+4. 当前 key 是否真的能解开至少一个 `infra/security/sops/dev/*.enc.yaml` 文件。
+
+如果这里失败，优先按下面顺序判断：
+
+1. 没有 key：先执行 `just sops-gen-age-key`。
+2. key 存在，但 `.sops.yaml` 里没有对应 public key：执行 `just sops-show-age-key`，然后把 public key 写入 `.sops.yaml`。
+3. key 和 `.sops.yaml` 看起来一致，但仍无法解密：说明当前 `.enc.yaml` 很可能不是用这把 key 加密的，需要重新加密或切换到正确私钥。
+
 ### 3.2 编辑或生成某个 deployable 的 secrets
 
 推荐命令：
@@ -108,6 +127,29 @@ just sops-verify-counter-shared-db ENV=dev
 1. 让本地进程消费和集群一致的环境变量形状。
 2. 避免为了开发临时制造新的 `.env` 主路径。
 3. 在继续依赖当前已启用的独立 worker overlay 前，先验证 shared remote DB secret 不再指向本地 `file:` 路径。
+
+推荐的快速验证链：
+
+```bash
+just sops-validate
+just sops-verify-counter-shared-db ENV=dev
+bash infra/security/sops/scripts/decrypt-env.sh infra/security/sops/dev/web-bff.enc.yaml
+just sops-run DEPLOYABLE=web-bff ENV=dev
+```
+
+其中：
+
+1. `just sops-validate` 验证 key 与 `.sops.yaml`、以及样例解密是否真实可用。
+2. `just sops-verify-counter-shared-db ENV=dev` 验证 shared DB secret 是否仍残留模板占位符，是否错误指向本地 `file:` URL。
+3. `decrypt-env.sh` 可直接观察当前会注入哪些环境变量。
+4. `just sops-run` 则是最终运行态验证。
+
+当前常见失败信号及含义：
+
+1. `Age key not found`：本机还没有 `~/.config/sops/age/key.txt`。
+2. `Age public key is not present in .sops.yaml`：本机私钥对应的 public key 没被加入仓库 SOPS 规则。
+3. `failed to decrypt`：仓库内的 `.enc.yaml` 不是用当前私钥加密，或 `SOPS_AGE_KEY_FILE` 指向了错误文件。
+4. `REPLACE_WITH_TURSO_TOKEN`：模板占位符还没被真实 secret 替换，不应继续把这份 secret 当成可运行配置。
 
 ## 4. 与 Kustomize / Flux 的关系
 

@@ -36,6 +36,23 @@
 5. `infra/local/scripts/bootstrap.sh`
 6. `infra/local/scripts/bootstrap-auth.sh`
 
+## 2.1 平台前置条件
+
+当前仓库的本地后端主链并不是“所有命令在三平台纯原生完全等价”。更准确的理解是：
+
+1. macOS / Linux：当前是最接近仓库默认脚本假设的平台。
+2. Windows：Rust / Bun / Node / just / moon 本身可以原生运行，但本地 infra、SOPS shell 脚本、Podman compose、以及部分 Unix CLI 依赖当前更适合放在 `WSL2` 或 `Git Bash` 环境里执行。
+3. 如果目标是“单机启动并跑通默认后端链”，当前最稳的跨平台收敛方式是：
+   - 应用与测试命令：`just` / `moon` / `cargo`
+   - infra / SOPS / auth bootstrap：统一通过 POSIX shell 环境执行
+
+当前已经确认的现实约束：
+
+1. `just dev-api`、`just verify-backend-primary`、`just test-backend-primary` 这类 `cargo` / `moon` 主链命令更接近跨平台。
+2. `bash infra/local/scripts/bootstrap.sh ...`、`bash infra/local/scripts/bootstrap-auth.sh ...`、`just sops-run ...` 仍依赖 `bash`、`find`、`grep`、`sed`、`pkill`、`curl`、`jq`、`yq`、`sops` 等 Unix 工具链假设。
+3. `bootstrap-auth.sh` 当前硬编码使用 `podman compose`，并依赖 `podman cp` 与固定容器命名形状，因此它不是 Windows PowerShell 原生脚本。
+4. 这意味着当前文档应把 Windows 支持表述为“可行，但建议 WSL2/Git Bash + Podman machine”，而不是“所有 shell 下无差别原生支持”。
+
 ## 3. 当前真实入口
 
 ### 3.1 工具链准备
