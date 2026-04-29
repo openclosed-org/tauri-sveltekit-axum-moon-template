@@ -8,6 +8,22 @@ entities:
     owner_service: counter-service
     source: services/counter-service/model.yaml
 
+  - entity: increment-counter
+    owner_service: counter-service
+    source: services/counter-service/model.yaml
+
+  - entity: reset-counter
+    owner_service: counter-service
+    source: services/counter-service/model.yaml
+
+  - entity: counter-changed
+    owner_service: counter-service
+    source: services/counter-service/model.yaml
+
+  - entity: get-counter
+    owner_service: counter-service
+    source: services/counter-service/model.yaml
+
   - entity: tenant
     owner_service: tenant-service
     source: services/tenant-service/model.yaml
@@ -16,7 +32,47 @@ entities:
     owner_service: tenant-service
     source: services/tenant-service/model.yaml
 
+  - entity: create-tenant
+    owner_service: tenant-service
+    source: services/tenant-service/model.yaml
+
+  - entity: invite-member
+    owner_service: tenant-service
+    source: services/tenant-service/model.yaml
+
+  - entity: tenant-created
+    owner_service: tenant-service
+    source: services/tenant-service/model.yaml
+
+  - entity: member-invited
+    owner_service: tenant-service
+    source: services/tenant-service/model.yaml
+
+  - entity: get-tenant
+    owner_service: tenant-service
+    source: services/tenant-service/model.yaml
+
+  - entity: list-tenant-members
+    owner_service: tenant-service
+    source: services/tenant-service/model.yaml
+
   - entity: auth-session
+    owner_service: auth-service
+    source: services/auth-service/model.yaml
+
+  - entity: start-login
+    owner_service: auth-service
+    source: services/auth-service/model.yaml
+
+  - entity: exchange-oauth-callback
+    owner_service: auth-service
+    source: services/auth-service/model.yaml
+
+  - entity: session-established
+    owner_service: auth-service
+    source: services/auth-service/model.yaml
+
+  - entity: get-session
     owner_service: auth-service
     source: services/auth-service/model.yaml
 
@@ -24,6 +80,22 @@ entities:
     owner_service: user-service
     source: services/user-service/model.yaml
 
+  - entity: ensure-user-profile
+    owner_service: user-service
+    source: services/user-service/model.yaml
+
+  - entity: user-profile-created
+    owner_service: user-service
+    source: services/user-service/model.yaml
+
+  - entity: get-user-profile
+    owner_service: user-service
+    source: services/user-service/model.yaml
+
   - entity: search-index-snapshot
+    owner_service: indexing-service
+    source: services/indexing-service/model.yaml
+
+  - entity: search-index-health
     owner_service: indexing-service
     source: services/indexing-service/model.yaml
