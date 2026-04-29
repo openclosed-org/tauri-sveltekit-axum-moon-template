@@ -193,7 +193,7 @@ jobs:
         uses: taiki-e/install-action@just
 
       - name: Platform drift check
-        run: just verify-generated
+        run: just verify-generated-artifacts
 
   contract-drift:
     name: Contract Drift Check
@@ -203,8 +203,8 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Install Bun
-        uses: oven-sh/setup-bun@v2
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Install just
         uses: taiki-e/install-action@just
@@ -243,9 +243,6 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Install Bun
-        uses: oven-sh/setup-bun@v2
-
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
@@ -256,13 +253,13 @@ jobs:
         run: just validate-state strict
 
       - name: Validate contracts
-        run: just contracts-check strict
+        run: just verify-contracts strict
 
       - name: Validate imports
         run: just gate-imports strict
 
       - name: Boundary check
-        run: bun run scripts/boundary-check.ts
+        run: cargo run -p repo-tools -- boundary-check
 
   supply-chain:
     name: Supply Chain Scan

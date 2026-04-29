@@ -1,25 +1,132 @@
 # Justfile — 统一人类/Agent 命令入口
 # 工具链由 mise 管理,任务编排由 moon 负责
 # Justfile 只暴露稳定、可读性高的接口
+#
+# 命令面分层：
+# - canonical: 默认推荐的人类入口，帮助页优先展示
+# - internal: 供组合 recipe 复用的内部工具，不建议直接作为日常入口
+# 语义约定：
+# - check-*    低成本静态/编译检查
+# - validate-* 规则、模型、元数据一致性校验
+# - test-*     可执行测试
+# - verify-*   组合验证或更强证据入口
+# - gate-*     生命周期/治理门禁入口
 set export  # 导出环境变量到子进程
 
 # ── 模块导入 ────────────────────────────────────────────────
+# 生命周期主轴：setup -> dev -> build -> verify -> ops -> clean
+# 领域副轴：platform / sops / template / skills
 import? 'justfiles/setup.just'
 import? 'justfiles/dev.just'
-import? 'justfiles/test.just'
-import? 'justfiles/quality.just'
 import? 'justfiles/build.just'
-import? 'justfiles/migrate.just'
+import? 'justfiles/verify.just'
+import? 'justfiles/ops.just'
 import? 'justfiles/clean.just'
-import? 'justfiles/deploy.just'
-import? 'justfiles/processes.just'
-import? 'justfiles/skills.just'
 import? 'justfiles/platform.just'
-import? 'justfiles/gates.just'
 import? 'justfiles/sops.just'
 import? 'justfiles/template.just'
+import? 'justfiles/skills.just'
 
-# ── 默认行为 ────────────────────────────────────────────────
+# ── 默认行为 / 导航 ──────────────────────────────────────────
 
-default:
+default: help
+
+help:
+    @printf "\n"
+    @printf "axum-harness command surface\n"
+    @printf "===========================\n"
+    @printf "\n"
+    @printf "语义约定\n"
+    @printf "  check-*    低成本静态/编译检查\n"
+    @printf "  validate-* 规则、模型、元数据一致性校验\n"
+    @printf "  test-*     可执行测试\n"
+    @printf "  verify-*   组合验证或更强证据入口\n"
+    @printf "  gate-*     生命周期/治理门禁入口\n"
+    @printf "\n"
+    @printf "高频入口\n"
+    @printf "  just setup\n"
+    @printf "  just doctor\n"
+    @printf "  just dev\n"
+    @printf "  just test\n"
+    @printf "  just check-backend-primary\n"
+    @printf "  just verify\n"
+    @printf "\n"
+    @printf "分组帮助\n"
+    @printf "  just help-dev\n"
+    @printf "  just help-verify\n"
+    @printf "  just help-ops\n"
+    @printf "  just help-platform\n"
+    @printf "  just help-secrets\n"
+    @printf "  just help-template\n"
+    @printf "  just help-all\n"
+    @printf "\n"
+
+help-dev:
+    @printf "\n开发 / 本地运行\n"
+    @printf "  just dev                      默认 web-bff 开发循环\n"
+    @printf "  just dev-api                  启动 API 开发\n"
+    @printf "  just deploy-dev               启动本地 core infra\n"
+    @printf "  just status-dev               查看本地 infra 状态\n"
+    @printf "  just logs-dev SERVICE=nats    跟随本地 infra 指定服务日志\n"
+    @printf "  just dev-workers              启动本地 workers\n"
+    @printf "  just health-workers           查看 worker 健康状态\n"
+    @printf "  just ps                       查看本地进程状态\n"
+    @printf "\n"
+
+help-verify:
+    @printf "\n验证 / 质量 / 门禁\n"
+    @printf "  just fmt                      格式检查\n"
+    @printf "  just lint                     Clippy/Lint\n"
+    @printf "  just typecheck                编译型检查\n"
+    @printf "  just test                     默认测试\n"
+    @printf "  just check-backend-primary    默认 backend-core 低成本静态检查\n"
+    @printf "  just verify                   repo 级默认验证\n"
+    @printf "  just verify-contracts MODE=warn\n"
+    @printf "  just drift-check              generated contract 漂移检查\n"
+    @printf "  just boundary-check           架构边界检查\n"
+    @printf "  just gate-existence MODE=warn\n"
+    @printf "  just gate-release             release 门禁\n"
+    @printf "\n"
+
+help-ops:
+    @printf "\n运维 / 部署 / 迁移\n"
+    @printf "  just migrate-status           查看 migration 状态\n"
+    @printf "  just migrate-up               执行 migration（dry-run）\n"
+    @printf "  just deploy-prod ENV=dev      部署到 k3s\n"
+    @printf "  just deploy-prod-dry-run      预览 k3s 部署\n"
+    @printf "  just generate-service ...     生成 systemd service\n"
+    @printf "  just logs-api                 查看宿主机 API 日志\n"
+    @printf "\n"
+
+help-platform:
+    @printf "\n平台 / 模型 / 生成产物\n"
+    @printf "  just validate-platform        校验 platform models\n"
+    @printf "  just validate-platform-json   JSON 形式输出 platform 校验结果\n"
+    @printf "  just validate-state MODE=strict\n"
+    @printf "  just validate-workflows MODE=strict\n"
+    @printf "  just validate-contract-drift  platform 与 contracts 漂移检查\n"
+    @printf "  just generate-platform-catalog 生成 platform catalog\n"
+    @printf "  just verify-replay MODE=strict\n"
+    @printf "  just verify-generated-artifacts 生成产物基线校验\n"
+    @printf "  just platform-doctor          平台全量健康检查\n"
+    @printf "\n"
+
+help-secrets:
+    @printf "\nSecrets / SOPS\n"
+    @printf "  just sops-gen-age-key\n"
+    @printf "  just sops-show-age-key\n"
+    @printf "  just sops-edit DEPLOYABLE=web-bff ENV=dev\n"
+    @printf "  just sops-run DEPLOYABLE=web-bff ENV=dev CMD='cargo run -p web-bff'\n"
+    @printf "  just sops-reconcile ENV=dev\n"
+    @printf "\n"
+
+help-template:
+    @printf "\nTemplate / Repo Maintenance\n"
+    @printf "  just template-init PROFILE=backend-core MODE=dry-run\n"
+    @printf "  just audit-backend-core MODE=dry-run\n"
+    @printf "  just semver-check\n"
+    @printf "  just skills-list\n"
+    @printf "\n"
+
+help-all:
     @just --list

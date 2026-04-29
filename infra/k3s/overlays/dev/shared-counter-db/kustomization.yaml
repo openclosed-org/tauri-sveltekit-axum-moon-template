@@ -1,9 +1,9 @@
-# Kustomization — Dev shared counter DB credentials
+# Kustomization — Dev shared counter DB credential marker
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-resources:
-  - ../../../security/sops/dev/counter-shared-db.enc.yaml
+# The counter-shared-db Secret is applied by `repo-tools secrets reconcile --env dev`.
+# Kustomize cannot build SOPS-encrypted YAML because apiVersion/kind/name are encrypted.
 
 namespace: app
 

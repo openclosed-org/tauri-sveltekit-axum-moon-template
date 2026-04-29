@@ -202,13 +202,12 @@ infra/security/sops/
 ├── staging/                # 加密密钥（staging）
 │   ├── web-bff.enc.yaml
 │   └── outbox-relay-worker.enc.yaml
-├── prod/                   # 加密密钥（prod）
-└── scripts/
-    ├── apply-secrets.sh    # 应用密钥到集群
-    └── sops-run.sh         # sops exec-env 辅助脚本
+└── prod/                   # 加密密钥（prod）
 
 .sops.yaml                  # 统一 SOPS 规则（根目录）
 ```
+
+Secrets 操作入口统一通过 `repo-tools secrets ...` 或 `just sops-*` recipe，不再维护目录内 shell helper。
 
 ---
 

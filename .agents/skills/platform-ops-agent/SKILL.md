@@ -77,7 +77,7 @@ platform/model/**                            → current platform model state
 | State validation | `just validate-state` |
 | Workflow validation | `just validate-workflows` |
 | Topology validation | `just validate-topology` |
-| Generated drift checks | `just verify-generated` |
+| Generated drift checks | `just verify-generated-artifacts` |
 | Boundary check | `just boundary-check` |
 
 ---

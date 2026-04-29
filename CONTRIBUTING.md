@@ -193,10 +193,11 @@ If a change crosses multiple domains, preserve the existing boundaries rather th
 
 ```bash
 just setup
-just setup-deps
 just doctor
-bash infra/local/scripts/bootstrap.sh up
+just auth-up
 ```
+
+When working on optional app shells, install dependencies from the app-owned scope, for example `bun install --cwd apps/web` or `bun install --cwd apps/desktop/tests/e2e`.
 
 For local backend runs that need secrets, use SOPS-based injection:
 
@@ -211,17 +212,18 @@ Run the smallest relevant validation set for your change, then escalate only whe
 Common commands:
 
 ```bash
-just verify-backend-primary
+just check-backend-primary
 just test-backend-primary
 just boundary-check
-just contracts-check strict
+just verify-contracts strict
 just verify
 ```
 
 Gate-selection guidance is available here:
 
 ```bash
-bun run scripts/run-scoped-gates.ts --list
+cargo run -p repo-tools -- gate-guidance --list
+
 ```
 
 Heavier platform, replay, delivery, and release gates are selected by changed paths, risk, and evidence level. Do not run or require them for every ordinary backend-core change.

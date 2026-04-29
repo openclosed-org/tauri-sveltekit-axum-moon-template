@@ -107,7 +107,7 @@ services/auth-service/
 - ✅ MockOAuthProvider for development
 - ✅ `web-bff` supports Zitadel OIDC/JWKS and introspection-based resource-server validation
 - ✅ `packages/authz` includes an OpenFGA adapter
-- ✅ Local Podman bootstrap exists for Zitadel + OpenFGA (`infra/docker/compose/auth.yaml`, `infra/local/scripts/bootstrap-auth.sh`)
+- ✅ Local Podman bootstrap exists for Zitadel + OpenFGA (`infra/docker/compose/auth.yaml`, `repo-tools infra auth bootstrap`)
 - ⏳ Interactive end-user frontend OIDC login is still not the default repository path
 
 ## References

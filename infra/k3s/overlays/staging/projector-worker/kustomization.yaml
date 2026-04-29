@@ -7,7 +7,7 @@ resources:
   - ../../../base/configmap-projector-worker.yaml
   - ../../../base/deployment-projector-worker.yaml
   # TODO: Create staging SOPS secrets before first deploy
-  # - ../../../security/sops/staging/projector-worker.enc.yaml
+  # Secrets are applied by `repo-tools secrets reconcile --env staging` before deploy.
 
 namespace: app
 

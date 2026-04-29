@@ -6,13 +6,11 @@ clean:
 
 # 智能清理 7 天未访问的构建缓存
 clean-sweep:
-    just _require cargo-sweep "cargo install cargo-sweep"
-    cargo sweep --time 7
+    cargo run -p repo-tools -- clean-sweep
 
 # 清理不在当前 Cargo.toml 中的依赖缓存
 clean-sweep-deps:
-    just _require cargo-sweep "cargo install cargo-sweep"
-    cargo sweep --installed
+    cargo run -p repo-tools -- clean-sweep-deps
 
 # 仅清理覆盖率产物
 clean-coverage:
@@ -27,12 +25,7 @@ clean-tmp:
 
 # 截断 .tmp 中的大日志文件（超过 10MB 的截断到保留最后 5 万行）
 clean-tmp-truncate:
-    @echo "截断大日志文件（>10MB，保留最后 5 万行）..."
-    @find .tmp -name "*.log" -size +10M 2>/dev/null | while read f; do \
-        echo "  截断 $f"; \
-        tail -n 50000 "$f" > "$f.tmp" && mv "$f.tmp" "$f"; \
-    done
-    @echo "✓ 大日志文件已截断"
+    cargo run -p repo-tools -- cleanup-test-artifacts
 
 # 全量清理：构建缓存 + 测试产物
 clean-all: clean-tmp clean

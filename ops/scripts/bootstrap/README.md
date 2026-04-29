@@ -2,4 +2,4 @@
 
 Phase 1: VPS initialization scripts.
 
-- `vps.sh` — Bare metal setup (installs just, docker, mise)
+- `vps.sh` — Linux VPS host-only setup (installs just, docker, mise). Prefer `repo-tools ops bootstrap-vps --plan` for repo control-plane planning/preflight.

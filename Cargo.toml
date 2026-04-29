@@ -38,6 +38,7 @@ include = [
 
 [workspace]
 members = [
+    "tools/repo-tools",
     # Core
     "packages/workspace-hack",
     "packages/observability",
@@ -125,6 +126,16 @@ path = "tools/repo-release/src/lib.rs"
 workspace = true
 
 [workspace.dependencies]
+clap = { version = "4.5", features = ["derive"] }
+xshell = "0.2"
+walkdir = "2"
+serde_yaml = "0.9"
+toml = "0.9"
+tempfile = "3"
+flate2 = "1"
+tar = "0.4"
+zip = { version = "4", default-features = false, features = ["deflate"] }
+regex = "1"
 # Internal crates
 data = { path = "packages/data", version = "0.1.0" }
 data-traits = { path = "packages/data-traits", version = "0.1.0" }
@@ -172,6 +183,7 @@ axum = { version = "0.8.9", features = ["json"] }
 axum-extra = { version = "0.12.6", features = ["cookie"] }
 tokio = { version = "1.52.1", features = ["full"] }
 reqwest = { version = "0.13.2", features = ["rustls", "form", "json", "stream"] }
+ctrlc = "3"
 
 # Axum middleware stack (per D-07, D-09)
 tower = "0.5"

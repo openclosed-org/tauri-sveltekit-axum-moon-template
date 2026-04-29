@@ -11,7 +11,7 @@ After `just typegen`, diff `packages/contracts/generated/` against this director
 
 ### generated-platform/
 Golden baseline for generated platform catalog output.
-After `just gen-platform`, diff platform outputs against this directory.
+After `just generate-platform-catalog`, diff platform outputs against this directory.
 
 ### replay lanes
 Replay and rebuild references are anchored by:
@@ -26,12 +26,12 @@ These are not copied here wholesale, but `just verify-replay` treats them as req
 
 ```bash
 # Generate all artifacts
-just gen-platform
+just generate-platform-catalog
 just typegen
 just verify-replay strict
 
 # Check for drift
-just verify-generated
+just verify-generated-artifacts
 ```
 
 ## Initial Baseline
@@ -41,7 +41,7 @@ To update the baseline after intentional changes:
 
 ```bash
 # Regenerate artifacts
-just gen-platform
+just generate-platform-catalog
 just typegen
 
 # Refresh generated platform and contract outputs, then update the matching golden files.

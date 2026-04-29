@@ -36,7 +36,7 @@ We adopted a **Platform Model First** approach where:
 - Generators in `platform/generators/` produce infrastructure, SDKs, docs, and catalogs
 - Validators in `platform/validators/` ensure model integrity
 - `just validate-platform` runs model validation
-- `just gen-platform` regenerates all artifacts
+- `just generate-platform-catalog` regenerates all artifacts
 
 ## Consequences
 ### What becomes easier

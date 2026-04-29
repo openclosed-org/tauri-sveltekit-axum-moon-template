@@ -2,7 +2,7 @@
 # 2026-04 Best Practices:
 # - moon: dependency graphs, incremental caching, parallel execution
 # - just: human-friendly aliases, precondition checks
-# - scripts: TypeScript only (.ts), cross-platform via scripts/lib/spawn.ts
+# - scripts: Rust CLI via tools/repo-tools
 
 tasks:
   # ==========================================================================
@@ -53,9 +53,12 @@ tasks:
   # ==========================================================================
 
   setup:
-    script: 'bun install'
+    command: 'cargo run -p repo-tools -- doctor'
     inputs:
-      - 'package.json'
+      - '.mise.toml'
+      - 'rust-toolchain.toml'
+      - '.env.example'
+      - 'tools/repo-tools/src/**'
 
   bootstrap:
     deps:
@@ -63,16 +66,15 @@ tasks:
       - 'doctor'
 
   doctor:
-    script: 'bun run scripts/doctor.ts'
+    command: 'cargo run -p repo-tools -- doctor'
     inputs:
       - '.mise.toml'
       - 'rust-toolchain.toml'
       - '.env.example'
-      - 'scripts/doctor.ts'
-      - 'scripts/lib/spawn.ts'
+      - 'tools/repo-tools/src/**'
 
   toolchain-check:
-    script: 'rustc --version && bun --version && moon --version && echo "ALL OK"'
+    script: 'rustc --version && moon --version && echo "ALL OK"'
     inputs:
       - 'rust-toolchain.toml'
       - '.mise.toml'
@@ -104,29 +106,8 @@ tasks:
     deps:
       - 'check'
 
-  contracts-check:
-    script: |
-      echo "=== Checking contract drift BEFORE regeneration ==="
-      if git diff --name-only packages/contracts/generated/ 2>/dev/null | grep -q .; then
-        echo "DRIFT DETECTED: contracts changed but generated files not committed"
-        echo "Run 'just typegen' then recommit the generated files"
-        git diff --name-only packages/contracts/generated/
-        exit 1
-      else
-        echo "DRIFT CHECK PASSED: packages/contracts/generated/"
-      fi
-      echo "=== No drift detected. Regenerating to verify alignment ==="
-      moon run repo:typegen
-      echo "=== Re-verifying post-regeneration ==="
-      if git diff --name-only packages/contracts/generated/ 2>/dev/null | grep -q .; then
-        echo "POST-REGEN DRIFT DETECTED: typegen produces different output"
-        echo "Fix source contracts or typegen script"
-        git diff --name-only packages/contracts/generated/
-        exit 1
-      else
-        echo "POST-REGEN DRIFT CHECK PASSED"
-      fi
-      echo "=== All contract drift checks passed ==="
+  verify-contracts:
+    command: 'cargo run -p repo-tools -- validate-contracts --mode warn'
     inputs:
       - 'packages/contracts/**/src/**'
       - 'packages/contracts/**/Cargo.toml'
@@ -148,20 +129,10 @@ tasks:
     command: 'cargo llvm-cov clean'
 
   clean-sweep:
-    script: |
-      bun -e "
-        const { spawnSync } = require('child_process');
-        const r = spawnSync('cargo', ['sweep', '--time', '7'], { stdio: 'inherit', shell: process.platform === 'win32' });
-        if (r.status !== 0) console.log('Install cargo-sweep: cargo install cargo-sweep');
-      "
+    command: 'cargo run -p repo-tools -- clean-sweep'
 
   clean-sweep-deps:
-    script: |
-      bun -e "
-        const { spawnSync } = require('child_process');
-        const r = spawnSync('cargo', ['sweep', '--installed'], { stdio: 'inherit', shell: process.platform === 'win32' });
-        if (r.status !== 0) console.log('Install cargo-sweep: cargo install cargo-sweep');
-      "
+    command: 'cargo run -p repo-tools -- clean-sweep-deps'
 
   test-hack:
     command: 'cargo hack check --workspace --feature-powerset'
@@ -187,14 +158,13 @@ tasks:
       - 'test-hack'
 
   boundary-check:
-    script: 'bun run scripts/boundary-check.ts'
+    command: 'cargo run -p repo-tools -- boundary-check'
     inputs:
       - 'Cargo.toml'
       - 'packages/*/Cargo.toml'
       - 'packages/**/Cargo.toml'
       - 'servers/*/Cargo.toml'
-      - 'scripts/boundary-check.ts'
-      - 'scripts/lib/spawn.ts'
+      - 'tools/repo-tools/src/**'
     deps:
       - '~:setup'
     options:
@@ -224,7 +194,7 @@ tasks:
       - 'fmt'
       - 'quality-lint'
       - 'typecheck'
-      - 'contracts-check'
+      - 'verify-contracts'
       - 'test-unit'
       - '~:boundary-check'
       - '~:gate-existence'
@@ -237,24 +207,18 @@ tasks:
   # ==========================================================================
 
   typegen:
-    script: 'bun run scripts/typegen.ts'
+    command: 'cargo run -p repo-tools -- typegen'
     inputs:
       - 'packages/contracts/**/src/**'
       - 'packages/contracts/**/Cargo.toml'
-      - 'scripts/typegen.ts'
-      - 'scripts/lib/spawn.ts'
+      - 'tools/repo-tools/src/**'
 
   # ==========================================================================
   # SECURITY TASKS
   # ==========================================================================
 
   audit-rust:
-    script: |
-      bun -e "
-        const { spawnSync } = require('child_process');
-        const r = spawnSync('cargo', ['audit'], { stdio: 'inherit', shell: process.platform === 'win32' });
-        if (r.status !== 0) console.log('Install cargo-audit: cargo install cargo-audit');
-      "
+    command: 'cargo run -p repo-tools -- audit-rust'
 
   audit-bun:
     script: 'bun audit || true'

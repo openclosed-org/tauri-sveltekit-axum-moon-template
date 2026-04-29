@@ -2,6 +2,3 @@
 # Tool versions are managed by mise (.tool-versions)
 rust:
   # Managed by rust-toolchain.toml
-node:
-  # Managed by mise — use system bun as package manager
-  packageManager: 'bun'

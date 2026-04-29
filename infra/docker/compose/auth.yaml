@@ -6,7 +6,7 @@
 #
 # Notes:
 # - This is a local-only single-node stack.
-# - `bootstrap-auth.sh` provisions OpenFGA store/model and can scaffold Zitadel resources.
+# - `repo-tools infra auth bootstrap` provisions OpenFGA store/model and scaffolds Zitadel resources.
 
 services:
   zitadel-postgres:

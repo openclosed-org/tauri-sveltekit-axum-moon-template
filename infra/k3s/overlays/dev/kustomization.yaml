@@ -1,15 +1,14 @@
 # Kustomization — Dev overlay
 # Minimal resources, single replica, debug enabled
-# Consumes SOPS-encrypted secrets (no .env files)
+# Consumes Kubernetes Secrets reconciled separately from infra/security/sops.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
   - ../../base
-  - ../../security/sops/dev/web-bff.enc.yaml
-  - ../../security/sops/dev/outbox-relay-worker.enc.yaml
-  - ./shared-counter-db/kustomization.yaml
-  # - ../../security/sops/dev/counter-service.enc.yaml  # Phase 1+: when counter-service is separate deployable
+
+# Secrets are applied by `repo-tools secrets reconcile --env dev` before deploy.
+# Kustomize cannot build SOPS-encrypted YAML because apiVersion/kind/name are encrypted.
 
 namespace: app
 

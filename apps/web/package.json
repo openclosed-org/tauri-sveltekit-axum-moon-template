@@ -12,7 +12,7 @@
     "lint": "biome check .",
     "format": "biome format --write .",
     "test:unit": "vitest run",
-    "test:e2e:preflight": "bun run ../../../../scripts/e2e/runtime-preflight.ts",
+    "test:e2e:preflight": "cargo run -p repo-tools -- apps e2e preflight",
     "test:e2e": "playwright test",
     "test:mobile": "maestro test tests/flow/"
   },

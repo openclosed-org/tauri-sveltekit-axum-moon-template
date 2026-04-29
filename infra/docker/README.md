@@ -13,18 +13,18 @@ docker/
 ├── Dockerfile.api            # Axum API (distroless/static runtime)
 ├── Dockerfile.web            # SvelteKit web (static-web-server, Rust)
 ├── Dockerfile.gateway        # Pingora gateway + static-web-server
-└── docker-entrypoint-gateway.sh  # Container entrypoint (starts both processes)
+└── docker-entrypoint-gateway.sh  # Container-only entrypoint (starts both processes)
 ```
 
 ## Quick Start
 
 ```bash
-# Start dev environment (API + SurrealDB + Gateway + Web)
-podman compose -f infra/docker/compose/app.yaml up -d
+# Start local core infrastructure
+cargo run -p repo-tools -- infra local up
 
 # Or use just commands
-just deploy dev
-just deploy dev-full
+just deploy-dev
+just status-dev
 ```
 
 ## Services

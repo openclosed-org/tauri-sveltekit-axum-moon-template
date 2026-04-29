@@ -1,4 +1,8 @@
-# Build — workspace build, single-service build, cross-compile
+# Build control plane
+#
+# This file owns artifact creation and compile-oriented package operations. It is
+# intentionally narrower than verification: build recipes produce binaries or
+# perform direct compile actions, while broader quality evidence lives in verify.just.
 
 # Build entire workspace
 build:
@@ -27,6 +31,10 @@ build-macos-aarch64:
 # Build API server only
 build-api:
     cargo build -p web-bff --release
+
+# 检查 storage-turso 编译
+check-storage-turso:
+    cargo check -p web-bff
 
 # Analyze binary size
 bloat:

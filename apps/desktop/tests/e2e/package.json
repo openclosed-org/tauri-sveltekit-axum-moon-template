@@ -2,6 +2,7 @@
   "name": "desktop-e2e-playwright",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "bun@1.3.12",
   "type": "module",
   "scripts": {
     "test:phase1": "playwright test tests/specs/smoke.spec.ts tests/specs/login.spec.ts tests/specs/counter.spec.ts --project=tauri",

@@ -45,7 +45,7 @@ staging 部署还需要：
 
 当 `just verify-counter-delivery strict` 失败时，按以下顺序排查：
 
-1. `infra/security/sops/scripts/verify-counter-shared-db.sh`
+1. `cargo run -p repo-tools -- secrets verify-counter-shared-db --env dev`
 2. `infra/security/sops/dev/counter-shared-db.enc.yaml`
 3. `infra/k3s/overlays/dev/outbox-relay-worker/kustomization.yaml`
 4. `infra/k3s/overlays/dev/projector-worker/kustomization.yaml`

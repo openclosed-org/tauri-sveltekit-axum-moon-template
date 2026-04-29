@@ -55,7 +55,7 @@ For backend work, start with:
 ```bash
 just setup
 just setup-deps
-bash infra/local/scripts/bootstrap.sh up
+cargo run -p repo-tools -- infra local up
 just dev-api
 just verify
 ```

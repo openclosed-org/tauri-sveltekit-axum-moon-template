@@ -89,7 +89,7 @@ jobs:
           shared-key: "backend-primary-static"
 
       - name: Rust fmt check (primary backend)
-        run: just verify-backend-primary
+        run: just check-backend-primary
 
   primary-tests:
     name: Primary Tests
@@ -208,11 +208,7 @@ jobs:
           done
 
           # Run k6 baseline (short duration for CI)
-          k6 run \
-            -e BASE_URL=http://localhost:3010 \
-            -e TEST_DURATION=10s \
-            -e TEST_VUS=3 \
-            scripts/k6-baseline.js
+          cargo run -p repo-tools -- k6-baseline --base-url http://localhost:3010 --duration 10s --vus 3
 
           kill $WEB_BFF_PID || true
 
