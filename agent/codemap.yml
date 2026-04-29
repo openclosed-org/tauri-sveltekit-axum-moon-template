@@ -15,7 +15,7 @@ notes:
   - Claims above declared require executable evidence from tests, gates, validators, or command output.
 
 truth_hierarchy:
-  - code, schemas, validators, tests, gates, scripts, and command output
+  - code, schemas, validators, tests, gates, executable helpers, and command output
   - generated artifacts only when produced from current sources and checked for drift
   - platform/model/** and services/*/model.yaml
   - agent manifests
@@ -47,7 +47,6 @@ source_of_truth:
   verification:
     paths:
       - verification/**
-      - scripts/**
       - justfiles/**
       - moon.yml
     note: Evidence comes from executable checks, not metadata declarations.
@@ -171,8 +170,7 @@ human_authored:
   - workers/**
   - verification/**
   - fixtures/**
-  - scripts/**
-  - justfiles/**
+      - justfiles/**
 
 write_boundaries:
   planner:

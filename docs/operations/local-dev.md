@@ -8,8 +8,8 @@
 
 当前本地开发应优先理解为两层：
 
-1. 基础依赖层：`infra/local/scripts/bootstrap.sh` 管理 NATS、Valkey、MinIO，以及可选的 sqld 相关基础设施。
-2. 本地 auth 层：`infra/local/scripts/bootstrap-auth.sh` 管理 `Zitadel + OpenFGA`，用于 Phase 5 本地闭环。
+1. 基础依赖层：`repo-tools infra local ...` 管理 NATS、Valkey、MinIO，以及可选的 sqld 相关基础设施。
+2. 本地 auth 层：`repo-tools infra auth ...` 管理 `Zitadel + OpenFGA`，用于 Phase 5 本地闭环。
 3. 应用运行层：通过 `just` / `moon` 启动 `web-bff`、其他 BFF 或需要的开发进程。
 
 后端默认入口不是 `.env` 驱动的全仓库教程，而是围绕 `counter-service` 主链建立的最小本地闭环。
@@ -22,7 +22,7 @@
 
 当前本地与 CI 的验证入口也按这两条 lane 区分：
 
-1. 默认主链：`just verify-backend-primary` + `just test-backend-primary`
+1. 默认主链：`just check-backend-primary` + `just test-backend-primary`
 2. 可选 auth lane：`just verify-auth-optional` + `just test-auth-optional`
 
 ## 2. 推荐阅读顺序
@@ -33,25 +33,23 @@
 2. `infra/local/README.md`
 3. `justfiles/dev.just`
 4. `justfiles/sops.just`
-5. `infra/local/scripts/bootstrap.sh`
-6. `infra/local/scripts/bootstrap-auth.sh`
+5. `justfiles/ops.just`
+6. `infra/docker/compose/core.yaml`
 
 ## 2.1 平台前置条件
 
 当前仓库的本地后端主链并不是“所有命令在三平台纯原生完全等价”。更准确的理解是：
 
-1. macOS / Linux：当前是最接近仓库默认脚本假设的平台。
-2. Windows：Rust / Bun / Node / just / moon 本身可以原生运行，但本地 infra、SOPS shell 脚本、Podman compose、以及部分 Unix CLI 依赖当前更适合放在 `WSL2` 或 `Git Bash` 环境里执行。
-3. 如果目标是“单机启动并跑通默认后端链”，当前最稳的跨平台收敛方式是：
-   - 应用与测试命令：`just` / `moon` / `cargo`
-   - infra / SOPS / auth bootstrap：统一通过 POSIX shell 环境执行
+1. macOS / Linux：默认支持 `just` / `moon` / `cargo` 与本地容器 runtime。
+2. Windows：Rust / Bun / Node / just / moon 本身可以原生运行；`repo-tools infra local ...` 不要求 Git Bash/WSL，但仍需要 Docker Desktop 或 Podman Desktop。
+3. Linux host 专属操作，例如 k3s bootstrap apply、VPS bootstrap apply、systemd deploy，不是 Windows 桌面命令。
 
 当前已经确认的现实约束：
 
-1. `just dev-api`、`just verify-backend-primary`、`just test-backend-primary` 这类 `cargo` / `moon` 主链命令更接近跨平台。
-2. `bash infra/local/scripts/bootstrap.sh ...`、`bash infra/local/scripts/bootstrap-auth.sh ...`、`just sops-run ...` 仍依赖 `bash`、`find`、`grep`、`sed`、`pkill`、`curl`、`jq`、`yq`、`sops` 等 Unix 工具链假设。
-3. `bootstrap-auth.sh` 当前硬编码使用 `podman compose`，并依赖 `podman cp` 与固定容器命名形状，因此它不是 Windows PowerShell 原生脚本。
-4. 这意味着当前文档应把 Windows 支持表述为“可行，但建议 WSL2/Git Bash + Podman machine”，而不是“所有 shell 下无差别原生支持”。
+1. `just dev-api`、`just check-backend-primary`、`just test-backend-primary` 这类 `cargo` / `moon` 主链命令更接近跨平台。
+2. `repo-tools secrets ...`、`repo-tools infra local ...`、`repo-tools ops migrate ...` 是 Rust 控制面入口；它们的跨平台能力仍取决于外部工具是否可用。
+3. `repo-tools infra auth ...` 命令层不再依赖本地 shell 脚本，但当前仍使用 Podman 运行 auth compose stack。
+4. 这意味着 Windows 支持应按命令声明，而不是笼统承诺所有 infra 操作都可在 Windows 桌面原生执行。
 
 ## 3. 当前真实入口
 
@@ -61,27 +59,28 @@
 
 ```bash
 just setup
-just setup-deps
 just doctor
 just doctor-full
 ```
 
 这些命令比手写安装步骤更接近当前仓库的真实入口。
 
+可选 app shell 依赖从 app 自己的作用域安装，例如 `bun install --cwd apps/web`。
+
 ### 3.2 启动基础依赖
 
 当前本地基础设施入口是：
 
 ```bash
-bash infra/local/scripts/bootstrap.sh up
-bash infra/local/scripts/bootstrap.sh status
+just deploy-dev
+just status-dev
 ```
 
 当任务涉及本地 `Zitadel/OpenFGA` 时，再额外启动：
 
 ```bash
-bash infra/local/scripts/bootstrap-auth.sh bootstrap
-source infra/local/generated/auth.env
+just auth-bootstrap
+# load infra/local/generated/auth.env in your shell if the process needs those values
 ```
 
 脚本当前会管理的核心依赖包括：
@@ -114,7 +113,7 @@ just auth-down
 1. `just dev-api` 是更贴近后端默认视角的入口之一。
 2. root backend-core contract 不再暴露前端或桌面壳层入口。
 3. `just auth-bootstrap` 会把本地 `Zitadel/OpenFGA` 起起来，并生成 `infra/local/generated/auth.env` 供 `web-bff` 直接读取。
-4. `just verify-backend-primary` / `just test-backend-primary` 对应默认后端 admission lane。
+4. `just check-backend-primary` / `just test-backend-primary` 对应默认后端 admission lane。
 5. `just verify-auth-optional` / `just test-auth-optional` 仅在 auth lane 变更时需要额外运行。
 
 补充约束：
@@ -177,7 +176,21 @@ just sops-run DEPLOYABLE=projector-worker ENV=dev CMD='cargo run -p projector-wo
 2. 可以避免本地路径和交付路径分叉得过早。
 3. 若要走本地 Podman auth 栈，可先 `source infra/local/generated/auth.env`，再用 host-process 或 `just sops-run` 启动 `web-bff`。
 
-## 4. 以 counter 参考链理解本地开发
+## 4. 平台支持边界
+
+| 命令或脚本 | 平台承诺 |
+| --- | --- |
+| `repo-tools secrets ...` | 跨平台控制面；需要 `sops` / `age` 等外部工具。 |
+| `repo-tools infra local ...` | 跨平台控制面；需要 Docker Desktop 或 Podman Desktop。 |
+| `repo-tools infra auth ...` | 命令层跨平台；当前 auth stack 仍以 Podman compose 为主要 runtime。 |
+| `repo-tools infra k3s deploy ...` | 可从开发机发起；需要 `kubectl` / `kustomize` 与集群访问。 |
+| `repo-tools ops migrate ...` | 跨平台控制面；`--apply` 需要本机可用的 `sqlite3`。 |
+| `infra/docker/docker-entrypoint-gateway.sh` | 容器镜像 entrypoint，不是宿主机控制面命令。 |
+| `infra/k3s/scripts/bootstrap-k3s.sh` | Linux host only；不是 Windows 桌面命令。 |
+| `ops/scripts/bootstrap/vps.sh` | Linux VPS host only；不是 Windows 桌面命令。 |
+| systemd recipes | Linux/systemd only。 |
+
+## 5. 以 counter 参考链理解本地开发
 
 当前本地后端最值得优先跑通的不是“所有模块一起启动”，而是下面这条最小主线：
 

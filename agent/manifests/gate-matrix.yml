@@ -32,7 +32,7 @@ evidence_levels:
 
 gates:
   verify_backend_primary:
-    command: ["just", "verify-backend-primary"]
+    command: ["just", "check-backend-primary"]
     label: Default backend-core static guardrail
     strength: guardrail
     scope: backend-core
@@ -63,7 +63,7 @@ gates:
     scope: repo
 
   contracts_check:
-    command: ["just", "contracts-check", "strict"]
+    command: ["just", "verify-contracts", "strict"]
     label: Contract validation
     strength: guardrail
     scope: contract
@@ -113,7 +113,7 @@ gates:
     scope: platform
 
   verify_generated:
-    command: ["just", "verify-generated"]
+    command: ["just", "verify-generated-artifacts"]
     label: Generated artifact drift check
     strength: guardrail
     scope: platform
@@ -131,7 +131,7 @@ gates:
     scope: delivery
 
   validate_resilience:
-    command: ["bun", "run", "scripts/validate-resilience.ts", "--mode", "warn"]
+    command: ["cargo", "run", "-p", "repo-tools", "--", "validate-resilience", "--mode", "warn"]
     label: Resilience checks
     strength: advisory
     scope: worker
@@ -157,7 +157,6 @@ path_rules:
       - justfiles/**
       - moon.yml
       - package.json
-      - scripts/**
     recommended:
       - boundary_check
       - typecheck
@@ -305,5 +304,5 @@ selection_rules:
   - Invariant gates are reserved for P0 correctness and release readiness.
   - Do not claim a gate passed unless it was executed in this change context.
   - Do not claim semantic correctness from YAML-only changes.
-  - Prefer `just verify-backend-primary` for ordinary backend-core work.
+  - Prefer `just check-backend-primary` for ordinary backend-core work.
   - Use `just verify` for broader repo-wide confidence, not as an automatic final gate for every change.

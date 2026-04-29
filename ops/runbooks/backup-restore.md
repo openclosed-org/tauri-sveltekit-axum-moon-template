@@ -19,7 +19,7 @@ This runbook covers backup and restore procedures for all data stores.
 
 ```bash
 # Stop the application to ensure clean state
-bash infra/local/scripts/bootstrap.sh down
+cargo run -p repo-tools -- infra local down
 
 # Backup database file
 BACKUP_DIR="./backups/$(date +%Y%m%d_%H%M%S)"
@@ -27,7 +27,7 @@ mkdir -p "$BACKUP_DIR"
 cp .data/*.db "$BACKUP_DIR/" 2>/dev/null || echo "No database files found"
 
 # Restart services
-bash infra/local/scripts/bootstrap.sh up
+cargo run -p repo-tools -- infra local up
 
 log_success "Database backed up to $BACKUP_DIR"
 ```
@@ -114,14 +114,14 @@ mc mirror myminio/uploads ./backups/minio-uploads-$(date +%Y%m%d_%H%M%S)
 
 ```bash
 # Stop services
-bash infra/local/scripts/bootstrap.sh down
+cargo run -p repo-tools -- infra local down
 
 # Restore from backup
 BACKUP_FILE="./backups/20260412_120000/app.db"
 cp "$BACKUP_FILE" .data/app.db
 
 # Restart services
-bash infra/local/scripts/bootstrap.sh up
+cargo run -p repo-tools -- infra local up
 
 # Verify restore
 sqlite3 .data/app.db "SELECT COUNT(*) FROM sessions;"

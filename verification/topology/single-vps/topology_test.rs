@@ -24,7 +24,7 @@ mod single_vps {
     fn health_checks_respond() {
         // GET /healthz → 200
         // GET /readyz → 200
-        assert!(true, "Placeholder — validated by just test-api-e2e");
+        assert!(true, "Placeholder — validated by web-bff HTTP integration tests");
     }
 }
 

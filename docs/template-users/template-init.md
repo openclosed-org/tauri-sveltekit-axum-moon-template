@@ -80,9 +80,6 @@ Current implementation supports `backend-core` dry-run and apply. Other profiles
 9. `apps/**`
 10. `packages/ui/**`
 11. `verification/e2e/**`
-12. `scripts/dev-desktop.ts`
-13. `scripts/test/run-frontend.ts`
-14. `scripts/e2e/**`
 
 ### Review manually
 
@@ -116,7 +113,7 @@ The backend-core profile is considered safe only when these commands pass withou
 ```bash
 just audit-backend-core strict
 just typecheck
-just contracts-check strict
+just verify-contracts strict
 just verify
 ```
 

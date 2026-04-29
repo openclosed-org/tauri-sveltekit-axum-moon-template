@@ -7,7 +7,7 @@ resources:
   - ../../../base/configmap-outbox-relay-worker.yaml
   - ../../../base/deployment-outbox-relay-worker.yaml
   # TODO: Create staging SOPS secrets before first deploy
-  # - ../../../security/sops/staging/outbox-relay-worker.enc.yaml
+  # Secrets are applied by `repo-tools secrets reconcile --env staging` before deploy.
 
 namespace: app
 

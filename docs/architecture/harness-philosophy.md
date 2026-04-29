@@ -63,7 +63,7 @@ P0 invariants must be demonstrated by executable tests, gates, or command-output
 
 ## Default Backend Core
 
-The default backend-core lane should remain light enough for ordinary development. Prefer `just verify-backend-primary` and path-scoped guardrails before requiring repo-wide or release gates.
+The default backend-core lane should remain light enough for ordinary development. Prefer `just check-backend-primary` and path-scoped guardrails before requiring repo-wide or release gates.
 
 `just verify` is the default repo-wide backend-core gate when broader confidence is needed, but it should not imply that every change must run platform, frontend, desktop, production, or release gates.
 

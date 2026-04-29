@@ -4,23 +4,23 @@
 
 ## 入口
 
-1. `scripts/bootstrap.sh`：默认本地基础设施入口。
-2. `scripts/bootstrap-auth.sh`：本地 auth 栈入口。
+1. `repo-tools infra local ...`：默认本地基础设施入口。
+2. `repo-tools infra auth ...`：本地 auth 栈入口。
 3. `../../docs/operations/local-dev.md`：本地开发主说明。
 4. `../../justfiles/sops.just`：本地 secrets 注入默认入口。
 
 ## 常用命令
 
 ```bash
-bash infra/local/scripts/bootstrap.sh up
-bash infra/local/scripts/bootstrap.sh status
-bash infra/local/scripts/bootstrap.sh logs
-bash infra/local/scripts/bootstrap.sh down
+cargo run -p repo-tools -- infra local up
+cargo run -p repo-tools -- infra local status
+cargo run -p repo-tools -- infra local logs --follow
+cargo run -p repo-tools -- infra local down
 
-bash infra/local/scripts/bootstrap-auth.sh bootstrap
-bash infra/local/scripts/bootstrap-auth.sh status
-bash infra/local/scripts/bootstrap-auth.sh logs
-bash infra/local/scripts/bootstrap-auth.sh down
+cargo run -p repo-tools -- infra auth bootstrap
+cargo run -p repo-tools -- infra auth status
+cargo run -p repo-tools -- infra auth logs
+cargo run -p repo-tools -- infra auth down
 ```
 
 当前脚本会管理的核心依赖包括：
@@ -35,4 +35,4 @@ bash infra/local/scripts/bootstrap-auth.sh down
 
 1. 不要把 `.env` 写成当前默认本地 secrets 路径；后端默认应优先看 `just sops-run`。
 2. 不要把前端或桌面壳层启动步骤写成所有后端任务的默认前置条件。
-3. 不要在这个 README 里重复维护所有 compose 细节，真实配置以脚本和 compose 文件为准。
+3. 不要在这个 README 里重复维护所有 compose 细节，真实配置以 `repo-tools` 和 compose 文件为准。

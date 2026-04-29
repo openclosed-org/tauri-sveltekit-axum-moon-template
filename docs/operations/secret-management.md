@@ -133,7 +133,7 @@ just sops-verify-counter-shared-db ENV=dev
 ```bash
 just sops-validate
 just sops-verify-counter-shared-db ENV=dev
-bash infra/security/sops/scripts/decrypt-env.sh infra/security/sops/dev/web-bff.enc.yaml
+cargo run -p repo-tools -- secrets decrypt-env infra/security/sops/dev/web-bff.enc.yaml
 just sops-run DEPLOYABLE=web-bff ENV=dev
 ```
 
@@ -141,7 +141,7 @@ just sops-run DEPLOYABLE=web-bff ENV=dev
 
 1. `just sops-validate` 验证 key 与 `.sops.yaml`、以及样例解密是否真实可用。
 2. `just sops-verify-counter-shared-db ENV=dev` 验证 shared DB secret 是否仍残留模板占位符，是否错误指向本地 `file:` URL。
-3. `decrypt-env.sh` 可直接观察当前会注入哪些环境变量。
+3. `repo-tools secrets decrypt-env` 可直接观察当前会注入哪些环境变量。
 4. `just sops-run` 则是最终运行态验证。
 
 当前常见失败信号及含义：

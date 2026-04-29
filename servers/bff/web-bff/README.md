@@ -24,7 +24,7 @@
 ## 当前调试与验证
 
 1. 默认后端调试可优先使用 `APP_AUTH_MODE=dev_headers`，避免 OAuth/Zitadel 成为 `tenant/init` 与 `counter/*` handler 调试前提。
-2. 默认 admission 关注 `counter-service + tenant-service + web-bff`，对应 `just verify-backend-primary` / `just test-backend-primary`。
+2. 默认 admission 关注 `counter-service + tenant-service + web-bff`，对应 `just check-backend-primary` / `just test-backend-primary`。
 3. Zitadel/OpenFGA 保留为可选 auth lane，对应 `just verify-auth-optional` / `just test-auth-optional`。
 
 ## Protected Endpoint Error Matrix

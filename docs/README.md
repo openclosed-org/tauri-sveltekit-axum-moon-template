@@ -93,8 +93,8 @@ If you are working on backend deployables, prefer the first path by default.
 
 `apps/**` and `packages/ui/**` are optional shell surface in this repository, not part of the default backend reference chain.
 
-1. default backend commands such as `just dev`, `just typecheck`, `just contracts-check`, and `just verify` must not require SvelteKit, Tauri, mobile shells, or `packages/ui`
-2. root `just`, `moon`, and shared scripts must not expose app-shell commands or app-specific validation lanes
+1. default backend commands such as `just dev`, `just typecheck`, `just verify-contracts`, and `just verify` must not require SvelteKit, Tauri, mobile shells, or `packages/ui`
+2. root `just`, `moon`, and shared repo-control helpers must not expose app-shell commands or app-specific validation lanes
 3. if you keep `apps/**`, treat them as self-owned shells with their own local commands and validation entrypoints
 4. derived backend-only projects can preview or apply the app-shell removal set with `just template-init backend-core dry-run` and then prove the root contract with `just audit-backend-core strict`
 

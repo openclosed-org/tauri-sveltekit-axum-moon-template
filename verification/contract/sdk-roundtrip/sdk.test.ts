@@ -18,7 +18,7 @@ describe('SDK Type Generation', () => {
 
   test('generated types match contract definitions', () => {
     // Verify that types in packages/contracts/generated/ match
-    // the source Rust types. This is validated by `just contracts-check`.
+    // the source Rust types. This is validated by `just verify-contracts`.
     expect(true).toBe(true);
   });
 });

@@ -6,8 +6,8 @@ kind: Kustomization
 resources:
   - ../../../base/configmap-outbox-relay-worker.yaml
   - ../../../base/deployment-outbox-relay-worker.yaml
-  - ../../../security/sops/dev/outbox-relay-worker.enc.yaml
-  - ../shared-counter-db/kustomization.yaml
+
+# Secrets are applied by `repo-tools secrets reconcile --env dev` before deploy.
 
 namespace: app
 

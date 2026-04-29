@@ -10,7 +10,7 @@
 
 ## Minimum Expectations
 
-1. Core local infrastructure can start via `infra/local/scripts/bootstrap.sh`.
+1. Core local infrastructure can start via `repo-tools infra local up`.
 2. `web-bff` can run as the default synchronous backend entrypoint.
 3. Optional workers can still be started independently when a task requires them.
 

@@ -16,12 +16,12 @@ This directory contains runbooks for common operational tasks.
 
 ### Start Local Infrastructure
 ```bash
-bash infra/local/scripts/bootstrap.sh up
+cargo run -p repo-tools -- infra local up
 ```
 
 ### Run Migrations
 ```bash
-bash ops/migrations/runner/migrate.sh up local
+cargo run -p repo-tools -- ops migrate --env local --direction up --dry-run
 ```
 
 ### Deploy to Kubernetes
@@ -39,7 +39,7 @@ kubectl logs <pod-name> -n app
 ### View Logs
 ```bash
 # Local infrastructure
-bash infra/local/scripts/bootstrap.sh logs
+cargo run -p repo-tools -- infra local logs --follow
 
 # Kubernetes
 kubectl logs -n app -l app=api

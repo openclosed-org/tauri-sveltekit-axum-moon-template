@@ -354,7 +354,7 @@ counter 链路要求：
 
 当前仓库中，这部分能力已经有若干落点，但尚未围绕 counter 形成统一入口：
 
-1. `just verify-generated`、`drift-check`、`sdk-drift-check`
+1. `just verify-generated-artifacts`、`drift-check`、`sdk-drift-check`
 2. `docs/operations/gitops.md`
 3. `docs/operations/secret-management.md`
 4. `ops/**` 与 `infra/**` 下的运维与交付文件
@@ -362,7 +362,7 @@ counter 链路要求：
 
 当前真实状态：
 
-1. 仓库已新增 `scripts/verify-counter-delivery.ts` 与 `just verify-counter-delivery`，把 counter shared DB secret 校验、worker overlay、Flux app 落点收口为可执行 admission。
+1. 仓库已新增 `just verify-counter-delivery` 这条可执行 admission，把 counter shared DB secret 校验、worker overlay、Flux app 落点收口到 `repo-tools` 控制面。
 2. gate 已扩展到 staging overlay + Flux app 检查（路径匹配、ENV 替换、secret 引用）。
 3. gate 已包含 platform model drift 检查（deployable 文件存在、ownership-map 声明 counter entity、projector-worker 有 async-projection profile）和 rollback 检查（runbook 必须提及 rollback）。
 4. `platform-ops-agent` scoped gate 已接入这条检查，避免 counter delivery 继续只存在于文档层。

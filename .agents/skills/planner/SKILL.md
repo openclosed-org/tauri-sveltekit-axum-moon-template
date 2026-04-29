@@ -58,7 +58,7 @@ User request
 | `agent/**` | Routing rules, templates, checklists, codemap updates |
 | `docs/**` (non-generated) | Architecture docs, plans, ADRs |
 | `AGENTS.md` | Global orchestration protocol |
-| `scripts/**` | Helper scripts and orchestration helpers |
+| `tools/repo-tools/**` | Shared repo-control and orchestration helpers |
 
 ---
 

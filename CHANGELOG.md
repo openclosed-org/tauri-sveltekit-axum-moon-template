@@ -40,7 +40,7 @@ Preferred release views:
 - Rebuilt `agent/manifests/gate-matrix.yml` around changed paths, risk categories, and evidence levels instead of subagent identity.
 - Clarified that `services/<name>/model.yaml`, `platform/model/**`, and agent YAML declarations are semantic summaries or metadata, not formal proof of system correctness.
 - Clarified that `advisory`, `guardrail`, and `invariant` gates have different blocking strength, and that invariant gates are reserved for P0 correctness and release readiness.
-- Clarified that `just verify-backend-primary` is the default backend-core guardrail and `just verify` is a broader repo-wide guardrail, not an automatic requirement to run every platform, frontend, desktop, production, or release gate.
+- Clarified that `just check-backend-primary` is the canonical default backend-core guardrail and `just verify` is a broader repo-wide guardrail, not an automatic requirement to run every platform, frontend, desktop, production, or release gate.
 - Strengthened the root agent protocol around bug fixes: reproduce or localize failures, identify violated invariants, make minimal causal repairs, add regression evidence, and never claim unrun gates as passed.
 
 ### Fixed
@@ -57,8 +57,8 @@ Preferred release views:
 
 ### Migration Notes
 
-- Use `just verify-backend-primary` for ordinary backend-core development and add path-specific guardrails from `agent/manifests/gate-matrix.yml` when contracts, platform model, workers, topology, delivery, or release risk is involved.
-- Use `bun run scripts/run-scoped-gates.ts --list` as compatibility guidance only; it no longer runs heavyweight gates just because a subagent handled a change.
+- Use `just check-backend-primary` for ordinary backend-core development and add path-specific guardrails from `agent/manifests/gate-matrix.yml` when contracts, platform model, workers, topology, delivery, or release risk is involved.
+- Use `cargo run -p repo-tools -- gate-guidance --list` as gate-selection guidance; it does not run heavyweight gates just because an agent scope appears in the workflow.
 - Treat app-shell validation as local to retained app shells. Root backend-core admission should remain independent from optional frontend and desktop surfaces.
 
 ## v0.2.0 - 2026-04-04

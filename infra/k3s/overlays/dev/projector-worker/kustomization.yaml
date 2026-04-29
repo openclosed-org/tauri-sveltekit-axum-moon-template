@@ -6,8 +6,8 @@ kind: Kustomization
 resources:
   - ../../../base/configmap-projector-worker.yaml
   - ../../../base/deployment-projector-worker.yaml
-  - ../../../security/sops/dev/projector-worker.enc.yaml
-  - ../shared-counter-db/kustomization.yaml
+
+# Secrets are applied by `repo-tools secrets reconcile --env dev` before deploy.
 
 namespace: app
 

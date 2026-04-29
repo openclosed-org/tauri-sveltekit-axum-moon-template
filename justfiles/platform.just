@@ -1,4 +1,8 @@
-# Platform — platform model validation and catalog generation
+# Platform control plane
+#
+# This file owns platform-model specific validation, generation, and inventory
+# commands. Canonical entrypoints use explicit verbs (`validate-*`, `generate-*`,
+# `verify-*`) consistently across help, docs, and automation.
 
 # ── Model Validation ──────────────────────────────────────────
 
@@ -13,14 +17,14 @@ validate-platform-json:
 
 # Validate service ownership and state semantics alignment
 validate-state MODE='warn':
-    bun run scripts/validate-state.ts --mode {{MODE}}
+    cargo run -p repo-tools -- validate-state --mode {{MODE}}
 
 # Validate workflow completeness beyond schema shape
 validate-workflows MODE='warn':
-    bun run scripts/validate-workflows.ts --mode {{MODE}}
+    cargo run -p repo-tools -- validate-workflows --mode {{MODE}}
 
-# Generate platform catalog from models
-gen-platform:
+# canonical platform catalog generation entrypoint
+generate-platform-catalog:
     @echo "Generating platform catalog..."
     cargo run -p platform-generator -- --platform-dir platform
     @echo "Platform catalog generated"
@@ -34,7 +38,7 @@ clean-platform:
 # Regenerate platform catalog (clean + generate)
 regenerate-platform:
     just clean-platform
-    just gen-platform
+    just generate-platform-catalog
 
 # ── Dependency Graph Validation ───────────────────────────────
 
@@ -45,8 +49,8 @@ validate-deps:
 
 # ── Contract Drift Detection ──────────────────────────────────
 
-# Detect drift between platform models and contracts
-validate-contracts:
+# canonical entrypoint: platform-model drift against contracts
+validate-contract-drift:
     @echo "Checking contract drift..."
     cargo run -p contract-drift-detector -- --platform-dir platform
 
@@ -59,11 +63,11 @@ validate-topology:
 
 # Verify replay/rebuild reference hooks remain available
 verify-replay MODE='warn':
-    bun run scripts/verify-replay.ts --mode {{MODE}}
+    cargo run -p repo-tools -- verify-replay --mode {{MODE}}
 
 # Verify counter delivery admission path remains executable
 verify-counter-delivery MODE='warn':
-    bun run scripts/verify-counter-delivery.ts --mode {{MODE}}
+    cargo run -p repo-tools -- verify-counter-delivery --mode {{MODE}}
 
 # ── Security Validation ──────────────────────────────────────
 
@@ -91,20 +95,17 @@ gen-sdk:
 
 # Clean generated SDKs
 clean-sdk:
-    @echo "Cleaning generated SDKs..."
-    @find packages/sdk/typescript -mindepth 1 -depth ! -name '.gitkeep' -exec rm -rf {} + 2>/dev/null || true
-    @echo "Skipping packages/sdk/rust cleanup because those files are tracked in-repo today"
-    @echo "SDKs cleaned"
+    cargo run -p repo-tools -- clean-sdk
 
 # ── Golden Baseline Verification ──────────────────────────────
 
-# Verify generated artifacts match golden baseline
-verify-generated:
-    @bash scripts/verify-generated.sh
+# canonical entrypoint: generated artifact baseline verification
+verify-generated-artifacts:
+    cargo run -p repo-tools -- verify-generated-artifacts
 
 # Commit golden baselines for ALL generated artifacts
 commit-golden-baseline:
-    @bash scripts/commit-golden-baseline.sh
+    cargo run -p repo-tools -- commit-golden-baseline
 
 # ── Full Health Check ─────────────────────────────────────────
 
@@ -125,7 +126,7 @@ platform-doctor:
     just validate-workflows strict || (echo "Workflow validation failed"; exit 1)
     @echo ""
     @echo "5. Checking contract drift..."
-    just validate-contracts || true
+    just validate-contract-drift || true
     @echo ""
     @echo "6. Checking topology..."
     just validate-topology || (echo "Topology check failed"; exit 1)
@@ -140,13 +141,13 @@ platform-doctor:
     just verify-replay strict || (echo "Replay verification failed"; exit 1)
     @echo ""
     @echo "10. Generating catalog..."
-    just gen-platform || (echo "Catalog generation failed"; exit 1)
+    just generate-platform-catalog || (echo "Catalog generation failed"; exit 1)
     @echo ""
     @echo "11. Verifying counter delivery admission..."
     just verify-counter-delivery strict || (echo "Counter delivery verification failed"; exit 1)
     @echo ""
     @echo "12. Verifying golden baseline..."
-    just verify-generated || true
+    just verify-generated-artifacts || true
     @echo ""
     @echo "Platform health check passed"
 
@@ -154,24 +155,12 @@ platform-doctor:
 
 # List all services defined in platform model
 platform-services:
-    @echo "Services defined in platform model:"
-    @for f in platform/model/services/*.yaml; do \
-        name=$(basename "$f" .yaml); \
-        echo "  - $name"; \
-    done
+    cargo run -p repo-tools -- platform-services
 
 # List all deployables defined in platform model
 platform-deployables:
-    @echo "Deployables defined in platform model:"
-    @for f in platform/model/deployables/*.yaml; do \
-        name=$(basename "$f" .yaml); \
-        echo "  - $name"; \
-    done
+    cargo run -p repo-tools -- platform-deployables
 
 # List all resources defined in platform model
 platform-resources:
-    @echo "Resources defined in platform model:"
-    @for f in platform/model/resources/*.yaml; do \
-        name=$(basename "$f" .yaml); \
-        echo "  - $name"; \
-    done
+    cargo run -p repo-tools -- platform-resources
