@@ -24,20 +24,15 @@ deploy-bootstrap-vps:
 
 # 在目标服务器上部署并启动 axum API 服务
 deploy-api:
-    @systemctl is-active --quiet axum-api.service && echo "API service is running" || echo "API service will be started"
-    sudo systemctl daemon-reload
-    sudo systemctl enable axum-api.service
-    sudo systemctl restart axum-api.service
-    sudo systemctl status axum-api --no-pager
+    cargo run -p repo-tools -- ops service deploy --service axum-api
 
 # 停止 API 服务
 stop-api:
-    sudo systemctl stop axum-api.service
-    @echo "API service stopped"
+    cargo run -p repo-tools -- ops service stop --service axum-api
 
 # 查看 API 服务日志
 logs-api:
-    sudo journalctl -u axum-api.service -f --no-pager
+    cargo run -p repo-tools -- ops service logs --service axum-api
 
 # 生成 systemd service 文件（需在目标服务器执行）
 generate-service BIN_PATH='' ENV_FILE='' USER='root' GROUP='root':
@@ -61,15 +56,8 @@ migrate-status:
 
 # 创建新的 migration 文件
 migrate-create NAME='':
-    @if [ -z "{{NAME}}" ]; then \
-        echo "Usage: just migrate-create add_counter_index"; \
-        exit 1; \
-    fi
-    @TIMESTAMP=$(date +%Y%m%d%H%M%S); \
-    MIGRATION_FILE="ops/migrations/api/${TIMESTAMP}_{{NAME}}.sql"; \
-    mkdir -p ops/migrations/api; \
-    touch "$MIGRATION_FILE"; \
-    echo "Created migration: $MIGRATION_FILE"
+    @test -n "{{NAME}}" || (echo "Usage: just migrate-create add_counter_index" && exit 1)
+    cargo run -p repo-tools -- dev migration create "{{NAME}}"
 
 # 重置数据库（仅限开发环境，危险操作）
 migrate-reset:

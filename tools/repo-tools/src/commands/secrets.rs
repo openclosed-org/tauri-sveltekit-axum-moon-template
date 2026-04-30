@@ -7,11 +7,12 @@ use std::process::{Command, Stdio};
 use anyhow::{Context, Result, bail};
 
 use crate::cli::{
-    SecretsArgs, SecretsCommand, SecretsDecryptEnvArgs, SecretsEnvArgs, SecretsReconcileArgs,
-    SecretsRunArgs,
+    SecretsArgs, SecretsCommand, SecretsDecryptEnvArgs, SecretsEditArgs, SecretsEncryptArgs,
+    SecretsEnvArgs, SecretsReconcileArgs, SecretsRunArgs,
 };
 use crate::support::{
-    collect_files_with_extension, normalize_slashes, read, require_tool, workspace_root,
+    collect_files_with_extension, normalize_slashes, read, require_tool, user_home_dir,
+    workspace_root,
 };
 
 const AGE_KEY_RELATIVE_PATH: &str = ".config/sops/age/key.txt";
@@ -23,6 +24,9 @@ pub(crate) fn run(args: SecretsArgs) -> Result<()> {
         SecretsCommand::VerifyCounterSharedDb(args) => verify_counter_shared_db_cli(args),
         SecretsCommand::Run(args) => run_with_secrets(args),
         SecretsCommand::Reconcile(args) => reconcile(args),
+        SecretsCommand::Encrypt(args) => encrypt(args),
+        SecretsCommand::Edit(args) => edit(args),
+        SecretsCommand::SetupFluxSecret => setup_flux_secret(),
         SecretsCommand::Validate => validate(),
     }
 }
@@ -256,6 +260,92 @@ fn validate() -> Result<()> {
     Ok(())
 }
 
+fn encrypt(args: SecretsEncryptArgs) -> Result<()> {
+    require_tool("sops", "mise install")?;
+    let root = workspace_root()?;
+    let source = root
+        .join("infra/security/sops/templates")
+        .join(&args.env)
+        .join(format!("{}.yaml", args.deployable));
+    if !source.is_file() {
+        bail!("template secret not found: {}", source.display());
+    }
+    let target = secret_path(&root, &args.env, &args.deployable);
+    println!(
+        "Encrypting secrets for deployable: {} ({})",
+        args.deployable, args.env
+    );
+    let output = Command::new("sops")
+        .args(["--encrypt", "--input-type", "yaml", "--output-type", "yaml"])
+        .arg(&source)
+        .output()
+        .with_context(|| format!("failed to encrypt {}", source.display()))?;
+    if !output.status.success() {
+        bail!("sops encrypt failed for {}", source.display());
+    }
+    std::fs::write(&target, output.stdout)
+        .with_context(|| format!("failed to write {}", target.display()))?;
+    println!("Encrypted: {}", target.display());
+    Ok(())
+}
+
+fn edit(args: SecretsEditArgs) -> Result<()> {
+    require_tool("sops", "mise install")?;
+    let root = workspace_root()?;
+    let target = secret_path(&root, &args.env, &args.deployable);
+    if !target.is_file() {
+        bail!("encrypted secret not found: {}", target.display());
+    }
+    println!("Editing: {} ({})", args.deployable, args.env);
+    let status = Command::new("sops")
+        .arg(&target)
+        .status()
+        .with_context(|| format!("failed to open sops for {}", target.display()))?;
+    if !status.success() {
+        bail!(
+            "sops edit failed with status {}",
+            status.code().unwrap_or(1)
+        );
+    }
+    println!("Saved (encrypted in place)");
+    Ok(())
+}
+
+fn setup_flux_secret() -> Result<()> {
+    require_tool("kubectl", "install kubectl and configure cluster access")?;
+    let age_key = age_key_path()?;
+    if !age_key.is_file() {
+        bail!(
+            "age key not found at {}. Generate one with `cargo run -p repo-tools -- dev age-key generate`",
+            age_key.display()
+        );
+    }
+
+    println!("Creating Flux SOPS secret in flux-system namespace");
+    let output = Command::new("kubectl")
+        .args([
+            "create",
+            "secret",
+            "generic",
+            "sops-age",
+            "--namespace",
+            "flux-system",
+            "--from-file",
+        ])
+        .arg(format!("age.agekey={}", age_key.display()))
+        .args(["--dry-run=client", "-o", "yaml"])
+        .output()
+        .context("failed to generate flux secret manifest")?;
+    if !output.status.success() {
+        bail!("kubectl create secret failed");
+    }
+
+    kubectl_apply(&String::from_utf8_lossy(&output.stdout))?;
+    println!("Flux SOPS secret created");
+    println!("Flux will now be able to decrypt SOPS-encrypted secrets");
+    Ok(())
+}
+
 fn decrypt_exports(path: &Path) -> Result<BTreeMap<String, String>> {
     let plain = decrypt_plain(path)?;
     parse_env_exports(&plain)
@@ -371,8 +461,7 @@ fn sops_age_key_file() -> Result<OsString> {
 }
 
 fn age_key_path() -> Result<PathBuf> {
-    let home = std::env::var_os("HOME").context("HOME is not set")?;
-    Ok(PathBuf::from(home).join(AGE_KEY_RELATIVE_PATH))
+    Ok(user_home_dir()?.join(AGE_KEY_RELATIVE_PATH))
 }
 
 fn read_age_public_key(path: &Path) -> Result<String> {

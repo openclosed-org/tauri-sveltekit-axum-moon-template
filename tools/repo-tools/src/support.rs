@@ -3,6 +3,8 @@ pub(crate) use crate::core::command::{CommandOutcome, run_capture, run_inherit};
 #[allow(unused_imports)]
 pub(crate) use crate::core::context::{WorkspaceContext, workspace_root};
 #[allow(unused_imports)]
+pub(crate) use crate::core::env::user_home_dir;
+#[allow(unused_imports)]
 pub(crate) use crate::core::external_tools::{Tool, command_exists_output, has_tool, require_tool};
 #[allow(unused_imports)]
 pub(crate) use crate::core::fs::{
@@ -19,6 +21,8 @@ pub(crate) use crate::core::manifest::{
 };
 #[allow(unused_imports)]
 pub(crate) use crate::core::mode::Mode;
+#[allow(unused_imports)]
+pub(crate) use crate::core::operation::{Operation, OperationPhase};
 #[allow(unused_imports)]
 pub(crate) use crate::core::pattern::{
     except_path, pattern_matches, same_module, strip_rust_comments,

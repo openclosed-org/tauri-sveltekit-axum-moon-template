@@ -51,6 +51,71 @@ source_of_truth:
       - moon.yml
     note: Evidence comes from executable checks, not metadata declarations.
 
+modules:
+  services:
+    tenant-service:
+      path: services/tenant-service
+      status: implemented
+      notes: Tenant lifecycle and membership semantics.
+    user-service:
+      path: services/user-service
+      status: implemented
+      notes: User profile and tenant binding semantics.
+    auth-service:
+      path: services/auth-service
+      status: implemented
+      notes: Authentication application service semantics.
+    counter-service:
+      path: services/counter-service
+      status: implemented
+      notes: Default backend anchor and counter domain semantics.
+  servers:
+    web-bff:
+      path: servers/bff/web-bff
+      status: implemented
+      notes: HTTP BFF protocol adapter for default backend flows.
+    gateway:
+      path: servers/gateway
+      status: implemented
+      notes: Gateway entrypoint and routing surface.
+  workers:
+    projector:
+      path: workers/projector
+      status: implemented
+      notes: Projection worker with replay support.
+      must_have:
+        - replay_strategy
+    sync-reconciler:
+      path: workers/sync-reconciler
+      status: implemented
+      notes: Synchronization reconciliation worker.
+    scheduler:
+      path: workers/scheduler
+      status: implemented
+      notes: Scheduled job execution worker.
+    outbox-relay:
+      path: workers/outbox-relay
+      status: implemented
+      notes: Outbox polling and publishing worker.
+      must_have:
+        - dedupe
+    indexer:
+      path: workers/indexer
+      status: implemented
+      notes: Indexing worker entrypoint.
+
+rules:
+  required_files:
+    service:
+      - Cargo.toml
+      - src
+    server:
+      - Cargo.toml
+      - src
+    worker:
+      - Cargo.toml
+      - src
+
 layers:
   - name: root
     paths:

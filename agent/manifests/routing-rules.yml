@@ -129,6 +129,9 @@ rules:
   - match: "justfiles/**"
     primary: planner
 
+  - match: "tools/repo-tools/**"
+    primary: planner
+
   # Agent system itself
   - match: "agent/**"
     primary: planner

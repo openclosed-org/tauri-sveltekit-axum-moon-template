@@ -6,67 +6,54 @@
 
 # List all installed skills
 skills-list:
-    @echo "=== Installed AI Skills ==="
-    @bunx skills list
-    @echo ""
-    @echo "💡 Add more skills: just skills-add <github-repo-or-url>"
+    cargo run -p repo-tools -- dev skills list
 
 # Search for available skills
 skills-find QUERY='':
     @if [ -z "{{QUERY}}" ]; then \
-        bunx skills find; \
+        cargo run -p repo-tools -- dev skills find; \
     else \
-        bunx skills find "{{QUERY}}"; \
+        cargo run -p repo-tools -- dev skills find "{{QUERY}}"; \
     fi
 
 # Check for skill updates
 skills-check:
-    @echo "=== Checking for Skill Updates ==="
-    @bunx skills check
+    cargo run -p repo-tools -- dev skills check
 
 # ── Installation ───────────────────────────────────────────
 
 # Add skills from GitHub/GitLab/local directory
 skills-add SOURCE='':
     @test -n "{{SOURCE}}" || (echo "Usage: just skills-add <github-repo-or-url>" && echo "Examples:" && echo "  just skills-add vercel-labs/agent-skills" && echo "  just skills-add https://github.com/owner/repo" && echo "  just skills-add ./path/to/skill" && exit 1)
-    @echo "=== Adding Skill: {{SOURCE}} ==="
-    @bunx skills add "{{SOURCE}}"
+    cargo run -p repo-tools -- dev skills add "{{SOURCE}}"
 
 # Add specific skill from a repository (skip others)
 skills-add-specific SOURCE='' SKILL='':
     @test -n "{{SOURCE}}" || (echo "Usage: just skills-add-specific <repo> <skill-name>" && exit 1)
     @test -n "{{SKILL}}" || (echo "Usage: just skills-add-specific <repo> <skill-name>" && exit 1)
-    @echo "=== Adding Specific Skill: {{SKILL}} from {{SOURCE}} ==="
-    @bunx skills add "{{SOURCE}}" -s "{{SKILL}}"
+    cargo run -p repo-tools -- dev skills add-specific "{{SOURCE}}" "{{SKILL}}"
 
 # Update all installed skills
 skills-update:
-    @echo "=== Updating All Skills ==="
-    @bunx skills update
+    cargo run -p repo-tools -- dev skills update
 
 # ── Management ──────────────────────────────────────────────
 
 # Remove a skill
 skills-remove SKILL='':
     @test -n "{{SKILL}}" || (echo "Usage: just skills-remove <skill-name>" && echo "Available skills:" && bunx skills list && exit 1)
-    @echo "=== Removing Skill: {{SKILL}} ==="
-    @bunx skills remove "{{SKILL}}"
+    cargo run -p repo-tools -- dev skills remove "{{SKILL}}"
 
 # Initialize a new custom skill template
 skills-init NAME='':
     @test -n "{{NAME}}" || (echo "Usage: just skills-init <skill-name>" && exit 1)
-    @echo "=== Creating Skill: {{NAME}} ==="
-    @bunx skills init "{{NAME}}"
-    @echo ""
-    @echo "💡 Edit the template at: .agents/skills/{{NAME}}/SKILL.md"
+    cargo run -p repo-tools -- dev skills init "{{NAME}}"
 
 # ── Information ─────────────────────────────────────────────
 
 # Show skill status and directory structure
 skills-status:
-    @echo "=== Skills Directory Structure ==="
-    @echo ""
-    @bunx skills list
+    cargo run -p repo-tools -- dev skills status
 
 # Show documentation
 skills-help:

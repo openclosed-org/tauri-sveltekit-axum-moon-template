@@ -343,20 +343,18 @@ struct Finding {
 
 fn backend_entry_files() -> &'static [&'static str] {
     &[
-        "package.json",
         ".moon/workspace.yml",
         "moon.yml",
         "justfile",
         "justfiles/setup.just",
         "justfiles/build.just",
         "justfiles/dev.just",
-        "justfiles/deploy.just",
-        "justfiles/processes.just",
-        "justfiles/test.just",
-        "justfiles/quality.just",
+        "justfiles/verify.just",
+        "justfiles/ops.just",
         "justfiles/platform.just",
         "justfiles/sops.just",
         "justfiles/template.just",
+        "justfiles/skills.just",
     ]
 }
 
