@@ -2,9 +2,61 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use anyhow::{Context, Result, bail};
+use serde::Deserialize;
 use serde_json::Value as JsonValue;
 
 use crate::core::command::run_capture;
+use crate::core::fs::read;
+
+#[derive(Debug, Deserialize)]
+pub(crate) struct RoutingRulesManifest {
+    #[serde(default)]
+    pub(crate) dispatch_order: Vec<String>,
+    #[serde(default)]
+    pub(crate) rules: Vec<RoutingRule>,
+}
+
+#[derive(Debug, Deserialize)]
+pub(crate) struct RoutingRule {
+    pub(crate) r#match: String,
+    pub(crate) primary: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub(crate) struct GateMatrixManifest {
+    #[serde(default)]
+    pub(crate) path_rules: Vec<GatePathRule>,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
+pub(crate) struct GatePathRule {
+    #[serde(default)]
+    pub(crate) r#match: Vec<String>,
+    #[serde(default)]
+    pub(crate) recommended: Vec<String>,
+    #[serde(default)]
+    pub(crate) required: Vec<String>,
+    #[serde(default)]
+    pub(crate) note: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
+pub(crate) struct CodemapManifest {
+    #[serde(default)]
+    pub(crate) generated_readonly: Vec<String>,
+    #[serde(default)]
+    pub(crate) write_boundaries: BTreeMap<String, CodemapBoundary>,
+}
+
+#[derive(Debug, Deserialize)]
+pub(crate) struct CodemapBoundary {
+    #[serde(default)]
+    pub(crate) may_modify: Vec<String>,
+    #[serde(default)]
+    pub(crate) must_not_modify: Vec<String>,
+}
 
 pub(crate) fn cargo_metadata(root: &Path) -> Result<JsonValue> {
     let outcome = run_capture(
@@ -23,6 +75,27 @@ pub(crate) fn cargo_metadata(root: &Path) -> Result<JsonValue> {
         );
     }
     serde_json::from_str(&outcome.output).context("failed to parse cargo metadata json")
+}
+
+pub(crate) fn load_routing_rules(root: &Path) -> Result<RoutingRulesManifest> {
+    load_yaml(root.join("agent/manifests/routing-rules.yml"))
+}
+
+pub(crate) fn load_gate_matrix(root: &Path) -> Result<GateMatrixManifest> {
+    load_yaml(root.join("agent/manifests/gate-matrix.yml"))
+}
+
+pub(crate) fn load_codemap(root: &Path) -> Result<CodemapManifest> {
+    load_yaml(root.join("agent/codemap.yml"))
+}
+
+fn load_yaml<T>(path: impl AsRef<Path>) -> Result<T>
+where
+    T: for<'de> Deserialize<'de>,
+{
+    let path = path.as_ref();
+    serde_yaml::from_str(&read(path)?)
+        .with_context(|| format!("failed to parse {}", path.display()))
 }
 
 #[allow(dead_code)]

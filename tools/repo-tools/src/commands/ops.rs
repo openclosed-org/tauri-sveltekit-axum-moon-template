@@ -3,8 +3,14 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, bail};
 
-use crate::cli::{OpsArgs, OpsBootstrapVpsArgs, OpsCommand, OpsMigrateArgs, OpsMigrationDirection};
-use crate::support::{has_tool, normalize_slashes, read, run_capture, workspace_root};
+use crate::cli::{
+    OpsArgs, OpsBootstrapVpsArgs, OpsCommand, OpsMigrateArgs, OpsMigrationDirection,
+    OpsServiceArgs, OpsServiceCommand, OpsServiceLogsArgs, OpsServiceNameArgs,
+};
+use crate::support::{
+    Operation, OperationPhase, has_tool, normalize_slashes, read, run_capture, run_inherit,
+    workspace_root,
+};
 
 const MIGRATION_SERVICES: &[&str] = &[
     "user-service",
@@ -32,6 +38,15 @@ pub(crate) fn run(args: OpsArgs) -> Result<()> {
     match args.command {
         OpsCommand::Migrate(args) => migrate(args),
         OpsCommand::BootstrapVps(args) => bootstrap_vps(args),
+        OpsCommand::Service(args) => service(args),
+    }
+}
+
+fn service(args: OpsServiceArgs) -> Result<()> {
+    match args.command {
+        OpsServiceCommand::Deploy(args) => deploy_service(args),
+        OpsServiceCommand::Stop(args) => stop_service(args),
+        OpsServiceCommand::Logs(args) => service_logs(args),
     }
 }
 
@@ -40,18 +55,30 @@ fn migrate(args: OpsMigrateArgs) -> Result<()> {
         bail!("choose either --dry-run or --apply, not both");
     }
 
+    let operation = Operation::new("ops-migrate", args.apply);
+
     let root = workspace_root()?;
     let plan = migration_plan(&root)?;
+    operation.phase(
+        OperationPhase::Plan,
+        format!(
+            "{} migration(s) discovered",
+            plan.iter()
+                .map(|service| service.migrations.len())
+                .sum::<usize>()
+        ),
+    );
 
     println!("Migration environment: {}", args.env);
     println!("Migration direction: {:?}", args.direction);
     println!("Mode: {}", if args.apply { "apply" } else { "dry-run" });
     println!("Database target: {}", database_target(&args.env)?);
     println!();
+    operation.phase(OperationPhase::Preflight, "migration arguments validated");
 
     match args.direction {
         OpsMigrationDirection::Status => print_migration_status(&root, &plan),
-        OpsMigrationDirection::Up => migrate_up(&root, &plan, args.apply),
+        OpsMigrationDirection::Up => migrate_up(&root, &plan, &operation),
         OpsMigrationDirection::Down => {
             println!(
                 "Rollback is not implemented; create a forward migration that reverses the change."
@@ -117,15 +144,19 @@ fn print_migration_status(root: &Path, plan: &[ServiceMigrations]) -> Result<()>
     Ok(())
 }
 
-fn migrate_up(root: &Path, plan: &[ServiceMigrations], apply: bool) -> Result<()> {
+fn migrate_up(root: &Path, plan: &[ServiceMigrations], operation: &Operation) -> Result<()> {
     print_migration_status(root, plan)?;
-    if !apply {
+    if !operation.is_apply() {
         println!();
         println!("Dry run complete; no migration SQL was executed.");
         println!("Use --apply to run the Phase 7 sqlite3 syntax smoke for listed SQL files.");
         return Ok(());
     }
 
+    operation.phase(
+        OperationPhase::Execute,
+        "run sqlite3 migration smoke checks",
+    );
     if !has_tool("sqlite3") {
         bail!(
             "sqlite3 is required for Phase 7 migration apply smoke; install sqlite3 or run without --apply"
@@ -154,6 +185,10 @@ fn migrate_up(root: &Path, plan: &[ServiceMigrations], apply: bool) -> Result<()
             }
         }
     }
+    operation.phase(
+        OperationPhase::Verify,
+        "all listed migration SQL parsed by sqlite3",
+    );
     println!("Migration apply smoke complete.");
     Ok(())
 }
@@ -172,13 +207,20 @@ fn bootstrap_vps(args: OpsBootstrapVpsArgs) -> Result<()> {
         bail!("choose either --plan or --apply, not both");
     }
 
+    let operation = Operation::new("ops-bootstrap-vps", args.apply);
+
     println!("VPS bootstrap plan:");
     println!("1. detect OS and package manager");
     println!("2. verify root privileges for host-level package installation");
     println!("3. install or verify git, just, mise, podman, kubectl, kustomize, age, and sops");
     println!("4. print post-install verification and next deploy steps");
     println!();
+    operation.phase(
+        OperationPhase::Plan,
+        "bootstrap remains gated behind plan/apply",
+    );
     vps_preflight()?;
+    operation.phase(OperationPhase::Preflight, "tool and host preflight printed");
 
     if !args.apply {
         println!("Plan complete; not modifying host.");
@@ -193,9 +235,55 @@ fn bootstrap_vps(args: OpsBootstrapVpsArgs) -> Result<()> {
     if confirm.trim().is_empty() {
         bail!("--confirm must name the target host");
     }
+    operation.phase(
+        OperationPhase::Execute,
+        "host mutation intentionally blocked",
+    );
     bail!(
         "VPS bootstrap apply is intentionally not implemented in Phase 7; no host changes were made"
     )
+}
+
+fn deploy_service(args: OpsServiceNameArgs) -> Result<()> {
+    let operation = Operation::new("ops-service-deploy", true);
+    operation.phase(
+        OperationPhase::Plan,
+        format!("deploy systemd service {}", args.service),
+    );
+    require_systemctl()?;
+    operation.phase(OperationPhase::Preflight, "systemctl is available");
+    let unit = service_unit(&args.service);
+
+    print_systemctl_status(&unit)?;
+    run_systemctl(&["daemon-reload"])?;
+    run_systemctl(&["enable", &unit])?;
+    operation.phase(OperationPhase::Execute, format!("restart {unit}"));
+    run_systemctl(&["restart", &unit])?;
+    operation.phase(OperationPhase::Verify, format!("status {unit}"));
+    run_systemctl(&["status", &args.service, "--no-pager"])
+}
+
+fn stop_service(args: OpsServiceNameArgs) -> Result<()> {
+    require_systemctl()?;
+    let unit = service_unit(&args.service);
+    run_systemctl(&["stop", &unit])?;
+    println!("{} stopped", unit);
+    Ok(())
+}
+
+fn service_logs(args: OpsServiceLogsArgs) -> Result<()> {
+    require_journalctl()?;
+    let unit = service_unit(&args.service);
+    let mut journal_args = vec!["journalctl", "-u", unit.as_str()];
+    if args.follow {
+        journal_args.push("-f");
+    }
+    journal_args.push("--no-pager");
+    let code = run_inherit("sudo", &journal_args, None)?;
+    if code != 0 {
+        bail!("journalctl failed with status {code}");
+    }
+    Ok(())
 }
 
 fn vps_preflight() -> Result<()> {
@@ -215,6 +303,54 @@ fn vps_preflight() -> Result<()> {
         }
     }
     Ok(())
+}
+
+fn require_systemctl() -> Result<()> {
+    if !has_tool("systemctl") {
+        bail!("systemctl is required for host service management");
+    }
+    if !has_tool("sudo") {
+        bail!("sudo is required for host service management");
+    }
+    Ok(())
+}
+
+fn require_journalctl() -> Result<()> {
+    if !has_tool("journalctl") {
+        bail!("journalctl is required for host log access");
+    }
+    if !has_tool("sudo") {
+        bail!("sudo is required for host log access");
+    }
+    Ok(())
+}
+
+fn run_systemctl(args: &[&str]) -> Result<()> {
+    let mut full_args = vec!["systemctl"];
+    full_args.extend_from_slice(args);
+    let code = run_inherit("sudo", &full_args, None)?;
+    if code != 0 {
+        bail!("systemctl failed with status {code}");
+    }
+    Ok(())
+}
+
+fn print_systemctl_status(unit: &str) -> Result<()> {
+    let code = run_inherit("systemctl", &["is-active", "--quiet", unit], None)?;
+    if code == 0 {
+        println!("{} is running", unit);
+    } else {
+        println!("{} will be started", unit);
+    }
+    Ok(())
+}
+
+fn service_unit(name: &str) -> String {
+    if name.ends_with(".service") {
+        name.to_string()
+    } else {
+        format!("{name}.service")
+    }
 }
 
 fn detected_os() -> String {

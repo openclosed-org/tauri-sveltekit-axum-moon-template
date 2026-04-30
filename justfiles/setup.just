@@ -65,4 +65,4 @@ setup-coverage:
 
 # 检查工具链版本
 toolchain-check:
-    rustc --version && moon --version && echo "ALL OK"
+    cargo run -p repo-tools -- toolchain-check

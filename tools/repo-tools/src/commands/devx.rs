@@ -1,14 +1,913 @@
+use anyhow::{Context, Result, bail};
+use reqwest::blocking::Client;
+use serde_json::Value;
 use std::fs;
-
-use anyhow::{Result, bail};
+use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
 use xshell::{Shell, cmd};
 
-use crate::cli::{GenerateServiceArgs, K6BaselineArgs, RequireToolArgs};
+use crate::cli::{
+    DevAgeKeyArgs, DevAgeKeyCommand, DevArgs, DevCommand, DevCreateMigrationArgs, DevMigrationArgs,
+    DevMigrationCommand, DevProcessArgs, DevProcessCommand, DevSkillsAddArgs,
+    DevSkillsAddSpecificArgs, DevSkillsArgs, DevSkillsCommand, DevSkillsFindArgs,
+    DevSkillsInitArgs, DevSkillsRemoveArgs, DevStopPortArgs, DevWorkerArgs, DevWorkerCommand,
+    DevWorkerRunArgs, DevWorkerStartArgs, GenSbomArgs, GenerateServiceArgs, ImageRefArgs,
+    K6BaselineArgs, RequireToolArgs, ScanVulnArgs,
+};
 use crate::support;
 use crate::support::{
-    collect_files_with_extension, has_tool, normalize_slashes, read, require_tool, run_capture,
-    run_inherit, workspace_root, write,
+    Operation, OperationPhase, collect_files_with_extension, has_tool, normalize_slashes, read,
+    require_tool, run_capture, run_inherit, user_home_dir, workspace_root, write,
 };
+
+const AGE_KEY_RELATIVE_PATH: &str = ".config/sops/age/key.txt";
+const SKILLS_RUNNER: &str = "bunx";
+const SKILLS_CLI: &str = "skills";
+const DEFAULT_STOP_PATTERNS: &[&str] = &["cargo run -p web-bff", "web-bff", "moon run repo:dev"];
+const WORKER_STATE_DIR: &str = ".tmp/dev/workers";
+const WORKERS: &[WorkerSpec] = &[
+    WorkerSpec::new("outbox-relay", 3030),
+    WorkerSpec::new("indexer", 3031),
+    WorkerSpec::new("projector", 3032),
+    WorkerSpec::new("scheduler", 3033),
+    WorkerSpec::new("sync-reconciler", 3034),
+];
+
+pub(crate) fn run_dev(args: DevArgs) -> Result<()> {
+    match args.command {
+        DevCommand::AgeKey(args) => run_age_key(args),
+        DevCommand::Process(args) => run_process(args),
+        DevCommand::Migration(args) => run_migration(args),
+        DevCommand::Worker(args) => run_worker(args),
+        DevCommand::Skills(args) => run_skills(args),
+    }
+}
+
+fn run_age_key(args: DevAgeKeyArgs) -> Result<()> {
+    match args.command {
+        DevAgeKeyCommand::Generate(args) => generate_age_key(args.overwrite),
+        DevAgeKeyCommand::Show => show_age_key(),
+    }
+}
+
+fn run_process(args: DevProcessArgs) -> Result<()> {
+    match args.command {
+        DevProcessCommand::Status => process_status(),
+        DevProcessCommand::Ports => process_ports(),
+        DevProcessCommand::Stop => stop_default_processes(),
+        DevProcessCommand::StopPort(args) => stop_port(args),
+        DevProcessCommand::CleanOrphans => clean_orphans(),
+    }
+}
+
+fn run_migration(args: DevMigrationArgs) -> Result<()> {
+    match args.command {
+        DevMigrationCommand::Create(args) => create_migration(args),
+    }
+}
+
+fn run_worker(args: DevWorkerArgs) -> Result<()> {
+    match args.command {
+        DevWorkerCommand::Start(args) => start_workers(args),
+        DevWorkerCommand::Stop => stop_workers(),
+        DevWorkerCommand::Status => worker_status(),
+        DevWorkerCommand::Health => worker_health(),
+        DevWorkerCommand::Run(args) => run_single_worker(args),
+    }
+}
+
+fn run_skills(args: DevSkillsArgs) -> Result<()> {
+    match args.command {
+        DevSkillsCommand::List => skills_list(),
+        DevSkillsCommand::Find(args) => skills_find(args),
+        DevSkillsCommand::Check => skills_check(),
+        DevSkillsCommand::Add(args) => skills_add(args),
+        DevSkillsCommand::AddSpecific(args) => skills_add_specific(args),
+        DevSkillsCommand::Update => skills_update(),
+        DevSkillsCommand::Remove(args) => skills_remove(args),
+        DevSkillsCommand::Init(args) => skills_init(args),
+        DevSkillsCommand::Status => skills_status(),
+    }
+}
+
+fn generate_age_key(overwrite: bool) -> Result<()> {
+    require_tool("age-keygen", "install age via your package manager or mise")?;
+    let key_path = age_key_path()?;
+    if key_path.exists() && !overwrite {
+        bail!(
+            "age key already exists at {}. rerun with --overwrite after reviewing the risk",
+            key_path.display()
+        );
+    }
+    if let Some(parent) = key_path.parent() {
+        fs::create_dir_all(parent)
+            .with_context(|| format!("failed to create {}", parent.display()))?;
+    }
+    let key_arg = key_path
+        .to_str()
+        .with_context(|| format!("path is not valid UTF-8: {}", key_path.display()))?;
+    let output = run_capture("age-keygen", &["-o", key_arg], None)?;
+    if !output.success {
+        bail!("age-keygen failed: {}", output.error);
+    }
+    println!("Generated age key: {}", key_path.display());
+    show_age_key()
+}
+
+fn show_age_key() -> Result<()> {
+    let key_path = age_key_path()?;
+    let content = read(&key_path).with_context(|| {
+        format!(
+            "age key not found at {}. generate one with `cargo run -p repo-tools -- dev age-key generate`",
+            key_path.display()
+        )
+    })?;
+    let public_key = content
+        .lines()
+        .find_map(|line| line.strip_prefix("# public key: "))
+        .context("age key file is missing the public key comment")?;
+    println!("Age public key:");
+    println!("{public_key}");
+    println!();
+    println!("Key file: {}", key_path.display());
+    Ok(())
+}
+
+fn age_key_path() -> Result<std::path::PathBuf> {
+    Ok(user_home_dir()?.join(AGE_KEY_RELATIVE_PATH))
+}
+
+fn process_status() -> Result<()> {
+    let root = workspace_root()?;
+    println!("=== Project process status ===");
+    print_port_process(&root, 3010, "web-bff")?;
+    for worker in WORKERS {
+        print_port_process(&root, worker.port, worker.package)?;
+    }
+    Ok(())
+}
+
+fn process_ports() -> Result<()> {
+    let root = workspace_root()?;
+    println!("=== Project port occupancy ===");
+    print_port_process(&root, 3010, "web-bff")?;
+    for worker in WORKERS {
+        print_port_process(&root, worker.port, worker.package)?;
+    }
+    Ok(())
+}
+
+fn stop_default_processes() -> Result<()> {
+    println!("Stopping default development processes...");
+    for pattern in DEFAULT_STOP_PATTERNS {
+        stop_processes_matching(pattern)?;
+    }
+    println!("Done.");
+    Ok(())
+}
+
+fn print_port_process(root: &std::path::Path, port: u16, label: &str) -> Result<()> {
+    #[cfg(windows)]
+    {
+        return print_port_process_windows(port, label);
+    }
+    #[cfg(not(windows))]
+    {
+        print_port_process_unix(root, port, label)
+    }
+}
+
+#[cfg(not(windows))]
+fn print_port_process_unix(root: &std::path::Path, port: u16, label: &str) -> Result<()> {
+    println!("Port {port} ({label}):");
+    let port_string = format!(":{port}");
+    let output = run_capture("lsof", &["-i", &port_string], Some(root))?;
+    if !output.success || output.output.trim().is_empty() {
+        println!("  [FREE]");
+        return Ok(());
+    }
+    for line in output.output.lines() {
+        println!("  {line}");
+    }
+    Ok(())
+}
+
+#[cfg(windows)]
+fn print_port_process_windows(port: u16, label: &str) -> Result<()> {
+    println!("Port {port} ({label}):");
+    let lines = windows_port_lines(port)?;
+    if lines.is_empty() {
+        println!("  [FREE]");
+        return Ok(());
+    }
+    for line in lines {
+        println!("  {line}");
+    }
+    Ok(())
+}
+
+fn stop_port(args: DevStopPortArgs) -> Result<()> {
+    #[cfg(windows)]
+    {
+        return stop_port_windows(args.port);
+    }
+    #[cfg(not(windows))]
+    {
+        stop_port_unix(args)
+    }
+}
+
+#[cfg(not(windows))]
+fn stop_port_unix(args: DevStopPortArgs) -> Result<()> {
+    let root = workspace_root()?;
+    let port_string = format!(":{}", args.port);
+    let lsof = run_capture("lsof", &["-ti", &port_string], Some(&root))?;
+    if !lsof.success || lsof.output.trim().is_empty() {
+        println!("Nothing is listening on port {}", args.port);
+        return Ok(());
+    }
+
+    for pid in lsof
+        .output
+        .lines()
+        .map(str::trim)
+        .filter(|pid| !pid.is_empty())
+    {
+        let status = run_capture("kill", &["-TERM", pid], Some(&root))?;
+        if !status.success {
+            bail!(
+                "failed to stop pid {pid} on port {}: {}",
+                args.port,
+                status.error
+            );
+        }
+        println!("Stopped pid {pid} on port {}", args.port);
+    }
+    Ok(())
+}
+
+#[cfg(windows)]
+fn stop_port_windows(port: u16) -> Result<()> {
+    let pids = windows_port_pids(port)?;
+    if pids.is_empty() {
+        println!("Nothing is listening on port {port}");
+        return Ok(());
+    }
+
+    for pid in pids {
+        terminate_pid(pid)?;
+        println!("Stopped pid {pid} on port {port}");
+    }
+    Ok(())
+}
+
+fn clean_orphans() -> Result<()> {
+    #[cfg(windows)]
+    {
+        clean_orphans_windows()
+    }
+    #[cfg(not(windows))]
+    {
+        clean_orphans_unix()
+    }
+}
+
+#[cfg(windows)]
+fn clean_orphans_windows() -> Result<()> {
+    println!("Cleaning non-responding user processes on Windows...");
+    let output = Command::new("powershell")
+        .args([
+            "-NoProfile",
+            "-Command",
+            "Get-Process | Where-Object { $_.Responding -eq $false -and $_.SessionId -eq (Get-Process -Id $PID).SessionId } | Select-Object -ExpandProperty Id",
+        ])
+        .output()
+        .context("failed to inspect Windows processes")?;
+    if !output.status.success() {
+        bail!("failed to inspect Windows processes");
+    }
+
+    let pids = String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .map(str::trim)
+        .filter(|pid| !pid.is_empty())
+        .collect::<Vec<_>>();
+    if pids.is_empty() {
+        println!("No non-responding processes found.");
+        return Ok(());
+    }
+
+    for pid in pids {
+        let status = Command::new("taskkill")
+            .args(["/PID", pid, "/F"])
+            .status()
+            .with_context(|| format!("failed to stop pid {pid}"))?;
+        if !status.success() {
+            bail!("failed to stop pid {pid}");
+        }
+        println!("Stopped pid {pid}");
+    }
+    Ok(())
+}
+
+#[cfg(not(windows))]
+fn clean_orphans_unix() -> Result<()> {
+    require_tool("ps", "install procps or use a Unix-like shell")?;
+    println!("Cleaning orphaned zombie processes for the current user...");
+    let zombies = Command::new("ps")
+        .args(["-axo", "pid=,stat="])
+        .output()
+        .context("failed to inspect process table")?;
+    if !zombies.status.success() {
+        bail!("failed to inspect process table");
+    }
+
+    let pids = String::from_utf8_lossy(&zombies.stdout)
+        .lines()
+        .filter_map(parse_zombie_pid)
+        .collect::<Vec<_>>();
+    if pids.is_empty() {
+        println!("No zombie processes found.");
+        return Ok(());
+    }
+
+    for pid in pids {
+        let pid_text = pid.to_string();
+        let status = run_capture("kill", &["-9", &pid_text], None)?;
+        if !status.success {
+            if status.error.contains("No such process") {
+                println!("Skipped zombie pid {pid} (already exited)");
+                continue;
+            }
+            bail!("failed to clean zombie pid {pid}: {}", status.error);
+        }
+        println!("Cleaned zombie pid {pid}");
+    }
+    Ok(())
+}
+
+#[cfg(not(windows))]
+fn parse_zombie_pid(line: &str) -> Option<u32> {
+    let mut parts = line.split_whitespace();
+    let pid = parts.next()?.parse::<u32>().ok()?;
+    let stat = parts.next()?;
+    stat.starts_with('Z').then_some(pid)
+}
+
+fn create_migration(args: DevCreateMigrationArgs) -> Result<()> {
+    let operation = Operation::new("dev-migration-create", true);
+    operation.phase(
+        OperationPhase::Plan,
+        format!("prepare migration file for {}", args.name),
+    );
+    let root = workspace_root()?;
+    let dir = root.join("ops/migrations/api");
+    fs::create_dir_all(&dir).with_context(|| format!("failed to create {}", dir.display()))?;
+    let timestamp = run_capture("date", &["+%Y%m%d%H%M%S"], Some(&root))?;
+    if !timestamp.success || timestamp.output.trim().is_empty() {
+        bail!("failed to generate migration timestamp");
+    }
+    let file = dir.join(format!(
+        "{}_{}.sql",
+        timestamp.output.trim(),
+        sanitize_migration_name(&args.name)
+    ));
+    if file.exists() {
+        bail!("migration already exists: {}", file.display());
+    }
+    operation.phase(
+        OperationPhase::Execute,
+        format!("create {}", normalize_slashes(file.strip_prefix(&root)?)),
+    );
+    write(&file, "")?;
+    println!(
+        "Created migration: {}",
+        normalize_slashes(file.strip_prefix(&root)?)
+    );
+    Ok(())
+}
+
+fn sanitize_migration_name(name: &str) -> String {
+    name.chars()
+        .map(|ch| match ch {
+            'a'..='z' | '0'..='9' => ch,
+            'A'..='Z' => ch.to_ascii_lowercase(),
+            _ => '_',
+        })
+        .collect()
+}
+
+fn start_workers(args: DevWorkerStartArgs) -> Result<()> {
+    let root = workspace_root()?;
+    let state_dir = worker_state_dir(&root);
+    fs::create_dir_all(&state_dir)
+        .with_context(|| format!("failed to create {}", state_dir.display()))?;
+    println!("Starting workers...");
+    for worker in WORKERS {
+        println!("  - {} (health: :{})", worker.binary(), worker.port);
+    }
+    println!();
+
+    if args.attach {
+        println!(
+            "Attach mode only supports a single worker. Use `repo-tools dev worker run <name>`."
+        );
+        bail!("--attach is not supported for the full worker set");
+    }
+
+    for worker in WORKERS {
+        stop_worker(&state_dir, *worker)?;
+        spawn_background_worker(&root, &state_dir, *worker)?;
+    }
+
+    println!("All workers started in background.");
+    println!("Use `cargo run -p repo-tools -- dev worker stop` to stop them.");
+    Ok(())
+}
+
+fn stop_workers() -> Result<()> {
+    let root = workspace_root()?;
+    let state_dir = worker_state_dir(&root);
+    println!("Stopping workers...");
+    for worker in WORKERS {
+        stop_worker(&state_dir, *worker)?;
+    }
+    println!("Done.");
+    Ok(())
+}
+
+fn worker_status() -> Result<()> {
+    let root = workspace_root()?;
+    let state_dir = worker_state_dir(&root);
+    println!("=== Worker Runtime Status ===");
+    println!("State dir: {}", state_dir.display());
+    for worker in WORKERS {
+        let pid_path = worker_pid_path(&state_dir, *worker);
+        let log_path = worker_log_path(&state_dir, *worker);
+        let pid = read_pid(&pid_path)?;
+        let running = pid.is_some_and(process_exists);
+        println!();
+        println!("{}:", worker.binary());
+        match pid {
+            Some(pid) if running => println!("  pid: {pid} [RUNNING]"),
+            Some(pid) => println!("  pid: {pid} [STALE]"),
+            None => println!("  pid: [NONE]"),
+        }
+        println!("  log: {}", log_path.display());
+    }
+    Ok(())
+}
+
+fn run_single_worker(args: DevWorkerRunArgs) -> Result<()> {
+    let worker = worker_by_name(&args.worker)?;
+    println!("Starting {}...", worker.binary());
+    let root = workspace_root()?;
+    let code = run_inherit("cargo", &["run", "-p", worker.binary()], Some(&root))?;
+    if code != 0 {
+        bail!("{} exited with status {code}", worker.binary());
+    }
+    Ok(())
+}
+
+fn worker_health() -> Result<()> {
+    let client = Client::builder().build()?;
+    println!("=== Worker Health ===");
+    for worker in WORKERS {
+        println!();
+        println!("{} (:{}):", worker.binary(), worker.port);
+        let url = format!("http://localhost:{}/healthz", worker.port);
+        match client.get(&url).send() {
+            Ok(response) => {
+                let status = response.status();
+                let body = response.text().unwrap_or_default();
+                if status.is_success() {
+                    println!("{}", format_health_body(&body));
+                } else {
+                    println!("[HTTP {}] {}", status.as_u16(), body.trim());
+                }
+            }
+            Err(_) => println!("[UNREACHABLE]"),
+        }
+    }
+    Ok(())
+}
+
+fn skills_list() -> Result<()> {
+    println!("=== Installed AI Skills ===");
+    run_skills_cli(&["list"])?;
+    println!();
+    println!("Add more skills: just skills-add <github-repo-or-url>");
+    Ok(())
+}
+
+fn skills_find(args: DevSkillsFindArgs) -> Result<()> {
+    let query = args.query.unwrap_or_default();
+    if query.trim().is_empty() {
+        run_skills_cli(&["find"])
+    } else {
+        run_skills_cli(&["find", query.trim()])
+    }
+}
+
+fn skills_check() -> Result<()> {
+    println!("=== Checking for Skill Updates ===");
+    run_skills_cli(&["check"])
+}
+
+fn skills_add(args: DevSkillsAddArgs) -> Result<()> {
+    println!("=== Adding Skill: {} ===", args.source);
+    run_skills_cli(&["add", &args.source])
+}
+
+fn skills_add_specific(args: DevSkillsAddSpecificArgs) -> Result<()> {
+    println!(
+        "=== Adding Specific Skill: {} from {} ===",
+        args.skill, args.source
+    );
+    run_skills_cli(&["add", &args.source, "-s", &args.skill])
+}
+
+fn skills_update() -> Result<()> {
+    println!("=== Updating All Skills ===");
+    run_skills_cli(&["update"])
+}
+
+fn skills_remove(args: DevSkillsRemoveArgs) -> Result<()> {
+    println!("=== Removing Skill: {} ===", args.skill);
+    run_skills_cli(&["remove", &args.skill])
+}
+
+fn skills_init(args: DevSkillsInitArgs) -> Result<()> {
+    println!("=== Creating Skill: {} ===", args.name);
+    run_skills_cli(&["init", &args.name])?;
+    println!();
+    println!(
+        "Edit the template at: .agents/skills/{}/SKILL.md",
+        args.name
+    );
+    Ok(())
+}
+
+fn skills_status() -> Result<()> {
+    println!("=== Skills Directory Structure ===");
+    println!();
+    run_skills_cli(&["list"])
+}
+
+fn run_skills_cli(args: &[&str]) -> Result<()> {
+    require_tool(SKILLS_RUNNER, "install Bun or add bunx to PATH")?;
+    let root = workspace_root()?;
+    let mut full_args = vec![SKILLS_CLI];
+    full_args.extend_from_slice(args);
+    let code = run_inherit(SKILLS_RUNNER, &full_args, Some(&root))?;
+    if code != 0 {
+        bail!("bunx skills failed with status {code}");
+    }
+    Ok(())
+}
+
+fn stop_processes_matching(pattern: &str) -> Result<()> {
+    #[cfg(windows)]
+    {
+        return stop_processes_matching_windows(pattern);
+    }
+    #[cfg(not(windows))]
+    {
+        stop_processes_matching_unix(pattern)
+    }
+}
+
+#[cfg(not(windows))]
+fn stop_processes_matching_unix(pattern: &str) -> Result<()> {
+    let output = run_capture("pkill", &["-f", pattern], None)?;
+    if output.success {
+        println!("  stopped pattern: {pattern}");
+        return Ok(());
+    }
+    let stderr = output.error.trim();
+    if stderr.is_empty() {
+        println!("  pattern not running: {pattern}");
+        return Ok(());
+    }
+    bail!("failed to stop pattern `{pattern}`: {stderr}")
+}
+
+#[cfg(windows)]
+fn stop_processes_matching_windows(pattern: &str) -> Result<()> {
+    let script = format!(
+        "Get-CimInstance Win32_Process | Where-Object {{ $_.CommandLine -like '*{pattern}*' }} | Select-Object -ExpandProperty ProcessId"
+    );
+    let output = Command::new("powershell")
+        .args(["-NoProfile", "-Command", &script])
+        .output()
+        .context("failed to inspect Windows processes")?;
+    if !output.status.success() {
+        bail!("failed to inspect Windows processes for pattern `{pattern}`");
+    }
+
+    let pids = String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .filter_map(|line| line.trim().parse::<u32>().ok())
+        .collect::<Vec<_>>();
+    if pids.is_empty() {
+        println!("  pattern not running: {pattern}");
+        return Ok(());
+    }
+
+    for pid in pids {
+        terminate_pid(pid)?;
+    }
+    println!("  stopped pattern: {pattern}");
+    Ok(())
+}
+
+fn spawn_background_worker(root: &Path, state_dir: &Path, worker: WorkerSpec) -> Result<()> {
+    let log_path = worker_log_path(state_dir, worker);
+    let pid_path = worker_pid_path(state_dir, worker);
+    let stdout = fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&log_path)
+        .with_context(|| format!("failed to open {}", log_path.display()))?;
+    let stderr = stdout
+        .try_clone()
+        .with_context(|| format!("failed to clone {}", log_path.display()))?;
+
+    let child = Command::new("cargo")
+        .args(["run", "-p", worker.binary()])
+        .current_dir(root)
+        .stdin(Stdio::null())
+        .stdout(Stdio::from(stdout))
+        .stderr(Stdio::from(stderr))
+        .spawn()
+        .with_context(|| format!("failed to start {}", worker.binary()))?;
+
+    write(&pid_path, &child.id().to_string())?;
+    println!(
+        "  started {} pid={} log={}",
+        worker.binary(),
+        child.id(),
+        log_path.display()
+    );
+    Ok(())
+}
+
+fn stop_worker(state_dir: &Path, worker: WorkerSpec) -> Result<()> {
+    let pid_path = worker_pid_path(state_dir, worker);
+    if let Some(pid) = read_pid(&pid_path)? {
+        if process_exists(pid) {
+            terminate_pid(pid)?;
+            println!("  stopped {} pid={}", worker.binary(), pid);
+        } else {
+            println!("  stale pid removed for {} ({})", worker.binary(), pid);
+        }
+        remove_if_exists(&pid_path)?;
+        return Ok(());
+    }
+
+    stop_processes_matching(worker.binary())
+}
+
+fn worker_state_dir(root: &Path) -> PathBuf {
+    root.join(WORKER_STATE_DIR)
+}
+
+fn worker_pid_path(state_dir: &Path, worker: WorkerSpec) -> PathBuf {
+    state_dir.join(format!("{}.pid", worker.binary()))
+}
+
+fn worker_log_path(state_dir: &Path, worker: WorkerSpec) -> PathBuf {
+    state_dir.join(format!("{}.log", worker.binary()))
+}
+
+fn read_pid(path: &Path) -> Result<Option<u32>> {
+    if !path.exists() {
+        return Ok(None);
+    }
+    let content = read(path)?;
+    let pid = content
+        .trim()
+        .parse::<u32>()
+        .with_context(|| format!("invalid pid file {}", path.display()))?;
+    Ok(Some(pid))
+}
+
+fn process_exists(pid: u32) -> bool {
+    #[cfg(windows)]
+    {
+        process_exists_windows(pid)
+    }
+    #[cfg(not(windows))]
+    {
+        process_exists_unix(pid)
+    }
+}
+
+#[cfg(not(windows))]
+fn process_exists_unix(pid: u32) -> bool {
+    run_capture("kill", &["-0", &pid.to_string()], None)
+        .map(|outcome| outcome.success)
+        .unwrap_or(false)
+}
+
+#[cfg(windows)]
+fn process_exists_windows(pid: u32) -> bool {
+    Command::new("tasklist")
+        .args(["/FI", &format!("PID eq {pid}")])
+        .output()
+        .map(|output| {
+            output.status.success()
+                && String::from_utf8_lossy(&output.stdout)
+                    .lines()
+                    .any(|line| line.contains(&pid.to_string()))
+        })
+        .unwrap_or(false)
+}
+
+fn terminate_pid(pid: u32) -> Result<()> {
+    #[cfg(windows)]
+    {
+        let status = Command::new("taskkill")
+            .args(["/PID", &pid.to_string(), "/T", "/F"])
+            .status()
+            .with_context(|| format!("failed to stop pid {pid}"))?;
+        if !status.success() {
+            bail!("failed to stop pid {pid}");
+        }
+        Ok(())
+    }
+    #[cfg(not(windows))]
+    {
+        let status = run_capture("kill", &["-TERM", &pid.to_string()], None)?;
+        if !status.success {
+            bail!("failed to stop pid {pid}: {}", status.error);
+        }
+        Ok(())
+    }
+}
+
+#[cfg(windows)]
+fn windows_port_lines(port: u16) -> Result<Vec<String>> {
+    let output = Command::new("netstat")
+        .args(["-ano", "-p", "tcp"])
+        .output()
+        .context("failed to inspect Windows TCP ports")?;
+    if !output.status.success() {
+        bail!("failed to inspect Windows TCP ports");
+    }
+    let needle = format!(":{port}");
+    Ok(String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .map(str::trim)
+        .filter(|line| line.starts_with("TCP") && line.contains(&needle))
+        .map(ToOwned::to_owned)
+        .collect())
+}
+
+#[cfg(windows)]
+fn windows_port_pids(port: u16) -> Result<Vec<u32>> {
+    let mut pids = windows_port_lines(port)?
+        .into_iter()
+        .filter_map(|line| line.split_whitespace().last()?.parse::<u32>().ok())
+        .collect::<Vec<_>>();
+    pids.sort_unstable();
+    pids.dedup();
+    Ok(pids)
+}
+
+fn remove_if_exists(path: &Path) -> Result<()> {
+    if path.exists() {
+        fs::remove_file(path).with_context(|| format!("failed to remove {}", path.display()))?;
+    }
+    Ok(())
+}
+
+fn worker_by_name(name: &str) -> Result<&'static WorkerSpec> {
+    WORKERS
+        .iter()
+        .find(|worker| worker.package == name || worker.binary() == name)
+        .with_context(|| format!("unknown worker `{name}`"))
+}
+
+fn format_health_body(body: &str) -> String {
+    let trimmed = body.trim();
+    if trimmed.is_empty() {
+        return "[EMPTY RESPONSE]".to_string();
+    }
+    if let Ok(json) = serde_json::from_str::<Value>(trimmed) {
+        return serde_json::to_string_pretty(&json).unwrap_or_else(|_| trimmed.to_string());
+    }
+    trimmed.to_string()
+}
+
+#[derive(Clone, Copy)]
+struct WorkerSpec {
+    package: &'static str,
+    port: u16,
+}
+
+impl WorkerSpec {
+    const fn new(package: &'static str, port: u16) -> Self {
+        Self { package, port }
+    }
+
+    fn binary(self) -> &'static str {
+        match self.package {
+            "outbox-relay" => "outbox-relay-worker",
+            "indexer" => "indexer-worker",
+            "projector" => "projector-worker",
+            "scheduler" => "scheduler-worker",
+            "sync-reconciler" => "sync-reconciler-worker",
+            _ => self.package,
+        }
+    }
+}
+
+pub(crate) fn scan_vuln(args: ScanVulnArgs) -> Result<()> {
+    require_tool("trivy", "install trivy via your package manager or mise")?;
+    let root = workspace_root()?;
+    let exit_code = args.exit_code.to_string();
+    if args.image.trim().is_empty() {
+        println!("=== Trivy filesystem scan ===");
+        let target = root.to_string_lossy().to_string();
+        let code = run_inherit(
+            "trivy",
+            &[
+                "fs",
+                "--severity",
+                "HIGH,CRITICAL",
+                "--exit-code",
+                &exit_code,
+                &target,
+            ],
+            Some(&root),
+        )?;
+        if code != 0 {
+            bail!("trivy fs failed with status {code}");
+        }
+        return Ok(());
+    }
+
+    println!("=== Trivy image scan: {} ===", args.image);
+    let code = run_inherit(
+        "trivy",
+        &[
+            "image",
+            "--severity",
+            "HIGH,CRITICAL",
+            "--exit-code",
+            &exit_code,
+            &args.image,
+        ],
+        Some(&root),
+    )?;
+    if code != 0 {
+        bail!("trivy image failed with status {code}");
+    }
+    Ok(())
+}
+
+pub(crate) fn gen_sbom(args: GenSbomArgs) -> Result<()> {
+    require_tool("syft", "install syft via your package manager or mise")?;
+    let root = workspace_root()?;
+    let target = if args.image.trim().is_empty() {
+        println!("=== Syft SBOM: workspace ===");
+        format!("dir:{}", root.display())
+    } else {
+        println!("=== Syft SBOM: image {} ===", args.image);
+        args.image.clone()
+    };
+    let output_format = if args.output == "-" {
+        args.format.clone()
+    } else {
+        format!("{}={}", args.format, args.output)
+    };
+    let code = run_inherit("syft", &[&target, "-o", &output_format], Some(&root))?;
+    if code != 0 {
+        bail!("syft failed with status {code}");
+    }
+    Ok(())
+}
+
+pub(crate) fn sign_image(args: ImageRefArgs) -> Result<()> {
+    require_tool("cosign", "install cosign via your package manager or mise")?;
+    println!("=== Cosign sign: {} ===", args.image);
+    let code = run_inherit("cosign", &["sign", &args.image], None)?;
+    if code != 0 {
+        bail!("cosign sign failed with status {code}");
+    }
+    Ok(())
+}
+
+pub(crate) fn verify_image(args: ImageRefArgs) -> Result<()> {
+    require_tool("cosign", "install cosign via your package manager or mise")?;
+    println!("=== Cosign verify: {} ===", args.image);
+    let code = run_inherit("cosign", &["verify", &args.image], None)?;
+    if code != 0 {
+        bail!("cosign verify failed with status {code}");
+    }
+    Ok(())
+}
 
 pub(crate) fn generate_service(args: GenerateServiceArgs) -> Result<()> {
     let working_directory = workspace_root()?;

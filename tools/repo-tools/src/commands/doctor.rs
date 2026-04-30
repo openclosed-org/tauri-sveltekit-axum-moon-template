@@ -32,3 +32,15 @@ pub(crate) fn doctor() -> Result<()> {
     println!("\n=== Done ===");
     Ok(())
 }
+
+pub(crate) fn toolchain_check() -> Result<()> {
+    for tool in ["rustc", "moon"] {
+        if !has_tool(tool) {
+            anyhow::bail!("{tool} not in PATH");
+        }
+        let result = run_capture(tool, &["--version"], None)?;
+        println!("{}", result.output);
+    }
+    println!("ALL OK");
+    Ok(())
+}

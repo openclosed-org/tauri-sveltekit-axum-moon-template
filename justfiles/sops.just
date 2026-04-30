@@ -15,61 +15,27 @@
 
 # Generate a new age key pair
 sops-gen-age-key:
-    @mkdir -p ~/.config/sops/age
-    @if [ -f ~/.config/sops/age/key.txt ]; then \
-        echo "WARNING: Age key already exists at ~/.config/sops/age/key.txt"; \
-        echo "Current public key:"; \
-        grep "# public key:" ~/.config/sops/age/key.txt | sed 's/# public key: //' || true; \
-        echo ""; \
-        echo "Set confirm=y to overwrite: just sops-gen-age-key confirm=y"; \
-        exit 1; \
-    fi
-    @age-keygen -o ~/.config/sops/age/key.txt
-    @echo ""
-    @echo "✓ Age key generated: ~/.config/sops/age/key.txt"
-    @echo "Public key:"
-    @grep "# public key:" ~/.config/sops/age/key.txt | sed 's/# public key: //'
-    @echo ""
-    @echo "Next steps:"
-    @echo "  1. Copy the public key above"
-    @echo "  2. Update .sops.yaml with the public key for each environment"
-    @echo "  3. Back up ~/.config/sops/age/key.txt securely"
+    cargo run -p repo-tools -- dev age-key generate
 
 # Show age public key
 sops-show-age-key:
-    @if [ ! -f ~/.config/sops/age/key.txt ]; then \
-        echo "ERROR: Age key not found. Generate one with: just sops-gen-age-key"; \
-        exit 1; \
-    fi
-    @echo "Age public key:"
-    @grep "# public key:" ~/.config/sops/age/key.txt | sed 's/# public key: //'
-    @echo ""
-    @echo "Key file: ~/.config/sops/age/key.txt"
+    cargo run -p repo-tools -- dev age-key show
 
 # ── Secrets Encryption ──────────────────────────────────────
 
 # Encrypt secrets for dev environment
 sops-encrypt-dev DEPLOYABLE='web-bff':
-    @echo "Encrypting secrets for deployable: {{DEPLOYABLE}} (dev)"
-    @sops --encrypt --input-type yaml --output-type yaml \
-        "infra/security/sops/templates/dev/{{DEPLOYABLE}}.yaml" \
-        > "infra/security/sops/dev/{{DEPLOYABLE}}.enc.yaml"
-    @echo "✓ Encrypted: infra/security/sops/dev/{{DEPLOYABLE}}.enc.yaml"
-    @echo "Commit this file to Git"
+    cargo run -p repo-tools -- secrets encrypt --deployable "{{DEPLOYABLE}}" --env dev
 
 # Encrypt secrets for staging environment
 sops-encrypt-staging DEPLOYABLE='web-bff':
-    @echo "Encrypting secrets for deployable: {{DEPLOYABLE}} (staging)"
-    @sops --encrypt "infra/security/sops/templates/staging/{{DEPLOYABLE}}.yaml" > "infra/security/sops/staging/{{DEPLOYABLE}}.enc.yaml"
-    @echo "✓ Encrypted: infra/security/sops/staging/{{DEPLOYABLE}}.enc.yaml"
+    cargo run -p repo-tools -- secrets encrypt --deployable "{{DEPLOYABLE}}" --env staging
 
 # ── Secrets Editing ─────────────────────────────────────────
 
 # Edit encrypted secrets (opens editor with decrypted content)
 sops-edit DEPLOYABLE='web-bff' ENV='dev':
-    @echo "Editing: {{DEPLOYABLE}} ({{ENV}})"
-    @sops "infra/security/sops/{{ENV}}/{{DEPLOYABLE}}.enc.yaml"
-    @echo "✓ Saved (encrypted in place)"
+    cargo run -p repo-tools -- secrets edit --deployable "{{DEPLOYABLE}}" --env "{{ENV}}"
 
 # ── Local Development (No Cluster) ──────────────────────────
 
@@ -89,17 +55,7 @@ sops-reconcile ENV='dev':
 
 # Create Flux SOPS secret (age key in cluster)
 sops-setup-flux-secret:
-    @if [ ! -f ~/.config/sops/age/key.txt ]; then \
-        echo "ERROR: Age key not found. Generate one with: just sops-gen-age-key"; \
-        exit 1; \
-    fi
-    @echo "Creating Flux SOPS secret in flux-system namespace"
-    @kubectl create secret generic sops-age \
-        --namespace flux-system \
-        --from-file=age.agekey=~/.config/sops/age/key.txt \
-        --dry-run=client -o yaml | kubectl apply -f -
-    @echo "✓ Flux SOPS secret created"
-    @echo "Flux will now be able to decrypt SOPS-encrypted secrets"
+    cargo run -p repo-tools -- secrets setup-flux-secret
 
 # ── Validation ──────────────────────────────────────────────
 

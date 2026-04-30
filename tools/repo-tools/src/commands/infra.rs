@@ -9,10 +9,13 @@ use anyhow::{Context, Result, bail};
 use crate::cli::{
     ContainerRuntime, InfraArgs, InfraAuthCommand, InfraCommand, InfraK3sBootstrapArgs,
     InfraK3sCommand, InfraK3sDeployArgs, InfraLocalCommand, InfraLocalDownArgs, InfraLocalLogsArgs,
-    InfraLocalStatusArgs, InfraLocalUpArgs, KubectlDryRunMode,
+    InfraLocalStatusArgs, InfraLocalUpArgs, InfraObservabilityCommand, InfraObservabilityDownArgs,
+    InfraObservabilityLogsArgs, InfraObservabilityStatusArgs, InfraObservabilityUpArgs,
+    KubectlDryRunMode,
 };
 use crate::support::{
-    has_tool, read, require_tool, run_capture, run_inherit, wait_for_port, workspace_root, write,
+    Operation, OperationPhase, has_tool, read, require_tool, run_capture, run_inherit,
+    wait_for_port, workspace_root, write,
 };
 
 const AUTH_COMPOSE_FILE: &str = "infra/docker/compose/auth.yaml";
@@ -23,6 +26,7 @@ const AUTH_GENERATED_DIR: &str = "infra/local/generated";
 const AUTH_ENV_FILE: &str = "infra/local/generated/auth.env";
 const OPENFGA_MODEL_FILE: &str = "fixtures/authz-tuples/counter-model.openfga.json";
 const K3S_OVERLAYS_DIR: &str = "infra/k3s/overlays";
+const OBSERVABILITY_COMPOSE_FILE: &str = "infra/docker/compose/observability.yaml";
 
 pub(crate) fn run(args: InfraArgs) -> Result<()> {
     match args.command {
@@ -42,6 +46,7 @@ fn run_local(command: InfraLocalCommand) -> Result<()> {
         InfraLocalCommand::Down(args) => local_down(&root, args),
         InfraLocalCommand::Status(args) => local_status(&root, args),
         InfraLocalCommand::Logs(args) => local_logs(&root, args),
+        InfraLocalCommand::Observability(args) => run_observability(&root, args.command),
     }
 }
 
@@ -102,6 +107,59 @@ fn local_logs(root: &Path, args: InfraLocalLogsArgs) -> Result<()> {
     run_local_compose(root, runtime, compose_args)
 }
 
+fn run_observability(root: &Path, command: InfraObservabilityCommand) -> Result<()> {
+    match command {
+        InfraObservabilityCommand::Up(args) => observability_up(root, args),
+        InfraObservabilityCommand::Down(args) => observability_down(root, args),
+        InfraObservabilityCommand::Status(args) => observability_status(root, args),
+        InfraObservabilityCommand::Logs(args) => observability_logs(root, args),
+    }
+}
+
+fn observability_up(root: &Path, args: InfraObservabilityUpArgs) -> Result<()> {
+    let runtime = resolve_runtime(args.runtime)?;
+    let mut subcommand = vec!["up"];
+    if args.detach {
+        subcommand.push("-d");
+    }
+    println!("Starting observability stack with {}", runtime.label());
+    run_observability_compose(root, runtime, &subcommand)?;
+    print_observability_connection_info();
+    Ok(())
+}
+
+fn observability_down(root: &Path, args: InfraObservabilityDownArgs) -> Result<()> {
+    let runtime = resolve_runtime(args.runtime)?;
+    println!("Stopping observability stack with {}", runtime.label());
+    run_observability_compose(root, runtime, &["down"])
+}
+
+fn observability_status(root: &Path, args: InfraObservabilityStatusArgs) -> Result<()> {
+    let runtime = resolve_runtime(args.runtime)?;
+    let mut subcommand = vec!["ps"];
+    if args.json {
+        subcommand.push("--format");
+        subcommand.push("json");
+    }
+    run_observability_compose(root, runtime, &subcommand)?;
+    if !args.json {
+        print_observability_connection_info();
+    }
+    Ok(())
+}
+
+fn observability_logs(root: &Path, args: InfraObservabilityLogsArgs) -> Result<()> {
+    let runtime = resolve_runtime(args.runtime)?;
+    let mut subcommand = vec!["logs"];
+    if args.follow {
+        subcommand.push("-f");
+    }
+    if let Some(service) = args.service.as_deref() {
+        subcommand.push(service);
+    }
+    run_observability_compose(root, runtime, &subcommand)
+}
+
 fn resolve_runtime(requested: Option<ContainerRuntime>) -> Result<ContainerRuntime> {
     if let Some(runtime) = requested {
         require_tool(runtime.binary(), &format!("install {}", runtime.label()))?;
@@ -150,6 +208,28 @@ fn run_local_compose(root: &Path, runtime: ContainerRuntime, args: Vec<String>) 
     Ok(())
 }
 
+fn run_observability_compose(
+    root: &Path,
+    runtime: ContainerRuntime,
+    subcommand: &[&str],
+) -> Result<()> {
+    let compose_file = root.join(OBSERVABILITY_COMPOSE_FILE);
+    if !compose_file.is_file() {
+        bail!(
+            "observability compose file not found: {}",
+            compose_file.display()
+        );
+    }
+
+    let mut args = vec!["compose", "-f", OBSERVABILITY_COMPOSE_FILE];
+    args.extend_from_slice(subcommand);
+    let code = run_inherit(runtime.binary(), &args, Some(root))?;
+    if code != 0 {
+        bail!("{} failed with status {code}", runtime.label());
+    }
+    Ok(())
+}
+
 fn print_local_connection_info() {
     println!();
     println!("Local infrastructure endpoints:");
@@ -160,6 +240,12 @@ fn print_local_connection_info() {
     println!("  Valkey: redis://localhost:6379");
     println!("  MinIO API: http://localhost:9000");
     println!("  MinIO Console: http://localhost:9001 (minioadmin/minioadmin)");
+}
+
+fn print_observability_connection_info() {
+    println!();
+    println!("Observability endpoints:");
+    println!("  OpenObserve UI: http://localhost:5080 (admin@localhost / admin)");
 }
 
 fn run_auth(command: InfraAuthCommand) -> Result<()> {
@@ -476,9 +562,15 @@ fn unix_timestamp() -> Result<u64> {
 }
 
 fn k3s_deploy(args: InfraK3sDeployArgs) -> Result<()> {
+    let operation = Operation::new("infra-k3s-deploy", args.dry_run.is_none());
     let root = workspace_root()?;
     let overlay = k3s_overlay(&root, &args.env)?;
+    operation.phase(
+        OperationPhase::Plan,
+        format!("deploy overlay {}", overlay.display()),
+    );
     preflight_k3s_deploy(&overlay, args.dry_run)?;
+    operation.phase(OperationPhase::Preflight, "k3s deploy preflight passed");
 
     println!("Deploying to k3s environment: {}", args.env);
     let render = run_capture(
@@ -512,9 +604,14 @@ fn k3s_deploy(args: InfraK3sDeployArgs) -> Result<()> {
             return Ok(());
         }
     }
+    operation.phase(
+        OperationPhase::Execute,
+        "apply rendered manifest via kubectl",
+    );
     kubectl_apply_manifest(&render.output, &apply_args, Some(&root))?;
 
     if args.dry_run.is_none() && !args.skip_verify {
+        operation.phase(OperationPhase::Verify, "wait for deployment availability");
         verify_k3s_deploy()?;
     } else if args.dry_run.is_some() {
         println!("Dry run complete; skipping post-deploy verification");
@@ -629,12 +726,18 @@ fn overlay_str(path: &Path) -> Result<&str> {
 }
 
 fn k3s_bootstrap(args: InfraK3sBootstrapArgs) -> Result<()> {
+    let operation = Operation::new(
+        "infra-k3s-bootstrap",
+        args.apply && args.i_understand_this_modifies_host,
+    );
     println!("k3s bootstrap plan:");
     println!("1. verify OS, architecture, memory, ports, and privilege state");
     println!("2. install k3s server with host-level system changes");
     println!("3. configure kubectl from /etc/rancher/k3s/k3s.yaml");
     println!("4. verify cluster health");
+    operation.phase(OperationPhase::Plan, "host mutation path is guarded");
     k3s_bootstrap_preflight()?;
+    operation.phase(OperationPhase::Preflight, "bootstrap preflight passed");
 
     if !(args.apply && args.i_understand_this_modifies_host) {
         println!("Preflight complete; not modifying host.");
@@ -642,6 +745,10 @@ fn k3s_bootstrap(args: InfraK3sBootstrapArgs) -> Result<()> {
         return Ok(());
     }
 
+    operation.phase(
+        OperationPhase::Execute,
+        "host mutation intentionally blocked",
+    );
     bail!(
         "k3s bootstrap execution is intentionally not implemented yet; the safe Phase 6 boundary is plan/preflight only"
     )

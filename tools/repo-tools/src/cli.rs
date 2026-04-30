@@ -57,10 +57,16 @@ enum Commands {
     PlatformDeployables,
     PlatformResources,
     CleanSdk,
+    Dev(DevArgs),
     Apps(AppsArgs),
     Secrets(SecretsArgs),
     Infra(InfraArgs),
     Ops(OpsArgs),
+    ToolchainCheck,
+    ScanVuln(ScanVulnArgs),
+    GenSbom(GenSbomArgs),
+    SignImage(ImageRefArgs),
+    VerifyImage(ImageRefArgs),
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum)]
@@ -227,6 +233,146 @@ pub(crate) struct K6BaselineArgs {
 }
 
 #[derive(Args)]
+pub(crate) struct DevArgs {
+    #[command(subcommand)]
+    pub(crate) command: DevCommand,
+}
+
+#[derive(Subcommand)]
+pub(crate) enum DevCommand {
+    AgeKey(DevAgeKeyArgs),
+    Process(DevProcessArgs),
+    Migration(DevMigrationArgs),
+    Worker(DevWorkerArgs),
+    Skills(DevSkillsArgs),
+}
+
+#[derive(Args)]
+pub(crate) struct DevAgeKeyArgs {
+    #[command(subcommand)]
+    pub(crate) command: DevAgeKeyCommand,
+}
+
+#[derive(Subcommand)]
+pub(crate) enum DevAgeKeyCommand {
+    Generate(DevAgeKeyGenerateArgs),
+    Show,
+}
+
+#[derive(Args)]
+pub(crate) struct DevAgeKeyGenerateArgs {
+    #[arg(long)]
+    pub(crate) overwrite: bool,
+}
+
+#[derive(Args)]
+pub(crate) struct DevProcessArgs {
+    #[command(subcommand)]
+    pub(crate) command: DevProcessCommand,
+}
+
+#[derive(Subcommand)]
+pub(crate) enum DevProcessCommand {
+    Status,
+    Ports,
+    Stop,
+    StopPort(DevStopPortArgs),
+    CleanOrphans,
+}
+
+#[derive(Args)]
+pub(crate) struct DevStopPortArgs {
+    pub(crate) port: u16,
+}
+
+#[derive(Args)]
+pub(crate) struct DevMigrationArgs {
+    #[command(subcommand)]
+    pub(crate) command: DevMigrationCommand,
+}
+
+#[derive(Subcommand)]
+pub(crate) enum DevMigrationCommand {
+    Create(DevCreateMigrationArgs),
+}
+
+#[derive(Args, Clone)]
+pub(crate) struct DevCreateMigrationArgs {
+    pub(crate) name: String,
+}
+
+#[derive(Args)]
+pub(crate) struct DevWorkerArgs {
+    #[command(subcommand)]
+    pub(crate) command: DevWorkerCommand,
+}
+
+#[derive(Subcommand)]
+pub(crate) enum DevWorkerCommand {
+    Start(DevWorkerStartArgs),
+    Stop,
+    Status,
+    Health,
+    Run(DevWorkerRunArgs),
+}
+
+#[derive(Args)]
+pub(crate) struct DevWorkerStartArgs {
+    #[arg(long)]
+    pub(crate) attach: bool,
+}
+
+#[derive(Args)]
+pub(crate) struct DevWorkerRunArgs {
+    pub(crate) worker: String,
+}
+
+#[derive(Args)]
+pub(crate) struct DevSkillsArgs {
+    #[command(subcommand)]
+    pub(crate) command: DevSkillsCommand,
+}
+
+#[derive(Subcommand)]
+pub(crate) enum DevSkillsCommand {
+    List,
+    Find(DevSkillsFindArgs),
+    Check,
+    Add(DevSkillsAddArgs),
+    AddSpecific(DevSkillsAddSpecificArgs),
+    Update,
+    Remove(DevSkillsRemoveArgs),
+    Init(DevSkillsInitArgs),
+    Status,
+}
+
+#[derive(Args)]
+pub(crate) struct DevSkillsFindArgs {
+    pub(crate) query: Option<String>,
+}
+
+#[derive(Args)]
+pub(crate) struct DevSkillsAddArgs {
+    pub(crate) source: String,
+}
+
+#[derive(Args)]
+pub(crate) struct DevSkillsAddSpecificArgs {
+    pub(crate) source: String,
+    pub(crate) skill: String,
+}
+
+#[derive(Args)]
+pub(crate) struct DevSkillsRemoveArgs {
+    pub(crate) skill: String,
+}
+
+#[derive(Args)]
+pub(crate) struct DevSkillsInitArgs {
+    pub(crate) name: String,
+}
+
+#[derive(Args)]
 pub(crate) struct SecretsArgs {
     #[command(subcommand)]
     pub(crate) command: SecretsCommand,
@@ -238,6 +384,9 @@ pub(crate) enum SecretsCommand {
     VerifyCounterSharedDb(SecretsEnvArgs),
     Run(SecretsRunArgs),
     Reconcile(SecretsReconcileArgs),
+    Encrypt(SecretsEncryptArgs),
+    Edit(SecretsEditArgs),
+    SetupFluxSecret,
     Validate,
 }
 
@@ -271,6 +420,22 @@ pub(crate) struct SecretsReconcileArgs {
 }
 
 #[derive(Args)]
+pub(crate) struct SecretsEncryptArgs {
+    #[arg(long, default_value = "web-bff")]
+    pub(crate) deployable: String,
+    #[arg(long, default_value = "dev")]
+    pub(crate) env: String,
+}
+
+#[derive(Args)]
+pub(crate) struct SecretsEditArgs {
+    #[arg(long, default_value = "web-bff")]
+    pub(crate) deployable: String,
+    #[arg(long, default_value = "dev")]
+    pub(crate) env: String,
+}
+
+#[derive(Args)]
 pub(crate) struct InfraArgs {
     #[command(subcommand)]
     pub(crate) command: InfraCommand,
@@ -295,6 +460,7 @@ pub(crate) enum InfraLocalCommand {
     Down(InfraLocalDownArgs),
     Status(InfraLocalStatusArgs),
     Logs(InfraLocalLogsArgs),
+    Observability(InfraObservabilityArgs),
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum)]
@@ -347,6 +513,52 @@ pub(crate) struct InfraLocalStatusArgs {
 
 #[derive(Args)]
 pub(crate) struct InfraLocalLogsArgs {
+    #[arg(long, value_enum)]
+    pub(crate) runtime: Option<ContainerRuntime>,
+    #[arg(long)]
+    pub(crate) service: Option<String>,
+    #[arg(long, short)]
+    pub(crate) follow: bool,
+}
+
+#[derive(Args)]
+pub(crate) struct InfraObservabilityArgs {
+    #[command(subcommand)]
+    pub(crate) command: InfraObservabilityCommand,
+}
+
+#[derive(Subcommand)]
+pub(crate) enum InfraObservabilityCommand {
+    Up(InfraObservabilityUpArgs),
+    Down(InfraObservabilityDownArgs),
+    Status(InfraObservabilityStatusArgs),
+    Logs(InfraObservabilityLogsArgs),
+}
+
+#[derive(Args)]
+pub(crate) struct InfraObservabilityUpArgs {
+    #[arg(long, value_enum)]
+    pub(crate) runtime: Option<ContainerRuntime>,
+    #[arg(long, default_value_t = true, action = ArgAction::Set)]
+    pub(crate) detach: bool,
+}
+
+#[derive(Args)]
+pub(crate) struct InfraObservabilityDownArgs {
+    #[arg(long, value_enum)]
+    pub(crate) runtime: Option<ContainerRuntime>,
+}
+
+#[derive(Args)]
+pub(crate) struct InfraObservabilityStatusArgs {
+    #[arg(long, value_enum)]
+    pub(crate) runtime: Option<ContainerRuntime>,
+    #[arg(long)]
+    pub(crate) json: bool,
+}
+
+#[derive(Args)]
+pub(crate) struct InfraObservabilityLogsArgs {
     #[arg(long, value_enum)]
     pub(crate) runtime: Option<ContainerRuntime>,
     #[arg(long)]
@@ -425,6 +637,57 @@ pub(crate) struct OpsArgs {
 pub(crate) enum OpsCommand {
     Migrate(OpsMigrateArgs),
     BootstrapVps(OpsBootstrapVpsArgs),
+    Service(OpsServiceArgs),
+}
+
+#[derive(Args)]
+pub(crate) struct OpsServiceArgs {
+    #[command(subcommand)]
+    pub(crate) command: OpsServiceCommand,
+}
+
+#[derive(Subcommand)]
+pub(crate) enum OpsServiceCommand {
+    Deploy(OpsServiceNameArgs),
+    Stop(OpsServiceNameArgs),
+    Logs(OpsServiceLogsArgs),
+}
+
+#[derive(Args)]
+pub(crate) struct OpsServiceNameArgs {
+    #[arg(long, default_value = "axum-api")]
+    pub(crate) service: String,
+}
+
+#[derive(Args)]
+pub(crate) struct OpsServiceLogsArgs {
+    #[arg(long, default_value = "axum-api")]
+    pub(crate) service: String,
+    #[arg(long, short, default_value_t = true, action = ArgAction::Set)]
+    pub(crate) follow: bool,
+}
+
+#[derive(Args)]
+pub(crate) struct ScanVulnArgs {
+    #[arg(long, default_value = "")]
+    pub(crate) image: String,
+    #[arg(long, default_value_t = 0)]
+    pub(crate) exit_code: i32,
+}
+
+#[derive(Args)]
+pub(crate) struct GenSbomArgs {
+    #[arg(long, default_value = "")]
+    pub(crate) image: String,
+    #[arg(long, default_value = "json")]
+    pub(crate) format: String,
+    #[arg(long, default_value = "-")]
+    pub(crate) output: String,
+}
+
+#[derive(Args)]
+pub(crate) struct ImageRefArgs {
+    pub(crate) image: String,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, ValueEnum)]
@@ -543,9 +806,15 @@ pub(crate) fn run() -> Result<()> {
         Commands::PlatformDeployables => commands::platform::list_platform_inventory("deployables"),
         Commands::PlatformResources => commands::platform::list_platform_inventory("resources"),
         Commands::CleanSdk => commands::platform::clean_sdk(),
+        Commands::Dev(args) => commands::devx::run_dev(args),
         Commands::Apps(args) => commands::apps::run(args),
         Commands::Secrets(args) => commands::secrets::run(args),
         Commands::Infra(args) => commands::infra::run(args),
         Commands::Ops(args) => commands::ops::run(args),
+        Commands::ToolchainCheck => commands::doctor::toolchain_check(),
+        Commands::ScanVuln(args) => commands::devx::scan_vuln(args),
+        Commands::GenSbom(args) => commands::devx::gen_sbom(args),
+        Commands::SignImage(args) => commands::devx::sign_image(args),
+        Commands::VerifyImage(args) => commands::devx::verify_image(args),
     }
 }

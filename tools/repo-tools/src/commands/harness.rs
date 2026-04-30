@@ -3,6 +3,7 @@ use std::collections::BTreeMap;
 use anyhow::{Context, Result, bail};
 
 use crate::cli::{GateArgs, GateGuidanceArgs, GateName, RouteTaskArgs, VerifyHandoffArgs};
+use crate::core::manifest::{load_codemap, load_gate_matrix, load_routing_rules};
 use crate::support::{
     Issue, Mode, Report, collect_files_named, except_path, git_changed_paths, normalize_slashes,
     pattern_matches, read, run_capture, same_module, workspace_root,
@@ -16,14 +17,18 @@ struct GateCommand {
 }
 
 pub(crate) fn gate_guidance(args: GateGuidanceArgs) -> Result<()> {
-    let legacy_agents = [
-        "contract-agent",
-        "app-shell-agent",
-        "server-agent",
-        "service-agent",
-        "worker-agent",
-        "platform-ops-agent",
-    ];
+    let root = workspace_root()?;
+    let routing = load_routing_rules(&root)?;
+    let gate_matrix = load_gate_matrix(&root)?;
+    let mut legacy_agents = routing
+        .rules
+        .iter()
+        .map(|rule| rule.primary.as_str())
+        .filter(|agent| *agent != "planner")
+        .collect::<Vec<_>>();
+    legacy_agents.sort();
+    legacy_agents.dedup();
+
     if args.list {
         println!("\n=== Gate Selection ===\n");
         println!("Gate selection is path/risk/evidence based, not subagent based.");
@@ -33,8 +38,12 @@ pub(crate) fn gate_guidance(args: GateGuidanceArgs) -> Result<()> {
         println!("Default backend-core guardrail: just check-backend-primary");
         println!("Broader repo-wide guardrail when needed: just verify");
         println!("Release/P0 invariant gate only when justified: just gate-release");
+        println!(
+            "Loaded {} path rule(s) from agent/manifests/gate-matrix.yml.",
+            gate_matrix.path_rules.len()
+        );
         println!("\nAccepted agent scopes for this helper:");
-        for agent in legacy_agents {
+        for agent in &legacy_agents {
             println!("  - {agent}");
         }
         return Ok(());
@@ -50,45 +59,44 @@ pub(crate) fn gate_guidance(args: GateGuidanceArgs) -> Result<()> {
     println!(
         "Select gates from changed paths, risk, and evidence level in agent/manifests/gate-matrix.yml."
     );
+    let agent_patterns = routing
+        .rules
+        .iter()
+        .filter(|rule| rule.primary == agent)
+        .map(|rule| rule.r#match.as_str())
+        .collect::<Vec<_>>();
+    let path_rule_count = gate_matrix
+        .path_rules
+        .iter()
+        .filter(|rule| {
+            rule.r#match.iter().any(|pattern| {
+                agent_patterns.iter().any(|agent_pattern| {
+                    pattern_matches(pattern, agent_pattern)
+                        || pattern_matches(agent_pattern, pattern)
+                })
+            })
+        })
+        .count();
+    println!("Relevant path rules loaded: {path_rule_count}");
     println!("This compatibility helper does not run heavy gates automatically.");
     Ok(())
 }
 
 pub(crate) fn route_task(args: RouteTaskArgs) -> Result<()> {
-    let rules = [
-        ("packages/contracts/", "contract-agent"),
-        ("platform/model/", "platform-ops-agent"),
-        ("platform/schema/", "platform-ops-agent"),
-        ("platform/generators/", "platform-ops-agent"),
-        ("platform/validators/", "platform-ops-agent"),
-        ("apps/web/", "app-shell-agent"),
-        ("apps/desktop/", "app-shell-agent"),
-        ("apps/mobile/", "app-shell-agent"),
-        ("packages/ui/", "app-shell-agent"),
-        ("servers/", "server-agent"),
-        ("services/", "service-agent"),
-        ("workers/", "worker-agent"),
-        ("infra/", "platform-ops-agent"),
-        ("ops/", "platform-ops-agent"),
-        ("verification/e2e/", "app-shell-agent"),
-        ("verification/resilience/", "worker-agent"),
-        ("verification/topology/", "platform-ops-agent"),
-        ("verification/contract/", "contract-agent"),
-    ];
-    let dispatch_order = [
-        "platform-ops-agent",
-        "contract-agent",
-        "service-agent",
-        "server-agent",
-        "worker-agent",
-        "app-shell-agent",
-    ];
+    let root = workspace_root()?;
+    let routing = load_routing_rules(&root)?;
+    let dispatch_order = routing
+        .dispatch_order
+        .iter()
+        .filter(|agent| agent.as_str() != "(verify)")
+        .cloned()
+        .collect::<Vec<_>>();
 
     if args.list {
         println!("\n=== Routing Rules ===\n");
         println!("Path Pattern -> Subagent\n");
-        for (pattern, agent) in rules {
-            println!("  {:<35} -> {agent}", pattern);
+        for rule in &routing.rules {
+            println!("  {:<35} -> {}", rule.r#match, rule.primary);
         }
         println!(
             "\nDispatch order: {} -> (verify)",
@@ -97,7 +105,6 @@ pub(crate) fn route_task(args: RouteTaskArgs) -> Result<()> {
         return Ok(());
     }
 
-    let root = workspace_root()?;
     let paths = if !args.paths.is_empty() {
         args.paths
     } else if let Some(diff_range) = args.diff {
@@ -114,11 +121,15 @@ pub(crate) fn route_task(args: RouteTaskArgs) -> Result<()> {
 
     let mut by_agent: BTreeMap<&str, Vec<String>> = BTreeMap::new();
     for path in &paths {
-        if let Some((_, agent)) = rules
+        if let Some(rule) = routing
+            .rules
             .iter()
-            .find(|(pattern, _)| path.starts_with(*pattern) || path.contains(pattern))
+            .find(|rule| pattern_matches(path, &rule.r#match))
         {
-            by_agent.entry(agent).or_default().push(path.clone());
+            by_agent
+                .entry(rule.primary.as_str())
+                .or_default()
+                .push(path.clone());
         }
     }
 
@@ -134,14 +145,28 @@ pub(crate) fn route_task(args: RouteTaskArgs) -> Result<()> {
 
     let affected: Vec<&str> = dispatch_order
         .iter()
-        .copied()
+        .map(String::as_str)
         .filter(|agent| by_agent.contains_key(agent))
         .collect();
+    let planner_paths = by_agent.get("planner").cloned().unwrap_or_default();
     let mut dispatch = affected.clone();
+    if !planner_paths.is_empty() {
+        dispatch.insert(0, "planner");
+    }
     dispatch.push("(verify)");
-    println!("Affected domains:    {}", affected.join(", "));
+    let mut affected_domains = affected.iter().copied().collect::<Vec<_>>();
+    if !planner_paths.is_empty() {
+        affected_domains.insert(0, "planner");
+    }
+    println!("Affected domains:    {}", affected_domains.join(", "));
     println!("Dispatch order:      {}", dispatch.join(" -> "));
     println!("\nPath -> Agent mapping:");
+    if !planner_paths.is_empty() {
+        println!("\n  planner:");
+        for path in &planner_paths {
+            println!("    {path}");
+        }
+    }
     for agent in affected {
         println!("\n  {agent}:");
         if let Some(agent_paths) = by_agent.get(agent) {
@@ -326,12 +351,13 @@ pub(crate) fn gate_name_label(gate: GateName) -> &'static str {
 }
 
 struct SubagentBoundary {
-    writable: &'static [&'static str],
-    readonly: &'static [&'static str],
+    writable: Vec<String>,
+    readonly: Vec<String>,
 }
 
 pub(crate) fn verify_handoff(args: VerifyHandoffArgs) -> Result<()> {
-    let boundaries = subagent_boundaries();
+    let root = workspace_root()?;
+    let boundaries = subagent_boundaries(&root)?;
     let Some(boundary) = boundaries.get(args.agent.as_str()) else {
         eprintln!("Unknown subagent: {}", args.agent);
         eprintln!("Available subagents:");
@@ -411,83 +437,19 @@ pub(crate) fn verify_handoff(args: VerifyHandoffArgs) -> Result<()> {
     Ok(())
 }
 
-fn subagent_boundaries() -> BTreeMap<&'static str, SubagentBoundary> {
-    BTreeMap::from([
-        (
-            "contract-agent",
+fn subagent_boundaries(root: &std::path::Path) -> Result<BTreeMap<String, SubagentBoundary>> {
+    let codemap = load_codemap(root)?;
+    let mut boundaries = BTreeMap::new();
+    for (agent, boundary) in codemap.write_boundaries {
+        boundaries.insert(
+            agent,
             SubagentBoundary {
-                writable: &[
-                    "packages/contracts/",
-                    "docs/contracts/",
-                    "verification/contract/",
-                ],
-                readonly: &[
-                    "packages/sdk/",
-                    "docs/generated/",
-                    "infra/kubernetes/rendered/",
-                    "platform/catalog/",
-                ],
+                writable: boundary.may_modify,
+                readonly: boundary.must_not_modify,
             },
-        ),
-        (
-            "app-shell-agent",
-            SubagentBoundary {
-                writable: &[],
-                readonly: &["services/", "workers/", "infra/", "packages/sdk/"],
-            },
-        ),
-        (
-            "server-agent",
-            SubagentBoundary {
-                writable: &["servers/", "packages/contracts/"],
-                readonly: &["services/", "infra/", "apps/", "workers/"],
-            },
-        ),
-        (
-            "service-agent",
-            SubagentBoundary {
-                writable: &[
-                    "services/",
-                    "fixtures/",
-                    "verification/",
-                    "packages/contracts/",
-                ],
-                readonly: &["infra/", "packages/", "apps/", "servers/", "workers/"],
-            },
-        ),
-        (
-            "worker-agent",
-            SubagentBoundary {
-                writable: &[
-                    "workers/",
-                    "verification/resilience/",
-                    "verification/topology/",
-                ],
-                readonly: &["apps/", "packages/sdk/", "infra/"],
-            },
-        ),
-        (
-            "platform-ops-agent",
-            SubagentBoundary {
-                writable: &[
-                    "platform/model/",
-                    "platform/schema/",
-                    "platform/generators/",
-                    "platform/validators/",
-                    "infra/",
-                    "ops/",
-                    "docs/platform-model/",
-                    "docs/operations/",
-                ],
-                readonly: &[
-                    "platform/catalog/",
-                    "infra/kubernetes/rendered/",
-                    "docs/generated/",
-                    "packages/sdk/",
-                ],
-            },
-        ),
-    ])
+        );
+    }
+    Ok(boundaries)
 }
 
 fn modified_paths() -> Result<Vec<String>> {

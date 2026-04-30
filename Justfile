@@ -13,19 +13,21 @@
 # - gate-*     生命周期/治理门禁入口
 set export  # 导出环境变量到子进程
 
-# ── 模块导入 ────────────────────────────────────────────────
-# 生命周期主轴：setup -> dev -> build -> verify -> ops -> clean
-# 领域副轴：platform / sops / template / skills
-import? 'justfiles/setup.just'
-import? 'justfiles/dev.just'
-import? 'justfiles/build.just'
-import? 'justfiles/verify.just'
-import? 'justfiles/ops.just'
-import? 'justfiles/clean.just'
-import? 'justfiles/platform.just'
-import? 'justfiles/sops.just'
-import? 'justfiles/template.just'
-import? 'justfiles/skills.just'
+# 模块导入
+# justfiles/* 是命令面的一部分，不应静默缺失；这里保持显式导入和稳定顺序。
+# 主轴：setup -> dev -> build -> verify -> ops -> clean
+import 'justfiles/setup.just'
+import 'justfiles/dev.just'
+import 'justfiles/build.just'
+import 'justfiles/verify.just'
+import 'justfiles/ops.just'
+import 'justfiles/clean.just'
+
+# 副轴：platform / secrets / template / skills
+import 'justfiles/platform.just'
+import 'justfiles/sops.just'
+import 'justfiles/template.just'
+import 'justfiles/skills.just'
 
 # ── 默认行为 / 导航 ──────────────────────────────────────────
 
@@ -69,6 +71,7 @@ help-dev:
     @printf "  just status-dev               查看本地 infra 状态\n"
     @printf "  just logs-dev SERVICE=nats    跟随本地 infra 指定服务日志\n"
     @printf "  just dev-workers              启动本地 workers\n"
+    @printf "  just status-workers           查看 worker 后台运行状态\n"
     @printf "  just health-workers           查看 worker 健康状态\n"
     @printf "  just ps                       查看本地进程状态\n"
     @printf "\n"

@@ -7,8 +7,9 @@ use regex::Regex;
 
 use crate::commands::secrets;
 use crate::support::{
-    Issue, Mode, Report, collect_files_with_extension, copy_dir_contents, list_directories,
-    normalize_slashes, read, run_capture, run_inherit, tempdir, workspace_root, write,
+    Issue, Mode, Operation, OperationPhase, Report, collect_files_with_extension,
+    copy_dir_contents, list_directories, normalize_slashes, read, run_capture, run_inherit,
+    tempdir, workspace_root, write,
 };
 
 const DIRECTORY_CATEGORY_PATTERNS: &[(&str, &str)] = &[
@@ -405,7 +406,12 @@ pub(crate) fn validate_workflows(mode: Mode) -> Result<()> {
     Ok(())
 }
 pub(crate) fn verify_counter_delivery(mode: Mode) -> Result<()> {
+    let operation = Operation::new("verify-counter-delivery", false);
     let root = workspace_root()?;
+    operation.phase(
+        OperationPhase::Plan,
+        "check delivery artifacts, overlays, runbooks, deployables, and secrets",
+    );
     let mut failures = Vec::new();
     for relative_path in [
         "infra/security/sops/dev/counter-shared-db.enc.yaml",
@@ -533,6 +539,7 @@ pub(crate) fn verify_counter_delivery(mode: Mode) -> Result<()> {
             "counter shared DB secret verification failed: {error}"
         ));
     }
+    operation.phase(OperationPhase::Verify, "delivery evidence checks finished");
     if failures.is_empty() {
         println!("Counter delivery verification passed (promotion + drift + rollback)");
         return Ok(());
@@ -606,10 +613,16 @@ pub(crate) fn verify_generated_artifacts() -> Result<()> {
 }
 
 pub(crate) fn commit_golden_baseline() -> Result<()> {
+    let operation = Operation::new("commit-golden-baseline", true);
     let root = workspace_root()?;
     let golden_root = root.join("verification/golden");
+    operation.phase(
+        OperationPhase::Plan,
+        format!("update golden baselines under {}", golden_root.display()),
+    );
     println!("=== Committing golden baselines for all generated artifacts ===\n");
     println!("1. Generating platform catalog...");
+    operation.phase(OperationPhase::Execute, "generate platform catalog");
     if run_inherit(
         "cargo",
         &[
@@ -635,6 +648,7 @@ pub(crate) fn commit_golden_baseline() -> Result<()> {
     )?;
     println!();
     println!("3. Generating contract bindings...");
+    operation.phase(OperationPhase::Execute, "generate contract bindings");
     if run_inherit(
         "cargo",
         &["run", "-p", "repo-tools", "--", "typegen"],
@@ -682,6 +696,7 @@ pub(crate) fn commit_golden_baseline() -> Result<()> {
     }
     println!();
     println!("=============================================================");
+    operation.phase(OperationPhase::Verify, "golden baseline update completed");
     println!("  Golden baselines updated:");
     for dir in [
         "generated-platform",
