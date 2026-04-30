@@ -4,9 +4,9 @@
 
 ## 状态
 
-- status: `reference-secondary`
+- status: `secondary-semantics-reference`
 - 角色：多实体、多租户、workflow 与补偿语义的二级参考 service
-- 说明：它保留更复杂的语义样例，但不是默认生产参考链，也不是新 service 的默认起点
+- 说明：它保留更复杂的语义样例，但不是默认后端参考链，也不是新 service 的默认起点
 
 ## 责任
 
@@ -16,7 +16,7 @@
 
 ## 入口
 
-1. `model.yaml`：service-local semantics 真理源。
+1. `model.yaml`：service-local declared semantics index。
 2. `src/domain/`：tenant 与 membership 规则。
 3. `src/application/`：命令入口与 workflow 编排。
 4. `src/ports/`：持久化与外部依赖抽象。
@@ -42,5 +42,5 @@ cargo test -p tenant-service
 
 1. 不要把它当成所有新 service 的默认起点；简单单聚合能力应先看 `counter-service`。
 2. 不要把 workflow、补偿和多实体边界机械复制到并不需要这些复杂度的能力上。
-3. 不要跳过 `model.yaml` 直接从实现代码倒推出语义边界。
+3. 不要跳过 `model.yaml` 的声明意图，直接从实现代码倒推出跨边界语义。
 4. 不要把这里更完整的目标态语义写成当前仓库的默认后端主链。

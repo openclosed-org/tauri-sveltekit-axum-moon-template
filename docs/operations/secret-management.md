@@ -6,7 +6,7 @@
 
 ## 1. 核心结论
 
-当前后端默认 secrets 路径是：
+当前后端 canonical secret contract 是 SOPS/Kustomize/Flux-compatible 的 deployable environment shape：
 
 1. 明文模板放在 `infra/security/sops/templates/<env>/`
 2. 加密产物放在 `infra/security/sops/<env>/*.enc.yaml`
@@ -14,7 +14,7 @@
 4. 本地非集群运行时，可通过 `just sops-run` 将解密后的环境变量注入进程
 5. 集群路径通过 Kustomize/Flux 消费加密 secrets，而不是依赖 `.env`
 
-这条路径是 `counter-service` 工程横切链的一部分，不是旁路能力。
+这条路径是 `counter-service` 工程横切链的一部分，不是旁路能力。短本地调试可以使用显式 `APP_*` exports，但不能把 `.env` 或临时环境文件提升为后端参考路径。
 
 ## 2. 当前真实文件落点
 
@@ -28,7 +28,7 @@
 当前已确认的事实：
 
 1. `.sops.yaml` 已定义 `templates/`、`dev/`、`staging/`、`prod/` 的创建规则。
-2. `justfiles/sops.just` 已把仓库默认路径写成 `SOPS + Kustomize + Flux`，并明确说明后端环境变量默认不来自 `.env`。
+2. `justfiles/sops.just` 已把仓库 cluster-oriented secret shape 写成 `SOPS + Kustomize + Flux`，并明确说明后端参考路径不来自 `.env`。
 3. 当前建议的命令入口是 `just sops-gen-age-key`、`just sops-edit`、`just sops-encrypt-dev`、`just sops-run`、`just sops-reconcile`。
 
 ### 2.2 与 counter 参考链直接相关的模板
@@ -113,7 +113,7 @@ just sops-encrypt-dev DEPLOYABLE=web-bff
 
 ### 3.3 本地非集群运行
 
-本地后端默认不要通过 `.env` 注入 secrets。当前仓库提供的内环路径是：
+本地后端参考路径不要通过 `.env` 注入 secrets。当前仓库提供的 SOPS 对齐内环路径是：
 
 ```bash
 just sops-run DEPLOYABLE=web-bff ENV=dev
@@ -165,7 +165,7 @@ secrets 文档不能脱离部署链路单独理解。当前真实挂接关系是
 
 因此这条链路当前的正确理解是：
 
-1. secrets 已进入默认工程主线。
+1. secrets shape 已进入默认工程主线。
 2. 但 `counter-service` 本体仍主要通过 `web-bff` 承载，而不是通过独立 deployable 完整消费自身 secrets。
 
 ## 5. 文档边界
@@ -185,4 +185,4 @@ secrets 文档不能脱离部署链路单独理解。当前真实挂接关系是
 
 ## 6. 一句话结论
 
-当前后端默认 secrets 轨道已经是 `templates -> enc.yaml -> Kustomize/Flux 或 sops-run`，而 `counter-service` 已经挂在这条轨道上，只是其独立 deployable 路径仍未成为默认主运行形态。
+当前后端 canonical secret shape 已经是 `templates -> enc.yaml -> Kustomize/Flux 或 sops-run`，而 `counter-service` 已经挂在这条轨道上，只是其独立 deployable 路径仍未成为默认主运行形态。

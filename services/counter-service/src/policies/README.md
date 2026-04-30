@@ -1,13 +1,7 @@
-# Counter Service — Policies
+# Counter Service Policies
 
-> 策略定义：超时、重试、幂等、限流等。
->
-> ⚠️ 占位目录。策略文件将按 `platform/model/policies/*.yaml` 生成或手动定义。
+This directory is intentionally empty until `counter-service` has executable local policy code.
 
-## 需要的策略
+Do not add generated policy stubs here. Do not infer runtime behavior from `platform/model/policies/**` declarations alone.
 
-| 策略 | 来源 | 状态 |
-|-----|------|------|
-| timeout | `platform/model/policies/timeout.yaml` | 待引用 |
-| retry | `platform/model/policies/retry.yaml` | 待引用 |
-| idempotency | `platform/model/policies/idempotency.yaml` | 待引用 |
+Policy intent may be declared in metadata, but it must be implemented in service code and verified by tests or gates before being treated as behavior.

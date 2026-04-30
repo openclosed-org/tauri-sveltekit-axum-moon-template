@@ -17,11 +17,11 @@ Default backend anchor: `counter-service`.
 
 Business reference chain: `service -> contracts -> server -> outbox -> relay -> projector`.
 
-Engineering reference chain: `platform model -> secrets -> deploy -> GitOps -> runbook`.
+Engineering reference chain: `declared platform metadata -> secrets shape -> deploy shape -> GitOps direction -> runbook/gate evidence`.
 
 `apps/**` and `packages/ui/**` are optional shell surfaces. Root backend-core commands must not depend on frontend, desktop, mobile shells, or UI packages by default.
 
-The harness is a coordination layer. It routes work, points to truth sources, and recommends gates. It does not prove semantic correctness by metadata alone.
+The harness is a coordination layer. It routes work, points to declared sources and executable evidence, and recommends gates. It does not prove semantic correctness by metadata alone.
 
 ## 3. Engineering Posture
 
@@ -43,10 +43,12 @@ Do not optimize for looking done. Optimize for restored behavior, durable correc
 Backend tasks:
 
 1. `AGENTS.md`
-2. `docs/architecture/harness-philosophy.md`
-3. `agent/codemap.yml`
-4. `agent/manifests/routing-rules.yml`
-5. `agent/manifests/gate-matrix.yml`
+2. `docs/architecture/north-star.md`
+3. `docs/architecture/harness-philosophy.md`
+4. relevant `docs/language/**` for vocabulary only
+5. `agent/codemap.yml`
+6. `agent/manifests/routing-rules.yml`
+7. `agent/manifests/gate-matrix.yml`
 
 Tooling, scripts, gates, or repo-control tasks also read:
 
@@ -56,7 +58,7 @@ Tooling, scripts, gates, or repo-control tasks also read:
 4. `tools/repo-tools/**`
 5. referenced executable helpers under `tools/repo-tools/**`, `infra/**/scripts/**`, or `ops/**/scripts/**`
 
-Documentation or audit tasks also read `docs/README.md`.
+Documentation, agent skill, or audit tasks also read `docs/README.md` and relevant `docs/agents/**`.
 
 Infra, secrets, topology, or deploy tasks also read:
 
@@ -72,8 +74,8 @@ When determining current state, gather evidence in this order:
 
 1. code, schemas, validators, tests, gates, scripts, and command output
 2. generated artifacts only when produced from current sources and checked for drift
-3. `platform/model/**` and `services/*/model.yaml`
-4. `agent/**` manifests
+3. `platform/model/**` and `services/*/model.yaml` as declared metadata indexes
+4. `agent/**` manifests and `.agents/**` skills
 5. prose documentation
 
 Hard rules:

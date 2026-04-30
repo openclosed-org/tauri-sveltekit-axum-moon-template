@@ -1,12 +1,12 @@
 # Platform Model README
 
-> 目标：把平台级不变量提升为真理源，同时避免把每个 service 的细粒度业务语义错误地塞进平台层。
+> 目标：把平台级声明集中成可验证的 metadata index，同时避免把每个 service 的细粒度业务语义错误地塞进平台层。
 
 ---
 
 ## 1. 定位
 
-`platform/model/*` 是平台控制面的真理源，优先级高于：
+`platform/model/*` 是平台控制面的声明索引。它比下列派生或承载文件更适合表达平台意图，但仍需要 validators、drift checks、scripts、gates 或运行证据支撑更强结论：
 
 1. `infra/*` 的承载细节
 2. `docs/generated/*` 的生成产物
@@ -154,5 +154,5 @@ platform/model/
 
 ## 6. 一句话原则
 
-> 平台层负责平台的真理源，service 层负责 service 自己的分布式语义；
+> 平台层负责平台级声明索引，service 层负责 service 自己的分布式语义声明；
 > 不让 `platform-ops-agent` 背业务语义，也不让 `service-agent` 越权进入平台控制面。

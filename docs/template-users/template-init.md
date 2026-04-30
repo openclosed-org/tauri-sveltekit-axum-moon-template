@@ -20,7 +20,7 @@ into a derived project with less upstream-maintainer baggage.
 1. silently delete files without preview
 2. guess business requirements for the user
 3. rewrite the main backend code layout aggressively
-4. claim a profile is production-ready
+4. claim a profile is operationally proven without evidence
 
 ## Modes
 

@@ -12,6 +12,19 @@ Tracked `docs/**` should be reserved for:
 4. a small amount of stable governance guidance
 5. historical notes worth preserving as project history
 
+## Governance Memory
+
+Use `docs/governance/out-of-scope/**` for rejected default directions that are stable enough to prevent repeated relitigation.
+
+These files are not runtime evidence. They record why a direction should not enter the default repository path unless stated reconsideration criteria are met.
+
+Examples:
+
+1. treating metadata as proof
+2. requiring app shells for backend-core work
+3. defaulting every service to an independent process
+4. claiming production readiness without matching evidence
+
 ## Move To Archive
 
 Use `docs/archive/**` when material still has historical value, but is no longer current-state guidance.
@@ -42,3 +55,16 @@ Move something out of `_local` only if it becomes one of these:
 3. durable contributor rule
 4. architecture decision with long-term value
 5. template initialization or migration guidance
+
+## GitHub Discussions
+
+GitHub Discussions are useful for design rationale, but they are not current-state documentation by default.
+
+Promote a discussion into tracked docs only when:
+
+1. the decision still matches current executable sources
+2. target-state language has been separated from current behavior
+3. evidence level is clear: `declared`, `checked`, `tested`, or `proven`
+4. the promoted text is shorter than the discussion and safe for agents to read as current guidance
+
+If a discussion remains useful but not current, reference it as historical rationale instead of copying it into default docs.

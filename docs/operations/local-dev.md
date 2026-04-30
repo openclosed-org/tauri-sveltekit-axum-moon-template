@@ -29,12 +29,13 @@
 
 开始本地后端开发前，建议按以下顺序理解：
 
-1. `docs/operations/counter-service-reference-chain.md`
-2. `infra/local/README.md`
-3. `justfiles/dev.just`
-4. `justfiles/sops.just`
-5. `justfiles/ops.just`
-6. `infra/docker/compose/core.yaml`
+1. `docs/architecture/north-star.md`
+2. `docs/operations/counter-service-reference-chain.md`
+3. `infra/local/README.md`
+4. `justfiles/dev.just`
+5. `justfiles/sops.just`
+6. `justfiles/ops.just`
+7. `infra/docker/compose/core.yaml`
 
 ## 2.1 平台前置条件
 
@@ -162,7 +163,7 @@ curl http://localhost:3010/api/counter/value \
 
 ### 3.4 本地 secrets 注入
 
-当前后端默认不应把 `.env` 当成主路径。更符合当前仓库约束的方式是：
+当前后端参考路径不应把 `.env` 当成主路径。更符合当前仓库约束的 SOPS 对齐方式是：
 
 ```bash
 just sops-run DEPLOYABLE=web-bff ENV=dev

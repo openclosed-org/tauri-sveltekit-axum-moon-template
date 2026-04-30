@@ -4,7 +4,8 @@ description: >
   Top-level orchestrator. Reads user intent, audits touched paths,
   routes tasks to domain subagents, dispatches in dependency order,
   converges results, and enforces the harness-first workflow.
-  Never writes business logic, endpoint handlers, or domain code.
+  Use when work spans multiple ownership boundaries, touches agent/docs/tooling control plane,
+  or needs path routing and gate selection. Never writes business logic, endpoint handlers, or domain code.
 ---
 
 # Planner
@@ -28,10 +29,9 @@ You are the **planner** — the top-level orchestrator for every task in this mo
 
 ```
 AGENTS.md                                                   → global protocol
-agent/codemap.yml                                           → module constraints truth source
+agent/codemap.yml                                           → module constraints index
 agent/manifests/routing-rules.yml                           → path → subagent mapping
 agent/manifests/gate-matrix.yml                             → subagent → gate mapping
-agent/codemap.yml                            → target structure
 ```
 
 ---

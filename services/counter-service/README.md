@@ -16,7 +16,7 @@
 
 ## 入口
 
-1. `model.yaml`：service-local semantics 真理源。
+1. `model.yaml`：service-local declared semantics index。
 2. `src/domain/`：聚合与领域规则。
 3. `src/application/service.rs`：命令编排、CAS、idempotency、outbox 写入。
 4. `src/infrastructure/libsql_adapter.rs`：当前 libSQL 适配实现。
@@ -33,6 +33,6 @@ cargo test -p counter-service
 ## 不要这样用
 
 1. 不要把它当成“最小 demo”而忽略工程链路要求。
-2. 不要绕过 `model.yaml` 和 shared contracts 直接把实现当成真理源。
+2. 不要只从当前实现倒推出跨边界语义；先看 `model.yaml` 的声明意图和 shared contracts，再用代码、schema、测试和 gate 判断实际证据等级。
 3. 不要因为它当前主要由 `web-bff` 以内嵌库方式使用，就推断独立 deployable 已经闭环。
 4. 不要忽略它与 `outbox-relay` / `projector` 的 projection/replay 关系，只把它当成同步写模型样例。
