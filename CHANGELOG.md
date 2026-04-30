@@ -13,16 +13,28 @@ Preferred release views:
 - Releases: <https://github.com/openclosed-org/axum-harness/releases>
 - Tags: <https://github.com/openclosed-org/axum-harness/tags>
 
-## Unreleased
+## v0.3.1 - 2026-04-29
 
 ### Changed
 
+- Replaced the legacy TypeScript and shell script control plane with the Rust `repo-tools` CLI so reusable validation, generation, drift, routing, secret, infra, ops, worker, and app helper logic lives behind structured commands.
+- Tightened the `repo-tools` control plane with explicit environment handling, operation phases, manifest helpers, and expanded repo command coverage.
+- Consolidated root `just` and `moon` task wiring around the Rust repo-control surface while keeping human-facing recipes thin.
 - Consolidated release-plz changelog output into the root `CHANGELOG.md` so the template has one public change history.
 - Clarified that the root `axum-harness` package is an upstream maintainer release anchor, not a required derived-project runtime contract.
+- Clarified contribution governance, pull request expectations, issue templates, maintainer decision guidance, and SOPS-backed local development workflows.
+- Simplified the root README entrypoint so adopters start from the current template posture instead of stale broad guidance.
+- Added explicit SOLID guidance to the agent protocol, framed as boundary discipline for services, servers, workers, platform, ports, traits, adapters, and composition roots.
 
 ### Fixed
 
 - Extended `template-init backend-core apply` so derived projects can remove the upstream release-plz workflow, runtime config, repo-release helper, and root release anchor together.
+- Aligned the platform state ownership map with service-local semantics so platform metadata points at the right domain owners without claiming runtime proof.
+
+### Migration Notes
+
+- Use the Rust `repo-tools` entrypoints behind `just` recipes instead of removed legacy scripts under `scripts/**`, `infra/**/scripts/**`, and `ops/**/migrations/**`.
+- Treat the new SOLID guidance as an extension of the existing boundary rules: production service code depends inward on contracts, ports, traits, and shared abstractions; test-only adapters remain allowed when they provide executable evidence.
 
 ## v0.3.0 - 2026-04-27
 

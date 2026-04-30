@@ -147,6 +147,15 @@ A good change:
 5. adds or updates verification at the same semantic level as the risk
 6. avoids new hidden coupling, global state, and duplicated rules
 
+SOLID guidance for this repository:
+
+1. Treat SOLID as boundary discipline, not object-oriented ceremony.
+2. Keep each module focused on one reason to change: domain rules in `domain`/`application`, protocol adaptation in `servers`, async recovery in `workers`, and platform concerns in `platform`/`infra`/`ops`.
+3. Extend behavior through contracts, ports, traits, adapters, or composition roots; do not modify inner domain code to satisfy an outer transport, database, UI, or deployment concern.
+4. Keep trait contracts narrow enough that implementations can substitute safely. Split ports when callers do not need the same capabilities.
+5. Depend inward on stable abstractions. Production service code must not depend on concrete infrastructure adapters, app shells, workers, or other services directly.
+6. Allow test-only adapters and fixtures when they provide executable evidence, but do not use test exceptions to justify production dependency direction.
+
 Prefer boring, explicit, well-named code. Introduce abstractions only when they remove real duplication or clarify a stable boundary.
 
 Avoid these anti-patterns:
