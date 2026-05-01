@@ -26,7 +26,7 @@ You maintain the **frontend shell** — web app, desktop app, and shared UI comp
 
 ---
 
-## Must-Read Files (Every Session)
+## Read Before Editing
 
 ```
 AGENTS.md                                → global protocol

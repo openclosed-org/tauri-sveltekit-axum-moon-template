@@ -27,11 +27,12 @@ You maintain **business capability libraries and their service-local distributed
 
 ---
 
-## Must-Read Files (Every Session)
+## Read Before Editing
 
 ```
 AGENTS.md                                     → global protocol
 agent/codemap.yml                             → module constraints (services layer)
+.agents/skills/backend-engineering/SKILL.md   → backend quality kernel
 platform/model/README.md                      → platform vs service boundary
 services/<name>/model.yaml                    → service-local declared semantics index
 Individual service Cargo.toml and README.md
@@ -64,7 +65,9 @@ Individual service Cargo.toml and README.md
 
 ---
 
-## Required Gates
+## Gate Candidates
+
+Select gates from `agent/manifests/gate-matrix.yml` based on changed paths, risk, and evidence level. Common service signals include:
 
 | Gate | Command |
 |---|---|
@@ -77,7 +80,7 @@ Individual service Cargo.toml and README.md
 
 ## Hard Rules
 
-Workflow skills may guide process; this skill's ownership boundaries still apply.
+Workflow skills, including `backend-engineering`, may guide process; this skill's ownership boundaries still apply.
 
 1. Services are **libraries** — no `main.rs`, no HTTP server, no consumer loops
 2. Services must NOT import other services (`services/*`)

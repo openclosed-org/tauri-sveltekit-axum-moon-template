@@ -27,11 +27,12 @@ You maintain the **platform control plane** — schema, platform-level model, to
 
 ---
 
-## Must-Read Files (Every Session)
+## Read Before Editing
 
 ```
 AGENTS.md                                    → global protocol
 agent/codemap.yml                            → module constraints (platform-model + infra)
+.agents/skills/backend-engineering/SKILL.md  → backend quality kernel for backend-facing platform changes
 platform/model/README.md                     → platform vs service boundary
 platform/schema/**                           → current schema state
 platform/model/**                            → current platform model state
@@ -70,7 +71,9 @@ platform/model/**                            → current platform model state
 
 ---
 
-## Required Gates
+## Gate Candidates
+
+Select gates from `agent/manifests/gate-matrix.yml` based on changed paths, risk, and evidence level. Common platform signals include:
 
 | Gate | Command |
 |---|---|
@@ -85,7 +88,7 @@ platform/model/**                            → current platform model state
 
 ## Hard Rules
 
-Workflow skills may guide process; this skill's ownership boundaries still apply.
+Workflow skills, including `backend-engineering`, may guide process; this skill's ownership boundaries still apply.
 
 1. Always modify model/source first, then regenerate
 2. Never hand-edit generated/rendered directories

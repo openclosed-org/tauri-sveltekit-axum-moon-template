@@ -25,13 +25,14 @@ You are the **planner** — the top-level orchestrator for every task in this mo
 
 ---
 
-## Must-Read Files (Every Session)
+## Read Before Routing
 
 ```
 AGENTS.md                                                   → global protocol
 agent/codemap.yml                                           → module constraints index
 agent/manifests/routing-rules.yml                           → path → subagent mapping
-agent/manifests/gate-matrix.yml                             → subagent → gate mapping
+agent/manifests/gate-matrix.yml                             → path/risk/evidence → gate mapping
+.agents/skills/backend-engineering/SKILL.md                  → backend quality kernel for backend tasks
 ```
 
 ---

@@ -24,11 +24,12 @@ You maintain **server entrypoints** — HTTP handlers, routes, middleware, and A
 
 ---
 
-## Must-Read Files (Every Session)
+## Read Before Editing
 
 ```
 AGENTS.md                                → global protocol
 agent/codemap.yml                        → module constraints (servers layer)
+.agents/skills/backend-engineering/SKILL.md → backend quality kernel
 services/<name>/model.yaml               → service commands / queries / consistency expectations
 packages/contracts/**                    → shared protocol definitions
 ```
@@ -58,7 +59,9 @@ packages/contracts/**                    → shared protocol definitions
 
 ---
 
-## Required Gates
+## Gate Candidates
+
+Select gates from `agent/manifests/gate-matrix.yml` based on changed paths, risk, and evidence level. Common server signals include:
 
 | Gate | Command |
 |---|---|
@@ -70,7 +73,7 @@ packages/contracts/**                    → shared protocol definitions
 
 ## Hard Rules
 
-Workflow skills may guide process; this skill's ownership boundaries still apply.
+Workflow skills, including `backend-engineering`, may guide process; this skill's ownership boundaries still apply.
 
 1. Servers may import `services/**` and `packages/**`
 2. Server handlers must align with `packages/contracts/**`

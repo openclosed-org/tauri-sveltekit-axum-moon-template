@@ -23,7 +23,8 @@ Workflow skills define how to perform engineering activities. They guide process
 3. `harness-tdd`
 4. `harness-architecture-review`
 5. `harness-zoom-out`
-6. `skill-authoring`
+6. `backend-engineering`
+7. `skill-authoring`
 
 ## Authoring
 

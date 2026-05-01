@@ -25,11 +25,12 @@ You maintain the **shared protocol definitions** for the monorepo.
 
 ---
 
-## Must-Read Files (Every Session)
+## Read Before Editing
 
 ```
 AGENTS.md                                → global protocol
 agent/codemap.yml                        → module constraints
+.agents/skills/backend-engineering/SKILL.md → backend quality kernel
 services/<name>/model.yaml               → commands/events/queries source context
 platform/model/workflows/**              → workflow-driven protocol context
 docs/contracts/**                        → existing contract documentation
@@ -62,7 +63,9 @@ docs/contracts/**                        → existing contract documentation
 
 ---
 
-## Required Gates
+## Gate Candidates
+
+Select gates from `agent/manifests/gate-matrix.yml` based on changed paths, risk, and evidence level. Common contract signals include:
 
 | Gate | Command |
 |---|---|
@@ -75,7 +78,7 @@ docs/contracts/**                        → existing contract documentation
 
 ## Hard Rules
 
-Workflow skills may guide process; this skill's ownership boundaries still apply.
+Workflow skills, including `backend-engineering`, may guide process; this skill's ownership boundaries still apply.
 
 1. Contracts are pure data and protocol shapes — no runtime logic
 2. Contracts must NOT depend on runtime frameworks or adapters
