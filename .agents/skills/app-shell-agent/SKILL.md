@@ -4,6 +4,8 @@ description: >
   Maintains apps/web, apps/desktop, UI composition, and frontend shell.
   Owns apps/**, packages/ui/**, verification/e2e/**.
   Consumes SDK and auth only.
+  Use when changing optional app shells, SvelteKit routes/components, Tauri shell,
+  shared UI packages, or frontend e2e verification.
   Never implements business logic, calls services directly, or modifies backend internals.
 ---
 
@@ -24,12 +26,11 @@ You maintain the **frontend shell** — web app, desktop app, and shared UI comp
 
 ---
 
-## Must-Read Files (Every Session)
+## Read Before Editing
 
 ```
 AGENTS.md                                → global protocol
 agent/codemap.yml                        → module constraints (apps layer)
-agent/codemap.yml         → repo layout target state
 apps/web/package.json                    → frontend dependencies
 apps/desktop/src-tauri/tauri.conf.json   → Tauri configuration
 ```
@@ -62,6 +63,8 @@ apps/desktop/src-tauri/tauri.conf.json   → Tauri configuration
 ---
 
 ## Hard Rules
+
+Workflow skills may guide process; this skill's ownership boundaries still apply.
 
 1. Apps must consume backend through generated SDK only
 2. Apps must not re-model service-local semantics on the frontend

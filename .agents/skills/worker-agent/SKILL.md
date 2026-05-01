@@ -3,7 +3,9 @@ name: worker-agent
 description: >
   Maintains workers, async executors, projectors, schedulers, and sync coordinators.
   Owns workers/**, verification/resilience/**, verification/topology/**, verification/replay/**.
-  Every worker must declare idempotency, retry, checkpoint/replay, and recovery behavior explicitly.
+  Use when changing workers/**, replay paths, async execution, projection behavior,
+  checkpointing, retry, dedupe, or worker recovery evidence. Every worker must declare
+  idempotency, retry, checkpoint/replay, and recovery behavior explicitly.
 ---
 
 # Worker Agent
@@ -22,12 +24,12 @@ You maintain **async execution and state progression** — relays, projectors, s
 
 ---
 
-## Must-Read Files (Every Session)
+## Read Before Editing
 
 ```
 AGENTS.md                                     → global protocol
 agent/codemap.yml                             → module constraints (workers layer)
-agent/codemap.yml              → repo layout target state
+.agents/skills/backend-engineering/SKILL.md   → backend quality kernel
 platform/model/README.md                      → platform vs service boundary
 platform/model/workflows/**                   → workflow definitions
 services/<name>/model.yaml                    → event, query, and ownership context
@@ -59,7 +61,9 @@ Individual worker Cargo.toml and README.md
 
 ---
 
-## Required Gates
+## Gate Candidates
+
+Select gates from `agent/manifests/gate-matrix.yml` based on changed paths, risk, and evidence level. Common worker signals include:
 
 | Gate | Command |
 |---|---|
@@ -71,6 +75,8 @@ Individual worker Cargo.toml and README.md
 ---
 
 ## Hard Rules
+
+Workflow skills, including `backend-engineering`, may guide process; this skill's ownership boundaries still apply.
 
 1. Every worker must declare idempotency, retry, checkpoint/replay, and recovery strategy
 2. Workers may import `services/**` and `packages/**`

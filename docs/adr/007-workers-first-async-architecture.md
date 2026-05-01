@@ -8,7 +8,7 @@
 
 > Implementation status: `outbox-relay` and `projector` are the only real async reference workers.
 > Their current reliability semantics are still partial: checkpointing is local-file-based, and shared
-> multi-replica dedupe / idempotency semantics are not yet the default production path.
+> multi-replica dedupe / idempotency semantics are not yet the default runtime path.
 > `indexer`, `scheduler`, and `sync-reconciler` remain mostly stub-level.
 
 ## Context

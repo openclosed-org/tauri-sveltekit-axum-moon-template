@@ -1,8 +1,8 @@
 # ADR-009: Canonical Monolith-First, Topology-Late Backend Architecture
 
 ## Status
-- [x] Proposed
-- [ ] Accepted
+- [ ] Proposed
+- [x] Accepted
 - [ ] Deprecated
 - [ ] Superseded
 
@@ -14,11 +14,11 @@ The repository already contains several strong architectural decisions:
 - `counter-service` provides the most complete end-to-end reference chain.
 - `event_outbox` exists as the unified event persistence surface.
 - `outbox-relay` and `projector` already form a real async chain.
-- `platform/model/*` exists to describe deployables, topology, and delivery shape.
+- `platform/model/*` exists to declare deployables, topology, and delivery shape.
 
 At the same time, the repository still presents multiple overlapping architectural narratives:
 
-1. the real `counter-service` production reference chain
+1. the real `counter-service` backend reference chain
 2. more aspirational service semantics in `tenant-service`
 3. a deprecated-as-default `runtime` abstraction layer
 4. deployable descriptions that sometimes mix current state with target state
@@ -54,7 +54,7 @@ This means:
 
 ### Canonical Reference Chain
 
-`counter-service` is the single default production reference chain until another service reaches the same closure level.
+`counter-service` is the single default backend reference chain until another service reaches the same closure level.
 
 Its current canonical path is:
 
@@ -67,7 +67,7 @@ service library
   -> replay / rebuildable read model
 ```
 
-`tenant-service` may remain a semantics reference, but not a default production copy target until its implementation closure matches `counter-service`.
+`tenant-service` may remain a semantics reference, but not a default copy target until its implementation closure matches `counter-service`.
 
 ### Canonical Event Path
 
@@ -98,14 +98,14 @@ The repository standardizes the following boundary rules:
 
 ### Reliability Rules
 
-The repository treats the following as introduce-now capabilities, not future optional polish:
+The repository treats the following as required before promoting workers beyond the single-replica/default reference path:
 
 1. shared checkpoint semantics
 2. shared dedupe/idempotency semantics for workers
 3. explicit worker ownership / lease strategy
 4. replay-safe processing assumptions
 
-Local-file checkpointing and in-process dedupe may remain as dev fallback, but are not the desired production-default semantics.
+Local-file checkpointing and in-process dedupe may remain as dev fallback, but are not multi-replica production semantics.
 
 ### Deferred Capabilities
 
@@ -126,7 +126,7 @@ These may be described in ADRs, platform model, or tooling notes, but should not
 - new agents and developers can identify the default backend path quickly
 - future topology changes are more likely to remain runtime/composition changes instead of semantic rewrites
 - duplicate message and runtime abstractions become easier to remove
-- platform model can regain credibility as a truthful control-plane description
+- platform model can regain credibility as a declared control-plane index
 - worker reliability can be improved in one place instead of per-worker copy/paste
 
 ### What becomes harder

@@ -1,432 +1,102 @@
 # Counter-Service Reference Chain
 
-> 目的：把 `counter-service` 定义为本仓库后端开发的默认参考锚点。
->
-> 它不是“最小 demo”，而是“业务最小、工程链路尽量完整”的生产参考样例。
->
-> 状态声明：当前这条链路已经具备较完整的参考价值，但仍有未闭环部分。本文档只描述已确认的事实、明确的目标态，以及这些目标态当前缺失在哪里。
+This document describes the current default backend reference chain. It is intentionally short: detailed ownership lives in code, contracts, models, gates, and runbooks.
 
-## 1. How to Use This Document
+## Purpose
 
-Reading order follows `AGENTS.md` §2. This is a Class B reference chain doc — use it to judge whether a backend capability has entered the default production chain.
-
-## 2. Core Positioning
-
-`counter-service` is the default backend reference anchor, carrying both the business main chain and the engineering cross-cutting chain. See `AGENTS.md` §7 for the full positioning rationale.
-
-This document describes confirmed facts, target state, and current gaps.
-
-## 3. 当前事实状态
-
-### 3.1 已经存在的参考链路部分
-
-当前仓库中，counter 参考链路已经具备：
-
-1. `services/counter-service/model.yaml` 作为 service-local semantics 真理源。
-2. `services/counter-service/src/**` 的 DDD 结构。
-3. `packages/contracts/**` 中的 counter DTO / event / error 相关契约。
-4. `servers/bff/web-bff/src/handlers/counter.rs` 的同步入口样例。
-5. `services/counter-service` 内的 CAS、idempotency、outbox write 样例。
-6. `workers/outbox-relay` 作为异步发布链路样例。
-7. `workers/projector` 作为 projection worker 样例。
-8. `platform/model/services/counter-service.yaml` 与 ownership mapping。
-9. 与 counter 相关的 SOPS 模板、Kustomize overlay、Flux app 定义的初步落点。
-
-### 3.2 尚未完全闭环的部分
-
-截至当前代码状态，这条链路还没有完全达到“生产完备参考样例”：
-
-1. `projector` 已补到 `outbox replay + optional NATS live tail`，但仍不是最终事件平台形态。
-2. `counter-service` 在当前阶段仍主要嵌入 `web-bff` 进程内，而不是独立 deployable 主路径。
-3. counter 相关的 secrets / GitOps / promotion / runbook 已有落点，但尚未形成完整 admission 闭环。
-4. 独立 worker 一旦进入多 Pod/k3s 交付路径，就必须把数据库 secret 切到 shared libSQL/Turso，而不能继续依赖本地 `file:` 数据库路径。
-5. platform model、schema、ownership 命名仍有部分漂移需要清理。
-
-所以对这条链路的正确理解是：
-
-1. 它是当前最重要的参考样例。
-2. 它不是已经完全收敛的最终生产模板。
-3. 后续所有后端基建、gate、文档瘦身，都应优先围绕它补齐，而不是另外新建一套平行样例。
-
-## 4. 参考链路总览
+`counter-service` is the default backend reference anchor because it exercises the smallest useful business capability while touching the main engineering seams:
 
 ```text
-client/request
-  -> web-bff handler
-  -> counter-service application service
-  -> repository + CAS + idempotency + outbox write
-  -> event_outbox table (unified, service-agnostic)
+service library
+  -> shared contracts
+  -> web-bff composition root
+  -> CAS + idempotency intent + event_outbox
   -> outbox-relay worker
-  -> event backbone
-  -> projector worker / indexer / downstream consumers
-  -> read model / replay / rebuild path
-
-同时并行存在一条工程横切链：
-
-platform model
-  -> deployables / ownership / topology / validators
-  -> secrets templates + encrypted artifacts (SOPS)
-  -> kustomize overlay / rendered manifests
-  -> Flux GitOps reconciliation
-  -> gate / CI / drift / runbook / promotion
+  -> projector worker
+  -> replayable read model
 ```
 
-## 5. 主业务链
+It is not a toy demo. It is also not a fully proven production platform.
 
-### 5.1 Service 模型真理源
+## Evidence Level
 
-入口文件：`services/counter-service/model.yaml`
+Current claim level:
 
-它应该回答：
+1. service/library boundary: `tested`
+2. contracts-first HTTP and event shape: `checked` to `tested`, depending on the path
+3. CAS mutation and outbox write: `tested`
+4. idempotency semantics: `declared` to `tested` for the happy path, not production-grade failure recovery
+5. worker relay and projector structure: `checked` to `tested`, not multi-replica production-proven
+6. secrets, overlay, Flux, and delivery wiring: `declared` to `checked`
+7. independent `counter-service` deployable: `declared`, not the default runtime path
 
-1. counter 实体归谁拥有。
-2. 接受哪些 command。
-3. 发布哪些 event。
-4. 提供哪些 query。
-5. consistency / idempotency / partitioning / failure behavior 是什么。
+Do not describe this chain above its evidence level unless the stronger runtime and operational evidence has been added.
 
-这是新增 service 时最先应看的真理源之一。
+## Current Executable Chain
 
-### 5.2 DDD 结构样例
+The current default path is:
 
-主要路径：
+1. `services/counter-service/model.yaml` declares service-local semantics.
+2. `services/counter-service/src/**` implements the service library using domain, application, ports, and infrastructure layers.
+3. `packages/contracts/**` carries external DTO, event, and error shapes.
+4. `servers/bff/web-bff/src/handlers/counter.rs` exposes the synchronous HTTP entrypoint.
+5. `services/counter-service/src/infrastructure/libsql_adapter.rs` provides the current libSQL persistence adapter.
+6. `services/counter-service/migrations/001_create_counter.sql` creates current counter, idempotency, and outbox tables.
+7. `workers/outbox-relay` reads `event_outbox` and publishes events.
+8. `workers/projector` replays `event_outbox` and builds the counter read model.
 
-1. `services/counter-service/src/domain/**`
-2. `services/counter-service/src/application/**`
-3. `services/counter-service/src/ports/**`
-4. `services/counter-service/src/infrastructure/**`
+The default composition root is still `web-bff`. The service crate remains a library.
 
-这条结构表达的是：
+## Declared Metadata
 
-1. domain 负责规则与对象。
-2. application 负责 orchestration。
-3. ports 定义外部依赖抽象。
-4. infrastructure 负责具体存储与适配实现。
-
-新增 service 时，优先复用这套分层，而不是从别的更复杂 service 抽象总结。
-
-### 5.3 Contracts-first 样例
-
-主要路径：
-
-1. `packages/contracts/api/**`
-2. `packages/contracts/events/**`
-3. `packages/contracts/errors/**`
-
-counter 链路要求：
-
-1. handler 对外响应形状来自 shared contracts。
-2. event payload 要有可复用契约表达。
-3. contract drift 必须可被脚本和 CI 检测。
-
-### 5.4 同步入口样例
-
-主要路径：
-
-1. `servers/bff/web-bff/src/handlers/counter.rs`
-2. `servers/bff/web-bff/src/main.rs`
-
-当前 counter 的同步入口承担的参考意义：
-
-1. 如何在 BFF 内部消费 service。
-2. 如何做 DTO-first handler。
-3. 如何做 tenant context 与错误映射。
-4. 如何在 mutation 后做 cache invalidation。
-
-注意：
-
-1. 当前 counter-service 主要以内嵌库的方式由 `web-bff` 组合使用。
-2. 因此它目前更适合做“server 如何组合 service”的样例，而不是“service 已经独立进程化”的最终样例。
-
-### 5.5 持久化、CAS、Idempotency、统一 Outbox 样例
-
-主要路径：
-
-1. `services/counter-service/src/application/service.rs`
-2. `services/counter-service/src/infrastructure/libsql_adapter.rs`
-3. `services/counter-service/migrations/001_create_counter.sql`
-4. `services/counter-service/tests/integration/full_stack_test.rs`
-
-当前它承载的默认实践：
-
-1. mutation 前先做 idempotency check。
-2. mutation 通过 CAS/版本校验防止并发覆盖。
-3. 成功写主状态后写统一 event_outbox（不再是 counter_outbox）。
-4. idempotency、主状态、event_outbox 属于同一条参考链上的核心数据结构。
-5. event_outbox 的 schema 由 packages/messaging 拥有，所有 service 共用。
-6. CAS mutation + outbox write 已收成 repository 级别的 `commit_mutation` 方法，通过 `LibSqlPort::begin()` → `SqlTransaction::execute()` → `commit()` 类型化事务原子执行（替代 `execute_batch("BEGIN;...;COMMIT;")` 字符串拼接）。CAS 冲突时主动 `rollback()`，确保 outbox 不写入空洞事件。idempotency cache 在事务提交后 best-effort 写入。
-7. 集成测试已包含 real EmbeddedTurso 并发测试（10/20 并发 tasks），验证 CAS 冲突重试和 outbox 一致性（counter 与 outbox 1:1 映射）。
-8. `SqlTransaction` trait（`data-traits::ports::lib_sql`）提供 `execute` + `commit` + `rollback`，返回 `Box<dyn SqlTransaction>` 支持多态。`query<T>` 有意排除以保持 dyn 兼容——事务内的读使用 port 的 `query`。
-9. counter-service deployable 已声明 `independent_deploy: true`，可独立于 web-bff 部署。
-
-## 6. 异步链路
-
-### 6.1 Outbox Relay
-
-主要路径：
-
-1. `workers/outbox-relay/src/main.rs`
-2. `workers/outbox-relay/src/polling/**`
-3. `workers/outbox-relay/src/publish/**`
-4. `workers/outbox-relay/src/checkpoint/**`
-5. `workers/outbox-relay/src/idempotency/**`
-
-它承载的目标态样例：
-
-1. 读取 outbox。
-2. 去重与幂等处理。
-3. 发布到消息骨干。
-4. 标记已发布。
-5. checkpoint 与恢复。
-
-当前真实状态：
-
-1. 已具备相当明确的 worker 结构。
-2. 默认 reader 已改为统一 `event_outbox` 数据库读取，不再把数据库失败静默降级为 in-memory stub。
-3. 事件发布侧已切到真实 NATS adapter，不再仅停留在内存 event bus / pubsub。
-4. 已补到独立的 dev secret / kustomize / Flux 落点，并可通过 `counter-shared-db` secret 接入 shared libSQL/Turso；当前 base 与 dev overlay 中两个 worker 都显式配置为 `replicas=1`。
-
-因此新增 worker 时：
-
-1. 可以复用它的结构与职责划分。
-2. 不能假定它已经代表最终的生产发布路径。
-
-### 6.2 Projector
-
-主要路径：
-
-1. `workers/projector/src/main.rs`
-2. `workers/projector/src/consumers/**`
-3. `workers/projector/src/readmodels/**`
-4. `workers/projector/src/checkpoint/**`
-5. `workers/projector/src/replay/**`
-
-它承载的目标态样例：
-
-1. replayable event source 消费。
-2. rebuildable read model。
-3. projection checkpoint。
-4. lag / health / recovery。
-
-当前真实状态：
-
-1. projector 已从纯骨架升级为统一 `event_outbox` replay source。
-2. 已具备持久化 `counter_projection` read model 与磁盘 checkpoint。
-3. 当配置 `PROJECTOR_NATS_URL` 时，可从 `events.counter.changed` subject 继续做 live tail，并默认通过 queue group 降低多副本重复消费。
-4. 已补到独立的 dev secret / kustomize / Flux 落点，并可通过 `counter-shared-db` secret 接入 shared libSQL/Turso；当前 base 与 dev overlay 中两个 worker 都显式配置为 `replicas=1`。
-5. 它当前仍不是最终的独立消息骨干订阅平台实现，也不提供 durable broker checkpoint 语义。
-
-因此本文把它视为“已经进入真实最小闭环、但仍需继续补齐交付链路”的参考环节。
-
-## 7. 平台模型链路
-
-### 7.1 Service 元数据
-
-主要文件：
-
-1. `platform/model/services/counter-service.yaml`
-2. `platform/model/state/ownership-map.yaml`
-
-它们表达：
-
-1. counter-service 是 reference-service。
-2. `counter` 的 owner 是 `counter-service`。
-
-当前仍需注意：
-
-1. ownership map 中其他 service 命名还存在 `tenant` / `auth` / `user` / `indexing` 这类与目录名不完全一致的漂移。
-2. 这说明平台模型链路还需要整体收敛，不能只修 counter 一处就宣称完全一致。
-
-### 7.2 Deployables
-
-主要文件：
-
-1. `platform/model/deployables/web-bff.yaml`
-2. `platform/model/deployables/outbox-relay-worker.yaml`
-3. `platform/model/deployables/projector-worker.yaml`
-
-当前 counter 参考链路通过这些 deployable 表达：
-
-1. 同步入口由 `web-bff` 承载。
-2. 异步 relay 由 `outbox-relay-worker` 承载。
-3. projection 由 `projector-worker` 承载。
-
-当前未完全到位的部分：
-
-1. `counter-service` 自己的独立 deployable 主路径还没有真正进入默认链路。
-2. 但 SOPS 模板已经为独立 deployable 的未来路径预留了位置。
-
-## 8. 生产工具链横切链
-
-这是本文最重要的补充部分。
-
-### 8.1 为什么必须把横切链挂到 counter
-
-如果 `counter-service` 只展示业务代码链路，那么以下高价值能力就会从默认学习路径里消失：
-
-1. secrets 管理
-2. 环境提升
-3. GitOps/Flux
-4. deployable 与 topology
-5. drift 检查
-6. rollback / runbook
-
-所以 counter 参考链必须把这些能力显式挂接进来，即使当前仍有部分未闭环。
-
-### 8.2 Secrets / SOPS
-
-主要文件：
-
-1. `justfiles/sops.just`
-2. `infra/security/sops/templates/dev/web-bff.yaml`
-3. `infra/security/sops/templates/dev/outbox-relay-worker.yaml`
-4. `infra/security/sops/templates/dev/projector-worker.yaml`
-5. `infra/security/sops/templates/dev/counter-shared-db.yaml`
-6. `infra/security/sops/templates/dev/counter-service.yaml`
-6. `infra/security/sops/dev/outbox-relay-worker.enc.yaml`
-7. `infra/security/sops/dev/projector-worker.enc.yaml`
-
-当前真实状态：
-
-1. 仓库已经明确规定后端默认通过 SOPS/Kustomize/Flux 注入环境变量，而不是通过 `.env` 文件。
-2. `web-bff`、`outbox-relay-worker`、`projector-worker` 都已经有 dev secret 模板与加密文件落点。
-3. `counter-shared-db` 已作为独立 secret 模板存在，用来把 `web-bff` 与独立 worker 指向同一个远程 libSQL/Turso。
-4. `web-bff` dev overlay 已显式消费 `counter-shared-db` secret，使 cluster 路径优先走远端 Turso，而本地 `just sops-run web-bff` 仍可保留嵌入式 fallback。
-5. `projector-worker` 与 `outbox-relay-worker` 的独立 dev overlay 已接入 `counter-shared-db` secret，并在当前清单中显式保持 `replicas=1`。
-6. `counter-service` 本身也有 dev template，但注释明确说明 Phase 0 仍嵌入 `web-bff`，独立 deployable 属于 Phase 1+。
-
-这意味着：
-
-1. SOPS 已经进入 counter 参考链。
-2. `projector-worker` 已具备独立 secret artifact 与 overlay/Flux 入口。
-3. 但 counter-service 自身的独立 secret artifact 还不是默认运行主路径。
-
-### 8.3 Kustomize / Overlay / Environment
-
-主要文件：
-
-1. `infra/k3s/overlays/dev/kustomization.yaml`
-2. `infra/k3s/overlays/dev/projector-worker/kustomization.yaml`
-3. `infra/k3s/base/configmap-projector-worker.yaml`
-4. `infra/k3s/overlays/dev/outbox-relay-worker/kustomization.yaml`
-5. `infra/k3s/overlays/staging/outbox-relay-worker/kustomization.yaml`
-6. `infra/k3s/overlays/staging/projector-worker/kustomization.yaml`
-
-当前真实状态：
-
-1. dev overlay 已消费 `web-bff` 的加密 secret，并额外显式挂接 `counter-shared-db` 作为 shared remote DB 入口。
-2. `outbox-relay-worker` 与 `projector-worker` 都已有独立 dev overlay，且 overlay 内已挂接 `counter-shared-db` secret。
-3. 二者当前在 base 与 dev overlay 中都显式配置为 `replicas=1`，因此 admission 必须继续校验 shared DB secret、overlay 和 Flux 路径是否一致。
-4. `counter-service.enc.yaml` 仍被注释掉，说明它尚未成为独立 deployable 的默认部署路径。
-5. staging overlay 已为 `outbox-relay-worker` 与 `projector-worker` 创建，引用 `counter-shared-db-staging` secret（需先通过 SOPS 加密）。prod overlay 尚未创建。
-
-因此新增服务若要进入目标态：
-
-1. 必须在 counter 现有模式基础上补齐自己的 overlay 与 secret 绑定。
-2. 不能绕开这条路径重新发明另一套环境注入方式。
-
-### 8.4 Flux / GitOps
-
-主要文件：
-
-1. `infra/gitops/flux/apps/web.yaml`
-2. `infra/gitops/flux/apps/projector-worker.yaml`
-3. `infra/gitops/flux/apps/outbox-relay-worker.yaml`
-4. `infra/gitops/flux/apps/staging-outbox-relay-worker.yaml`
-5. `infra/gitops/flux/apps/staging-projector-worker.yaml`
-6. `docs/operations/gitops.md`
-
-当前真实状态：
-
-1. `web-bff` 的 Flux Kustomization 已存在。
-2. 该 Kustomization 已包含 SOPS decryption 配置。
-3. `outbox-relay-worker` 与 `projector-worker` 的 Flux Kustomization 都已存在，并指向各自独立的 dev overlay。
-4. staging Flux Kustomization 已创建，指向各自 staging overlay（`ENV: staging`）。
-5. dev 与 staging overlay 配置都显式保持 `replicas=1`。
-
-当前缺口：
-
-1. staging SOPS secrets 尚未加密创建，staging overlay 不可直接 deploy。
-2. prod overlay 与 Flux app 尚未创建。
-3. `indexer-worker` 等其余 worker 的 Flux app 映射尚未全部补齐。
-
-### 8.5 Delivery / Promotion / Drift / Runbook
-
-当前仓库中，这部分能力已经有若干落点，但尚未围绕 counter 形成统一入口：
-
-1. `just verify-generated-artifacts`、`drift-check`、`sdk-drift-check`
-2. `docs/operations/gitops.md`
-3. `docs/operations/secret-management.md`
-4. `ops/**` 与 `infra/**` 下的运维与交付文件
-5. `just verify-counter-delivery strict`
-
-当前真实状态：
-
-1. 仓库已新增 `just verify-counter-delivery` 这条可执行 admission，把 counter shared DB secret 校验、worker overlay、Flux app 落点收口到 `repo-tools` 控制面。
-2. gate 已扩展到 staging overlay + Flux app 检查（路径匹配、ENV 替换、secret 引用）。
-3. gate 已包含 platform model drift 检查（deployable 文件存在、ownership-map 声明 counter entity、projector-worker 有 async-projection profile）和 rollback 检查（runbook 必须提及 rollback）。
-4. `platform-ops-agent` scoped gate 已接入这条检查，避免 counter delivery 继续只存在于文档层。
-5. `ops/runbooks/counter-delivery.md` 已作为当前最小 runbook/admission 落点接入同一条主链。
-
-## 9. 默认学习地图
-
-后续 agent 若要以 counter 作为默认参考链路，应按以下路径学习：
-
-### 9.1 看业务主链
+These files are navigation and control-plane declarations, not proof by themselves:
 
 1. `services/counter-service/model.yaml`
-2. `services/counter-service/src/**`
-3. `packages/contracts/**`
-4. `servers/bff/web-bff/src/handlers/counter.rs`
-5. `workers/outbox-relay/src/**`
-6. `workers/projector/src/**`
+2. `platform/model/services/counter-service.yaml`
+3. `platform/model/deployables/web-bff.yaml`
+4. `platform/model/deployables/outbox-relay-worker.yaml`
+5. `platform/model/deployables/projector-worker.yaml`
+6. `platform/model/state/ownership-map.yaml`
 
-### 9.2 看平台与交付链
+Use them to understand intent, then verify behavior through code, schemas, tests, validators, gates, scripts, or command output.
 
-1. `platform/model/services/counter-service.yaml`
-2. `platform/model/deployables/web-bff.yaml`
-3. `platform/model/deployables/outbox-relay-worker.yaml`
-4. `platform/model/deployables/projector-worker.yaml`
-5. `justfiles/sops.just`
-6. `infra/security/sops/templates/dev/web-bff.yaml`
-7. `infra/security/sops/templates/dev/outbox-relay-worker.yaml`
-8. `infra/security/sops/templates/dev/projector-worker.yaml`
-9. `infra/security/sops/templates/dev/counter-shared-db.yaml`
-10. `infra/security/sops/templates/dev/counter-service.yaml`
-11. `infra/k3s/overlays/dev/kustomization.yaml`
-12. `infra/k3s/overlays/dev/outbox-relay-worker/kustomization.yaml`
-13. `infra/k3s/overlays/dev/projector-worker/kustomization.yaml`
-14. `infra/gitops/flux/apps/web.yaml`
-15. `infra/gitops/flux/apps/outbox-relay-worker.yaml`
-16. `infra/gitops/flux/apps/projector-worker.yaml`
+## Current Gaps
 
-## 10. 当前明确缺口
+These are known gaps, not hidden current facts:
 
-当前若要把 counter 参考链真正提升为“最小生产链路完备样例”，优先需要补齐：
+1. Idempotency currently lacks a durable request hash/status/result claim inside the same causal transaction. Treat it as a reference gap before production-grade retry semantics.
+2. `event_outbox` is intended to be service-agnostic, but the current schema still lives in the counter-service migration path. Do not claim shared migration ownership until sources and gates agree.
+3. `counter-service` has declared independent deployable metadata and secret templates, but the default runtime path still embeds it through `web-bff`.
+4. `outbox-relay` and `projector` are held at `replicas=1` in the current reference profile. Multi-replica worker behavior requires durable ownership, checkpoint, dedupe, and recovery evidence.
+5. GitOps, promotion, rollback, and drift handling have real entrypoints, but are not a fully proven release pipeline.
 
-1. 把 `web-bff` 的集群配置入口也完全收敛到真实 `APP_*` secret/key 形状，并与 shared counter DB secret 串成同一条主链。
-3. 继续把 `verify-counter-delivery` 从当前 dev + runbook admission 扩到更完整的 promotion/drift/rollback 闭环。
-4. 修正 platform model / schema / ownership 的命名漂移。
-5. 明确 counter-service 从嵌入式库到独立 deployable 的演进路径，并让该路径受 gate 约束。
+## Copy Rules For New Services
 
-## 12. 一句话结论
+When adding a backend service, copy the pattern, not the current accidents:
 
-`counter-service` 现在不是“已经完工的终态模板”，而是“必须继续优先补齐、并最终承载完整后端生产工具链默认路径的参考锚点”。
+1. Create `services/<name>/model.yaml` as the service-local declared semantics index.
+2. Keep domain rules in `domain/`, orchestration in `application/`, external dependencies in `ports/`, and concrete local adapters in `infrastructure/` only when appropriate for the service boundary.
+3. Put external DTOs, events, and error codes in `packages/contracts/**` before exposing them through HTTP, RPC, or messages.
+4. Use a transactional mutation boundary for state change plus outbox write.
+5. Keep broker/runtime publishing out of service libraries; publish through worker or composition-root paths.
+6. Make projections replayable and rebuildable; never treat a read model as authoritative business state.
+7. Mark stub, deferred, or reserved capabilities explicitly.
+8. Run path-scoped guardrails first, then escalate gates based on contract, replay, delivery, topology, or P0 correctness risk.
 
-后续新增后端能力、精简文档、收敛 gate/CI，都应优先围绕这条链路推进，而不是绕开它另起炉灶。
+## Verification Entry Points
 
+Useful current commands include:
 
-## 13. 新增 service 默认路径
+```bash
+cargo check -p counter-service
+cargo test -p counter-service
+just check-backend-primary
+just test-backend-primary
+just verify-counter-delivery strict
+```
 
-新增后端 service 时，默认按以下路径执行，不给 agent 摇摆空间：
+Run only the gates relevant to the changed paths and risk level. Do not claim gates passed unless they were executed.
 
-1. 建立 `services/<name>/model.yaml` 作为 service-local semantics 真理源。
-2. 默认按 `counter-service` 的 DDD 分层：`domain/`、`application/`、`ports/`、`infrastructure/`。
-3. 默认持久化走 `LibSqlPort` / repository adapter，不引入额外存储抽象，除非先说明 capability slot 和验证边界。
-4. mutation 成功后写统一 `event_outbox`，schema 由 `packages/messaging` 拥有，不创建私有 `<service>_outbox` 表。
-5. service 不直接碰 broker runtime（NATS / PubSub）；service 只负责事务性状态变更与 outbox write。
-6. `workers/outbox-relay` 负责从 `event_outbox` 异步发布到当前消息骨干。
-7. projection 必须 replayable / rebuildable，默认从 `event_outbox` 做 replay source 和 checkpoint。
-8. 跨 service 长事务必须 workflow 化，不用同步调用伪装成分布式事务。
-9. stub / future 包必须在 `model.yaml`、README 或平台元数据中标记当前成熟度，不能写成已生产完备。
-10. 默认完成后至少运行 path-scoped guardrails；涉及 contract、replay、delivery、topology 或 P0 correctness 时按 `agent/manifests/gate-matrix.yml` 升级验证。
+## One-Line Rule
+
+`counter-service` is the default backend reference anchor: follow it for the current path, but keep declared metadata, target state, and proven runtime behavior separate.

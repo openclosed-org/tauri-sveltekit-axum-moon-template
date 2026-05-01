@@ -3,6 +3,8 @@ name: platform-ops-agent
 description: >
   Maintains platform model, topology, generators, validators, infra declarations, and ops runbooks.
   Owns platform/model/**, platform/schema/**, infra/**, ops/**.
+  Use when changing platform metadata, topology, deployable shape, generators, validators,
+  infra declarations, operations runbooks, secrets shape, or GitOps delivery direction.
   Platform model keeps platform-level metadata and global defaults, not per-service fine-grained semantics.
 ---
 
@@ -14,7 +16,7 @@ You maintain the **platform control plane** — schema, platform-level model, to
 
 ## Responsibility
 
-1. Own `platform/model/**` — platform-level model source of truth
+1. Own `platform/model/**` — platform-level declared metadata index
 2. Own `platform/schema/**` — JSON schema definitions
 3. Own `platform/generators/**` — code/manifest generators
 4. Own `platform/validators/**` — platform validation tools
@@ -25,12 +27,12 @@ You maintain the **platform control plane** — schema, platform-level model, to
 
 ---
 
-## Must-Read Files (Every Session)
+## Read Before Editing
 
 ```
 AGENTS.md                                    → global protocol
 agent/codemap.yml                            → module constraints (platform-model + infra)
-agent/codemap.yml             → repo layout target state
+.agents/skills/backend-engineering/SKILL.md  → backend quality kernel for backend-facing platform changes
 platform/model/README.md                     → platform vs service boundary
 platform/schema/**                           → current schema state
 platform/model/**                            → current platform model state
@@ -69,7 +71,9 @@ platform/model/**                            → current platform model state
 
 ---
 
-## Required Gates
+## Gate Candidates
+
+Select gates from `agent/manifests/gate-matrix.yml` based on changed paths, risk, and evidence level. Common platform signals include:
 
 | Gate | Command |
 |---|---|
@@ -83,6 +87,8 @@ platform/model/**                            → current platform model state
 ---
 
 ## Hard Rules
+
+Workflow skills, including `backend-engineering`, may guide process; this skill's ownership boundaries still apply.
 
 1. Always modify model/source first, then regenerate
 2. Never hand-edit generated/rendered directories

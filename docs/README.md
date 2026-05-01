@@ -9,19 +9,24 @@ When docs conflict with code, validators, gates, or executable scripts, trust th
 For general readers and template adopters:
 
 1. `README.md`
-2. `docs/operations/local-dev.md`
-3. `docs/operations/secret-management.md`
+2. `docs/architecture/north-star.md`
+3. `docs/operations/local-dev.md`
 4. `docs/operations/counter-service-reference-chain.md`
-5. `docs/template-users/template-init.md`
+5. `docs/operations/secret-management.md`
+6. `docs/template-users/template-init.md`
 
 For maintainers and agent-assisted development:
 
 1. `AGENTS.md`
-2. `docs/architecture/harness-philosophy.md`
-3. `agent/codemap.yml`
-4. `docs/adr/**`
-5. `docs/governance/maintainer-decision-guide.md`
-6. `docs/governance/docs-lifecycle.md`
+2. `docs/architecture/north-star.md`
+3. `docs/architecture/harness-philosophy.md`
+4. `docs/language/README.md`
+5. `docs/agents/README.md`
+6. `agent/codemap.yml`
+7. `docs/adr/**`
+8. `docs/governance/maintainer-decision-guide.md`
+9. `docs/governance/docs-lifecycle.md`
+10. `docs/governance/out-of-scope/README.md`
 
 ## What Belongs Here
 
@@ -30,8 +35,10 @@ Tracked `docs/**` should stay limited to:
 1. current operator/developer guidance in `docs/operations/**`
 2. durable architecture decisions in `docs/adr/**`
 3. minimal template-adoption guidance in `docs/template-users/**`
-4. historical notes in `docs/archive/**`
-5. a small amount of governance guidance when it remains stable and worth keeping
+4. shared vocabulary in `docs/language/**`
+5. agent consumption and skill-authoring guidance in `docs/agents/**`
+6. historical notes in `docs/archive/**`
+7. governance memory in `docs/governance/**` when it remains stable and worth keeping
 
 ## What Does Not Belong Here
 
@@ -50,7 +57,7 @@ It should stay gitignored; if you need lightweight versioning, keep that inside 
 `counter-service` remains the default backend reference anchor for this repository:
 
 1. business chain: `service -> contracts -> server -> outbox -> relay -> projector`
-2. engineering chain: `platform model -> secrets -> deploy -> GitOps -> runbook`
+2. engineering chain: `declared platform metadata -> secrets shape -> deploy shape -> GitOps direction -> runbook/gate evidence`
 
 If you are trying to understand the current backend path, start there instead of reading speculative planning material.
 
@@ -83,11 +90,11 @@ Maintainers can override the default release tag strategy without changing track
 
 There are three different configuration paths and they should not be confused:
 
-1. canonical backend path: `SOPS -> Kustomize/Flux`, with `just sops-run` locally
+1. canonical cluster secret shape: `SOPS -> Kustomize/Flux`, with `just sops-run` locally
 2. quick backend debug path: explicit `APP_*` exports for short host-process loops
 3. local tooling or desktop convenience path: `.env`, which is not the canonical backend secrets path
 
-If you are working on backend deployables, prefer the first path by default.
+If you are working on backend deployables, prefer the first path when the task touches deployable or cluster configuration. For a short host-process debug loop, explicit `APP_*` exports are allowed when they do not become the documented reference path.
 
 ### Desktop Scope
 
@@ -102,9 +109,15 @@ If you are working on backend deployables, prefer the first path by default.
 
 The root `README.md` keeps the public overview short. The main repository rules live here and in `AGENTS.md`:
 
-1. `platform/model/*` is the truth source for platform shape
+1. `platform/model/*` is the declared metadata index for platform shape; validators, generated drift checks, scripts, gates, and command output decide what is checked, tested, or proven
 2. contracts change before implementation when external shapes change
 3. services are libraries; servers and workers compose them
 4. workers are first-class and must make retry, idempotency, and replay explicit
 5. generated directories are read-only
 6. topology may change deployment shape, but not business semantics
+
+### GitHub Discussions
+
+GitHub Discussions are design rationale and RFC material. They are not current repository rules unless promoted into tracked docs or ADRs.
+
+When a discussion conflicts with executable sources, accepted ADRs, `AGENTS.md`, or `docs/architecture/north-star.md`, follow the tracked and executable sources.

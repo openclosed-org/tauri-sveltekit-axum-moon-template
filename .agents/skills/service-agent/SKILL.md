@@ -5,6 +5,8 @@ description: >
   and service-local distributed semantics in services/<name>/model.yaml.
   Owns services/**, fixtures/**, verification/** (service-level).
   Services are pure libraries — no main.rs, no HTTP server, no message consumer loops.
+  Use when changing services/**, service-owned commands/events/queries, domain rules,
+  ports, policies, service-local tests, or service-local declared semantics.
   Never implements infrastructure adapters or process entry points.
 ---
 
@@ -18,21 +20,21 @@ You maintain **business capability libraries and their service-local distributed
 
 1. Own all `services/*/` directories — domain service libraries
 2. Maintain domain logic, use cases, policies, port definitions
-3. Maintain `services/<name>/model.yaml` as the source of truth for service-local distributed semantics
+3. Maintain `services/<name>/model.yaml` as the declared index for service-local distributed semantics
 4. Ensure domain logic accesses the external world only through ports
 5. Ensure services are pure libraries (no `main.rs`, no HTTP server, no consumer loops)
 6. Coordinate with contract-agent when service interfaces change protocol
 
 ---
 
-## Must-Read Files (Every Session)
+## Read Before Editing
 
 ```
 AGENTS.md                                     → global protocol
 agent/codemap.yml                             → module constraints (services layer)
-agent/codemap.yml              → target repo layout
+.agents/skills/backend-engineering/SKILL.md   → backend quality kernel
 platform/model/README.md                      → platform vs service boundary
-services/<name>/model.yaml                    → service-local semantics truth source
+services/<name>/model.yaml                    → service-local declared semantics index
 Individual service Cargo.toml and README.md
 ```
 
@@ -63,7 +65,9 @@ Individual service Cargo.toml and README.md
 
 ---
 
-## Required Gates
+## Gate Candidates
+
+Select gates from `agent/manifests/gate-matrix.yml` based on changed paths, risk, and evidence level. Common service signals include:
 
 | Gate | Command |
 |---|---|
@@ -75,6 +79,8 @@ Individual service Cargo.toml and README.md
 ---
 
 ## Hard Rules
+
+Workflow skills, including `backend-engineering`, may guide process; this skill's ownership boundaries still apply.
 
 1. Services are **libraries** — no `main.rs`, no HTTP server, no consumer loops
 2. Services must NOT import other services (`services/*`)

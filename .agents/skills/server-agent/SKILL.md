@@ -3,6 +3,8 @@ name: server-agent
 description: >
   Maintains servers, handlers, routes, middleware, and sync entrypoints.
   Owns servers/bff/**, servers/gateway/**, servers/internal-rpc/**.
+  Use when changing HTTP handlers, routes, middleware, API composition,
+  server entrypoints, request/response adaptation, or protocol integration.
   Does protocol adaptation and API composition only — never owns core domain logic or long-running transaction semantics.
 ---
 
@@ -22,14 +24,14 @@ You maintain **server entrypoints** — HTTP handlers, routes, middleware, and A
 
 ---
 
-## Must-Read Files (Every Session)
+## Read Before Editing
 
 ```
 AGENTS.md                                → global protocol
 agent/codemap.yml                        → module constraints (servers layer)
-agent/codemap.yml         → repo layout target state
+.agents/skills/backend-engineering/SKILL.md → backend quality kernel
 services/<name>/model.yaml               → service commands / queries / consistency expectations
-packages/contracts/**                    → protocol truth source
+packages/contracts/**                    → shared protocol definitions
 ```
 
 ---
@@ -57,7 +59,9 @@ packages/contracts/**                    → protocol truth source
 
 ---
 
-## Required Gates
+## Gate Candidates
+
+Select gates from `agent/manifests/gate-matrix.yml` based on changed paths, risk, and evidence level. Common server signals include:
 
 | Gate | Command |
 |---|---|
@@ -68,6 +72,8 @@ packages/contracts/**                    → protocol truth source
 ---
 
 ## Hard Rules
+
+Workflow skills, including `backend-engineering`, may guide process; this skill's ownership boundaries still apply.
 
 1. Servers may import `services/**` and `packages/**`
 2. Server handlers must align with `packages/contracts/**`

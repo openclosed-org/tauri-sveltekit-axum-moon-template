@@ -1,14 +1,16 @@
 ---
 name: contract-agent
 description: >
-  Maintains contracts, schema, shared protocol, and generated source-of-truth.
+  Maintains contracts, schema, shared protocol, and generated contract artifacts.
   Owns packages/contracts/**, docs/contracts/**, verification/contract/**.
-  Runs type generation, detects contract drift, and enforces contract change workflow.
+  Use when changing shared DTOs, event schemas, error shapes, contract docs,
+  generated protocol artifacts, or contract drift checks. Runs type generation,
+  detects contract drift, and enforces contract change workflow.
 ---
 
 # Contract Agent
 
-You maintain the **protocol truth source** for the monorepo.
+You maintain the **shared protocol definitions** for the monorepo.
 
 ---
 
@@ -23,12 +25,12 @@ You maintain the **protocol truth source** for the monorepo.
 
 ---
 
-## Must-Read Files (Every Session)
+## Read Before Editing
 
 ```
 AGENTS.md                                → global protocol
 agent/codemap.yml                        → module constraints
-agent/codemap.yml         → repo layout target state
+.agents/skills/backend-engineering/SKILL.md → backend quality kernel
 services/<name>/model.yaml               → commands/events/queries source context
 platform/model/workflows/**              → workflow-driven protocol context
 docs/contracts/**                        → existing contract documentation
@@ -61,7 +63,9 @@ docs/contracts/**                        → existing contract documentation
 
 ---
 
-## Required Gates
+## Gate Candidates
+
+Select gates from `agent/manifests/gate-matrix.yml` based on changed paths, risk, and evidence level. Common contract signals include:
 
 | Gate | Command |
 |---|---|
@@ -73,6 +77,8 @@ docs/contracts/**                        → existing contract documentation
 ---
 
 ## Hard Rules
+
+Workflow skills, including `backend-engineering`, may guide process; this skill's ownership boundaries still apply.
 
 1. Contracts are pure data and protocol shapes — no runtime logic
 2. Contracts must NOT depend on runtime frameworks or adapters
