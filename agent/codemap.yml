@@ -120,7 +120,7 @@ layers:
   - name: root
     paths:
       - .mise.toml
-      - justfile
+      - Justfile
       - justfiles/**
       - moon.yml
       - Cargo.toml
@@ -169,7 +169,7 @@ layers:
     paths:
       - apps/**
       - packages/ui/**
-    role: Optional web, desktop, mobile, and shared UI shells.
+    role: Optional app shells and shared UI surfaces.
 
   - name: shared-packages
     paths:
@@ -222,7 +222,11 @@ generated_readonly:
 human_authored:
   - AGENTS.md
   - agent/**
+  - Justfile
+  - justfiles/**
   - docs/architecture/**
+  - docs/agents/**
+  - docs/language/**
   - docs/operations/**
   - docs/adr/**
   - platform/schema/**
@@ -235,7 +239,6 @@ human_authored:
   - workers/**
   - verification/**
   - fixtures/**
-      - justfiles/**
 
 write_boundaries:
   planner:

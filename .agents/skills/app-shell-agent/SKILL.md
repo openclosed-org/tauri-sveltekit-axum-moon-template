@@ -19,10 +19,11 @@ You maintain the **frontend shell** — web app, desktop app, and shared UI comp
 
 1. Own `apps/web/**` — SvelteKit web application
 2. Own `apps/desktop/**` — Tauri desktop application
-3. Own `apps/mobile/**` — planned mobile application
-4. Own `packages/ui/**` — shared UI component library
-5. Consume SDK (`packages/sdk/typescript`) and auth (`packages/authn`) only
-6. Never directly import from `services/**`, `workers/**`, or `infra/**`
+3. Own `apps/mobile/**` if that optional shell exists
+4. Own `apps/browser-extension/**` if that optional shell exists
+5. Own `packages/ui/**` — shared UI component library
+6. Consume SDK (`packages/sdk/typescript`) and auth (`packages/authn`) only
+7. Never directly import from `services/**`, `workers/**`, or `infra/**`
 
 ---
 
@@ -44,6 +45,7 @@ apps/desktop/src-tauri/tauri.conf.json   → Tauri configuration
 | `apps/web/**` | SvelteKit routes, components, stores, styles |
 | `apps/desktop/**` | Tauri app source, UI, configuration |
 | `apps/mobile/**` | Mobile app source |
+| `apps/browser-extension/**` | Browser extension shell |
 | `packages/ui/**` | Shared UI components |
 | `verification/e2e/**` | End-to-end tests |
 

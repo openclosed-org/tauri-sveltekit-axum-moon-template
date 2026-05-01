@@ -52,7 +52,7 @@ Backend tasks:
 
 Tooling, scripts, gates, or repo-control tasks also read:
 
-1. `justfile`
+1. `Justfile`
 2. `justfiles/**`
 3. `moon.yml`
 4. `tools/repo-tools/**`
@@ -99,8 +99,9 @@ Quick reference:
 | `servers/**`                                                    | server-agent       |
 | `workers/**`                                                    | worker-agent       |
 | `apps/**`, `packages/ui/**`                                     | app-shell-agent    |
-| `tools/repo-tools/**`, `justfiles/**`, `moon.yml`              | planner            |
-| `AGENTS.md`, `agent/**`, root config, `docs/architecture/**`    | planner            |
+| `tools/repo-tools/**`, `Justfile`, `justfiles/**`, `moon.yml`  | planner            |
+| `AGENTS.md`, `agent/**`, `.agents/**`, root config              | planner            |
+| `docs/agents/**`, `docs/language/**`, `docs/architecture/**`    | planner            |
 
 Multi-domain dispatch order: platform-ops -> contract -> service -> server/worker -> app-shell -> verification.
 

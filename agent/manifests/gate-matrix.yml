@@ -146,14 +146,17 @@ path_rules:
   - match:
       - AGENTS.md
       - agent/**
+      - .agents/**
       - docs/architecture/**
+      - docs/agents/**
+      - docs/language/**
     recommended:
       - boundary_check
     required: []
     note: Coordination-only changes should not trigger heavy platform or release gates by default.
 
   - match:
-      - justfile
+      - Justfile
       - justfiles/**
       - moon.yml
       - package.json
