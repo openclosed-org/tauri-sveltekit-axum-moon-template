@@ -47,6 +47,9 @@ rules:
     primary: platform-ops-agent
 
   # App domain
+  - match: "apps/browser-extension/**"
+    primary: app-shell-agent
+
   - match: "apps/web/**"
     primary: app-shell-agent
 
@@ -111,6 +114,12 @@ rules:
     primary: contract-agent
 
   - match: "docs/architecture/**"
+    primary: planner
+
+  - match: "docs/agents/**"
+    primary: planner
+
+  - match: "docs/language/**"
     primary: planner
 
   # Root config (planner handles directly)

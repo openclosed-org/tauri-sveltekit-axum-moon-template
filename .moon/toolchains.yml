@@ -1,4 +1,4 @@
 # Toolchain configuration for moon tasks
-# Tool versions are managed by mise (.tool-versions)
+# Tool versions are managed by mise (.mise.toml)
 rust:
   # Managed by rust-toolchain.toml

@@ -36,6 +36,7 @@ target/
 .moon/cache/
 
 # --- mise (tool versions cache) ---
+.tool-versions
 .mise/cache/
 .mise/installs/
 

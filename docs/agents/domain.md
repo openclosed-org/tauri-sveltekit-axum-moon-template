@@ -1,35 +1,36 @@
 # Agent Domain Docs
 
-This file defines how agents should consume repository language and decision docs.
+This file defines how agents consume repository docs without turning prose into false evidence.
 
-## Read Order
+## Reading Model
 
-For backend and harness work, read:
+Start with the narrowest durable source that can answer the task:
 
-1. `AGENTS.md`
-2. `docs/architecture/north-star.md`
-3. `docs/architecture/harness-philosophy.md`
-4. relevant `docs/language/**`
-5. accepted ADRs that touch the area
-6. executable sources, validators, tests, gates, scripts, and command output
+| Need | Read |
+|---|---|
+| Global rules and reporting expectations | `AGENTS.md` |
+| Path ownership or dependency direction | `agent/codemap.yml` and `agent/manifests/routing-rules.yml` |
+| Gate selection | `agent/manifests/gate-matrix.yml` |
+| Architecture constraints | `docs/architecture/north-star.md`, `docs/architecture/harness-philosophy.md`, relevant ADRs |
+| Shared terminology | Relevant `docs/language/**` |
+| Skill behavior | Relevant `.agents/skills/**/SKILL.md` |
+| Current behavior | Code, schemas, validators, tests, gates, scripts, and command output |
 
-Use `agent/codemap.yml`, `agent/manifests/routing-rules.yml`, and `agent/manifests/gate-matrix.yml` for path ownership and gate selection.
+Do not read every document by default. Add context when the task crosses a boundary, touches a durable decision, or a term is ambiguous.
 
-## Language Docs
+## Evidence Boundaries
 
-`docs/language/**` provides vocabulary only. Use its terms in plans, tests, issues, and reviews.
-
-Do not treat language docs as evidence that behavior exists. If a term conflicts with code, validators, tests, gates, or command output, trust executable evidence.
+1. Language docs provide vocabulary only.
+2. Agent docs provide operating conventions only.
+3. Skills provide triggers, boundaries, and workflow guidance only.
+4. Manifests route work and recommend gates, but do not prove runtime semantics.
+5. Executable sources and command output decide `checked`, `tested`, and `proven` claims.
 
 ## ADRs
 
-Read ADRs when the task touches architecture, topology, storage, protocol, or cross-boundary behavior.
+Read ADRs when a task touches architecture, topology, storage, protocol, or cross-boundary behavior.
 
-Only create or update an ADR when the decision is:
-
-1. hard to reverse
-2. surprising without context
-3. the result of a real trade-off
+Create or update an ADR only when the decision is hard to reverse, surprising without context, and the result of a real trade-off.
 
 ## Scratch Guidance
 

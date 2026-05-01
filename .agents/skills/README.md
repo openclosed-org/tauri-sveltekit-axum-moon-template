@@ -1,31 +1,33 @@
 # Skills
 
-Repository skills are split into two groups.
+Repository skills are triggerable context modules. They should be short, current, and boundary-safe.
+
+For the full context-flow model, read `docs/agents/README.md`. For writing or reviewing a skill, read `docs/agents/skill-authoring.md`.
 
 ## Ownership Skills
 
-Ownership skills define writable paths and responsibility boundaries:
+Ownership skills define writable paths and responsibility boundaries.
 
-1. `planner`
-2. `platform-ops-agent`
-3. `contract-agent`
-4. `service-agent`
-5. `server-agent`
-6. `worker-agent`
-7. `app-shell-agent`
+| Skill | Owns |
+|---|---|
+| `planner` | `AGENTS.md`, `agent/**`, non-generated `docs/**`, shared repo-control tooling |
+| `platform-ops-agent` | `platform/model/**`, `platform/schema/**`, `platform/generators/**`, `platform/validators/**`, `infra/**`, `ops/**` |
+| `contract-agent` | `packages/contracts/**`, `docs/contracts/**`, `verification/contract/**` |
+| `service-agent` | `services/**`, service-level `fixtures/**`, service-level `verification/**` |
+| `server-agent` | `servers/**`, protocol adaptation and server entrypoints |
+| `worker-agent` | `workers/**`, replay/resilience/topology verification lanes |
+| `app-shell-agent` | `apps/**`, `packages/ui/**`, `verification/e2e/**` |
 
 ## Workflow Skills
 
-Workflow skills define how to perform engineering activities. They guide process but do not override ownership boundaries:
+Workflow skills define how to perform engineering activities. They guide process but do not override ownership boundaries.
 
-1. `harness-grill`
-2. `harness-diagnose`
-3. `harness-tdd`
-4. `harness-architecture-review`
-5. `harness-zoom-out`
-6. `backend-engineering`
-7. `skill-authoring`
-
-## Authoring
-
-Use `docs/agents/skill-authoring.md` when adding, editing, or reviewing skills.
+| Skill | Use When |
+|---|---|
+| `backend-engineering` | Applying the default backend quality lens |
+| `harness-diagnose` | Debugging failing gates, regressions, flakes, or suspicious runtime behavior |
+| `harness-tdd` | Adding or changing backend behavior test-first |
+| `harness-grill` | Resolving ambiguous plans, scope, or terminology before implementation |
+| `harness-architecture-review` | Reviewing seams, coupling, depth, or testability |
+| `harness-zoom-out` | Mapping an unfamiliar area before editing |
+| `skill-authoring` | Adding, editing, or reviewing repository skills |
