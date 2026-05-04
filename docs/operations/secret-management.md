@@ -102,7 +102,7 @@ just sops-validate
 just sops-edit web-bff dev
 just sops-edit outbox-relay-worker dev
 just sops-edit projector-worker dev
-just sops-encrypt-dev DEPLOYABLE=web-bff
+just sops-encrypt-dev web-bff
 ```
 
 当前更符合仓库结构的做法是：
@@ -116,10 +116,10 @@ just sops-encrypt-dev DEPLOYABLE=web-bff
 本地后端参考路径不要通过 `.env` 注入 secrets。当前仓库提供的 SOPS 对齐内环路径是：
 
 ```bash
-just sops-run DEPLOYABLE=web-bff ENV=dev
-just sops-run DEPLOYABLE=outbox-relay-worker ENV=dev CMD='cargo run -p outbox-relay-worker'
-just sops-run DEPLOYABLE=projector-worker ENV=dev CMD='cargo run -p projector-worker'
-just sops-verify-counter-shared-db ENV=dev
+just sops-run web-bff dev
+just sops-run outbox-relay-worker dev 'cargo run -p outbox-relay-worker'
+just sops-run projector-worker dev 'cargo run -p projector-worker'
+just sops-verify-counter-shared-db dev
 ```
 
 这条路径的意义是：
@@ -132,15 +132,15 @@ just sops-verify-counter-shared-db ENV=dev
 
 ```bash
 just sops-validate
-just sops-verify-counter-shared-db ENV=dev
+just sops-verify-counter-shared-db dev
 cargo run -p repo-tools -- secrets decrypt-env infra/security/sops/dev/web-bff.enc.yaml
-just sops-run DEPLOYABLE=web-bff ENV=dev
+just sops-run web-bff dev
 ```
 
 其中：
 
 1. `just sops-validate` 验证 key 与 `.sops.yaml`、以及样例解密是否真实可用。
-2. `just sops-verify-counter-shared-db ENV=dev` 验证 shared DB secret 是否仍残留模板占位符，是否错误指向本地 `file:` URL。
+2. `just sops-verify-counter-shared-db dev` 验证 shared DB secret 是否仍残留模板占位符，是否错误指向本地 `file:` URL。
 3. `repo-tools secrets decrypt-env` 可直接观察当前会注入哪些环境变量。
 4. `just sops-run` 则是最终运行态验证。
 

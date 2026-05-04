@@ -78,7 +78,7 @@
 just sops-reconcile dev
 
 # 部署应用
-just deploy-prod ENV=dev
+just deploy-prod dev
 ```
 
 ### Quick Inner Loop (No Cluster)
@@ -173,7 +173,7 @@ just sops-run web-bff
 
 # 有集群
 just sops-reconcile dev
-just deploy-prod ENV=dev
+just deploy-prod dev
 ```
 
 ---

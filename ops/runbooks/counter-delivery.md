@@ -18,7 +18,7 @@
 在把 counter delivery 视为可交付主链之前，至少执行：
 
 ```bash
-just sops-verify-counter-shared-db ENV=dev
+just sops-verify-counter-shared-db dev
 just verify-counter-delivery strict
 ```
 
@@ -33,7 +33,7 @@ just verify-counter-delivery strict
 
 当前仓库对 counter delivery 的 promotion 覆盖 dev admission 和 staging 路径：
 
-1. shared DB secret 先通过 `just sops-verify-counter-shared-db ENV=dev`。
+1. shared DB secret 先通过 `just sops-verify-counter-shared-db dev`。
 2. 再通过 `just verify-counter-delivery strict`，确认 secret、overlay、Flux app、runbook 和 reference chain 没有漂移。
 3. staging overlay 已创建，Flux app 指向正确路径，ENV 替换正确。
 

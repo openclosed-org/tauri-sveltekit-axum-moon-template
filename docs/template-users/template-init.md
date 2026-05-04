@@ -1,7 +1,7 @@
 # Template Init Design
 
 > Status: active for the `backend-core` profile.
-> `just template-init backend-core dry-run` previews the cleanup set; `MODE=apply` removes the listed candidates.
+> `just template-init backend-core dry-run` previews the cleanup set; `just template-init backend-core apply` removes the listed candidates.
 
 ## Goal
 
@@ -27,13 +27,15 @@ into a derived project with less upstream-maintainer baggage.
 Initial command shape:
 
 ```bash
-just template-init PROFILE=backend-core MODE=dry-run
+just template-init backend-core dry-run
 ```
 
 Supported parameters:
 
 1. `PROFILE`
 2. `MODE`
+
+These are positional `just` arguments, not shell-style named assignments. Prefer `just template-init backend-core dry-run` and `just template-init backend-core apply`.
 
 ### MODE
 
@@ -95,7 +97,7 @@ Before using `apply`, run the dry-run and review the exact removal candidates.
 
 When `apply` mode is used, it should:
 
-1. require explicit `MODE=apply`
+1. require explicit `apply`
 2. print the selected profile
 3. print the exact paths to remove
 4. refuse to run if the worktree is dirty unless the user explicitly acknowledges the risk

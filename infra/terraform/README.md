@@ -28,7 +28,7 @@ For Phase 1, use k3s on a single VPS with Podman:
 
 ```bash
 just deploy bootstrap-k3s
-just deploy prod ENV=dev
+just deploy-prod dev
 ```
 
 ## Stack Notes
