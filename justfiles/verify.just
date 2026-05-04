@@ -100,6 +100,10 @@ test-coverage-clean:
 test-app-e2e-preflight:
     cargo run -p repo-tools -- apps e2e preflight
 
+# 可选 app shell 边界审计（不属于 backend-core 默认 gate）
+audit-app-shell-boundary mode='dry-run':
+    cargo run -p repo-tools -- apps boundary-audit "{{mode}}"
+
 # 可选 app shell E2E（web + desktop lanes）
 test-app-e2e:
     cargo run -p repo-tools -- apps e2e run

@@ -24,32 +24,32 @@ sops-show-age-key:
 # ── Secrets Encryption ──────────────────────────────────────
 
 # Encrypt secrets for dev environment
-sops-encrypt-dev DEPLOYABLE='web-bff':
-    cargo run -p repo-tools -- secrets encrypt --deployable "{{DEPLOYABLE}}" --env dev
+sops-encrypt-dev deployable='web-bff':
+    cargo run -p repo-tools -- secrets encrypt --deployable "{{deployable}}" --env dev
 
 # Encrypt secrets for staging environment
-sops-encrypt-staging DEPLOYABLE='web-bff':
-    cargo run -p repo-tools -- secrets encrypt --deployable "{{DEPLOYABLE}}" --env staging
+sops-encrypt-staging deployable='web-bff':
+    cargo run -p repo-tools -- secrets encrypt --deployable "{{deployable}}" --env staging
 
 # ── Secrets Editing ─────────────────────────────────────────
 
 # Edit encrypted secrets (opens editor with decrypted content)
-sops-edit DEPLOYABLE='web-bff' ENV='dev':
-    cargo run -p repo-tools -- secrets edit --deployable "{{DEPLOYABLE}}" --env "{{ENV}}"
+sops-edit deployable='web-bff' env='dev':
+    cargo run -p repo-tools -- secrets edit --deployable "{{deployable}}" --env "{{env}}"
 
 # ── Local Development (No Cluster) ──────────────────────────
 
 # Run binary with SOPS-decrypted environment variables
 # This is the ONLY allowed non-cluster dev path
 # Does NOT create .env files
-sops-run DEPLOYABLE='web-bff' ENV='dev' CMD='':
-    @cargo run -p repo-tools -- secrets run --deployable "{{DEPLOYABLE}}" --env "{{ENV}}" -- {{CMD}}
+sops-run deployable='web-bff' env='dev' cmd='':
+    @cargo run -p repo-tools -- secrets run --deployable "{{deployable}}" --env "{{env}}" -- {{cmd}}
 
 # ── Cluster Reconciliation ──────────────────────────────────
 
 # Apply SOPS-encrypted secrets to k3s cluster
-sops-reconcile ENV='dev':
-    @cargo run -p repo-tools -- secrets reconcile --env "{{ENV}}"
+sops-reconcile env='dev':
+    @cargo run -p repo-tools -- secrets reconcile --env "{{env}}"
 
 # ── Flux Integration ────────────────────────────────────────
 
@@ -64,5 +64,5 @@ sops-validate:
     @cargo run -p repo-tools -- secrets validate
 
 # Verify that shared counter DB secret is ready for independent worker pods
-sops-verify-counter-shared-db ENV='dev':
-    @cargo run -p repo-tools -- secrets verify-counter-shared-db --env "{{ENV}}"
+sops-verify-counter-shared-db env='dev':
+    @cargo run -p repo-tools -- secrets verify-counter-shared-db --env "{{env}}"

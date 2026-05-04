@@ -5,9 +5,12 @@ use std::time::Duration;
 
 use anyhow::{Context, Result, bail};
 
-use crate::cli::{AppsArgs, AppsCommand, AppsDevDesktopArgs, AppsE2eCommand};
+use crate::cli::{
+    AppsArgs, AppsBoundaryAuditArgs, AppsCommand, AppsDevDesktopArgs, AppsE2eCommand,
+};
 use crate::support::{
-    has_tool, normalize_slashes, run_capture, run_inherit, wait_for_port, workspace_root,
+    collect_files_with_extension, has_tool, normalize_slashes, read, run_capture, run_inherit,
+    wait_for_port, workspace_root,
 };
 
 const API_HOST: &str = "127.0.0.1";
@@ -24,7 +27,82 @@ pub(crate) fn run(args: AppsArgs) -> Result<()> {
             AppsE2eCommand::Run => e2e_run(),
         },
         AppsCommand::DevDesktop(args) => dev_desktop(args),
+        AppsCommand::BoundaryAudit(args) => boundary_audit(args),
     }
+}
+
+fn boundary_audit(args: AppsBoundaryAuditArgs) -> Result<()> {
+    let root = workspace_root()?;
+    let app_roots = ["apps", "packages/ui", "verification/e2e"];
+    let forbidden_needles = [
+        "services/",
+        "servers/",
+        "workers/",
+        "tools/repo-tools/src/commands/",
+        "counter_service::",
+        "web_bff::",
+    ];
+    let allowed_files = ["Cargo.toml", "Cargo.lock", "package.json", "bun.lockb"];
+
+    println!("=== App Shell Boundary Audit ===");
+    println!("mode: {}", args.mode.label());
+    println!(
+        "scope: optional app shells may consume API/SDK surfaces, but must not import backend internals"
+    );
+
+    let mut findings = Vec::new();
+    for app_root in app_roots {
+        let base = root.join(app_root);
+        if !base.exists() {
+            continue;
+        }
+        let mut files = collect_files_with_extension(&base, "rs");
+        files.extend(collect_files_with_extension(&base, "ts"));
+        files.extend(collect_files_with_extension(&base, "tsx"));
+        files.extend(collect_files_with_extension(&base, "js"));
+        files.extend(collect_files_with_extension(&base, "svelte"));
+        for name in allowed_files {
+            let candidate = base.join(name);
+            if candidate.exists() {
+                files.push(candidate);
+            }
+        }
+
+        for file in files {
+            let content = read(&file)?;
+            for (line_index, line) in content.lines().enumerate() {
+                for needle in forbidden_needles {
+                    if line.contains(needle) {
+                        findings.push(format!(
+                            "{}:{}: {} :: {}",
+                            normalize_slashes(file.strip_prefix(&root).unwrap_or(&file)),
+                            line_index + 1,
+                            needle,
+                            line.trim()
+                        ));
+                    }
+                }
+            }
+        }
+    }
+
+    if findings.is_empty() {
+        println!("PASS: optional app-shell files are free of backend-internal imports.");
+        return Ok(());
+    }
+
+    println!("Findings:");
+    for finding in &findings {
+        println!("  - {finding}");
+    }
+    if args.mode == crate::cli::BackendCoreAuditMode::Strict {
+        bail!(
+            "app shell boundary audit found {} finding(s)",
+            findings.len()
+        );
+    }
+    println!("Dry-run reported findings only. Use strict mode to fail on findings.");
+    Ok(())
 }
 
 fn e2e_preflight() -> Result<()> {
