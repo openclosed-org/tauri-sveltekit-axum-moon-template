@@ -45,6 +45,15 @@ on:
         description: Explicit existing tag to use as the SemVer baseline for this run
         required: false
         type: string
+      release_type:
+        description: SemVer compatibility expectation for the repository release line
+        required: false
+        type: choice
+        default: minor
+        options:
+          - patch
+          - minor
+          - major
 
 permissions:
   contents: write
@@ -64,6 +73,7 @@ jobs:
       baseline_tag: ${{ steps.detect.outputs.baseline_tag }}
       release_tag_template: ${{ steps.detect.outputs.release_tag_template }}
       release_tag_glob: ${{ steps.detect.outputs.release_tag_glob }}
+      release_type: ${{ steps.detect.outputs.release_type }}
 
     steps:
       - name: Checkout
@@ -77,6 +87,8 @@ jobs:
           INPUT_RELEASE_TAG_TEMPLATE: ${{ inputs.release_tag_template }}
           INPUT_RELEASE_TAG_GLOB: ${{ inputs.release_tag_glob }}
           INPUT_BASELINE_TAG: ${{ inputs.baseline_tag }}
+          INPUT_RELEASE_TYPE: ${{ inputs.release_type }}
+          VAR_RELEASE_TYPE: ${{ vars.RELEASE_TYPE }}
           VAR_RELEASE_TAG_TEMPLATE: ${{ vars.RELEASE_TAG_TEMPLATE }}
           VAR_RELEASE_TAG_GLOB: ${{ vars.RELEASE_TAG_GLOB }}
           VAR_RELEASE_BOOTSTRAP_TAG: ${{ vars.RELEASE_BOOTSTRAP_TAG }}
@@ -84,6 +96,15 @@ jobs:
           release_tag_template="${INPUT_RELEASE_TAG_TEMPLATE:-${VAR_RELEASE_TAG_TEMPLATE:-v{{ version }}}}"
           release_tag_glob="${INPUT_RELEASE_TAG_GLOB:-${VAR_RELEASE_TAG_GLOB:-v[0-9]*.[0-9]*.[0-9]*}}"
           baseline_tag="${INPUT_BASELINE_TAG:-${VAR_RELEASE_BOOTSTRAP_TAG:-}}"
+          release_type="${INPUT_RELEASE_TYPE:-${VAR_RELEASE_TYPE:-minor}}"
+
+          case "$release_type" in
+            patch|minor|major) ;;
+            *)
+              echo "Unsupported release type: $release_type" >&2
+              exit 1
+              ;;
+          esac
 
           if [ -n "$baseline_tag" ] && ! git rev-parse -q --verify "refs/tags/$baseline_tag" >/dev/null; then
             echo "Configured baseline tag does not exist: $baseline_tag" >&2
@@ -97,9 +118,11 @@ jobs:
           echo "release_tag_template=$release_tag_template" >> "$GITHUB_OUTPUT"
           echo "release_tag_glob=$release_tag_glob" >> "$GITHUB_OUTPUT"
           echo "baseline_tag=$baseline_tag" >> "$GITHUB_OUTPUT"
+          echo "release_type=$release_type" >> "$GITHUB_OUTPUT"
 
           echo "Release tag template: $release_tag_template" >> "$GITHUB_STEP_SUMMARY"
           echo "Release tag glob: $release_tag_glob" >> "$GITHUB_STEP_SUMMARY"
+          echo "Release type: $release_type" >> "$GITHUB_STEP_SUMMARY"
 
           if [ -n "$baseline_tag" ]; then
             echo "has_repo_tag=true" >> "$GITHUB_OUTPUT"
@@ -130,7 +153,7 @@ jobs:
         uses: taiki-e/install-action@cargo-semver-checks
 
       - name: Run repository semver check
-        run: just semver-check '${{ needs.release-line.outputs.baseline_tag }}' minor '${{ needs.release-line.outputs.release_tag_glob }}'
+        run: just semver-check '${{ needs.release-line.outputs.baseline_tag }}' '${{ needs.release-line.outputs.release_type }}' '${{ needs.release-line.outputs.release_tag_glob }}'
 
   release-pr:
     name: Release PR
