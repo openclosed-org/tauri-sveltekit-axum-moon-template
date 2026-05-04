@@ -82,9 +82,11 @@ modules:
     projector:
       path: workers/projector
       status: implemented
-      notes: Projection worker with replay support.
+      notes: Projection worker with outbox replay, checkpoint, rebuildable read model, and single-replica reference semantics.
       must_have:
         - replay_strategy
+        - checkpoint
+        - rebuildable_read_model
     sync-reconciler:
       path: workers/sync-reconciler
       status: implemented
@@ -96,9 +98,12 @@ modules:
     outbox-relay:
       path: workers/outbox-relay
       status: implemented
-      notes: Outbox polling and publishing worker.
+      notes: Outbox polling and at-least-once publishing worker with dedupe, idempotency, retry, and checkpoint requirements.
       must_have:
         - dedupe
+        - idempotency
+        - retry_policy
+        - checkpoint
     indexer:
       path: workers/indexer
       status: implemented

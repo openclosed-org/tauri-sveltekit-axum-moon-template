@@ -15,6 +15,14 @@
 3. 约束 read model 可删可重建，不能成为 authoritative business state。
 4. 为后续 projector/indexer 类能力提供最小结构样例。
 
+## 可靠性契约
+
+1. Replay source：`event_outbox` 是默认 projector replay source，按 `sequence ASC` 从 checkpoint 后恢复。
+2. Checkpoint 语义：只有 event 被 consumer/read model 成功处理后才推进 checkpoint。
+3. Read model 语义：`counter_projection` 是 projection，可通过 outbox replay 重建；它不能替代 service-owned counter state。
+4. Live tail 语义：NATS live tail 是可选加速面，不是 durable consumer proof；恢复能力仍来自 outbox replay。
+5. Replica 语义：默认 reference profile 要保持 `replicas=1`。多副本 projector safety 仍是 deferred。
+
 ## 入口
 
 1. `src/main.rs`：主进程入口、轮询主循环与健康检查。
@@ -31,6 +39,8 @@
 ```bash
 cargo check -p projector-worker
 cargo test -p projector-worker
+just verify-replay strict
+just validate-resilience strict
 ```
 
 ## 不要这样用
@@ -39,4 +49,4 @@ cargo test -p projector-worker
 2. 不要把 read model 当成 authoritative business state。
 3. 不要跳过 replay/rebuild 约束，只保留“实时消费”这一半能力。
 4. 不要把 queue group 误写成 durable consumer；当前可重建能力仍主要来自 outbox replay。
-5. 不要在 shared libSQL/Turso secret 仍指向本地 `file:` 路径，或 `just sops-verify-counter-shared-db ENV=dev` / `just verify-counter-delivery strict` 仍未通过时，继续依赖 dev overlay 中已启用的 `projector-worker` 作为有效 projection 交付链路。
+5. 不要在 shared libSQL/Turso secret 仍指向本地 `file:` 路径，或 `just sops-verify-counter-shared-db dev` / `just verify-counter-delivery strict` 仍未通过时，继续依赖 dev overlay 中已启用的 `projector-worker` 作为有效 projection 交付链路。

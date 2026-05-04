@@ -78,7 +78,7 @@ mod tests {
             event_type: event_type_name(&CounterChanged(contracts_events::CounterChanged {
                 tenant_id: "tenant-a".to_string(),
                 counter_key: "tenant-a".to_string(),
-                operation: "increment".to_string(),
+                operation: contracts_events::CounterOperation::Increment,
                 new_value: 1,
                 delta: 1,
                 version: 1,
@@ -90,7 +90,7 @@ mod tests {
                 contracts_events::CounterChanged {
                     tenant_id: "tenant-a".to_string(),
                     counter_key: "tenant-a".to_string(),
-                    operation: "increment".to_string(),
+                    operation: contracts_events::CounterOperation::Increment,
                     new_value: 1,
                     delta: 1,
                     version: 1,

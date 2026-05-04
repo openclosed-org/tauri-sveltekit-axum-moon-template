@@ -101,7 +101,7 @@ impl EventConsumer for CounterStateConsumer {
             counter_key: counter_changed.counter_key.clone(),
             new_value: counter_changed.new_value,
             version: counter_changed.version as u64,
-            operation: counter_changed.operation.clone(),
+            operation: format!("{:?}", counter_changed.operation).to_lowercase(),
             projected_at: chrono::Utc::now().to_rfc3339(),
         };
 
