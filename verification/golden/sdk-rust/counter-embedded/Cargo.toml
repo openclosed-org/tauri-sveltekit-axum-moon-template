@@ -1,0 +1,18 @@
+[package]
+name = "sdk-counter-embedded"
+version = "0.1.0"
+edition = "2024"
+description = "SDK Counter Embedded — offline-first counter backend for desktop"
+license = "Apache-2.0"
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+sdk-counter = { path = "../counter", version = "0.1.0" }
+counter-service = { workspace = true }
+kernel = { workspace = true }
+storage_turso = { workspace = true }
+async-trait = { workspace = true }
+
+[lints]
+workspace = true

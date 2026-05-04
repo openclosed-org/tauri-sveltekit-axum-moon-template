@@ -1,0 +1,22 @@
+[package]
+name = "sdk-counter-http"
+version = "0.1.0"
+edition = "2024"
+description = "SDK Counter HTTP — HTTP client backend to BFF for web and desktop"
+license = "Apache-2.0"
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+sdk-counter = { path = "../counter", version = "0.1.0" }
+reqwest = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+async-trait = { workspace = true }
+
+[dev-dependencies]
+mockito = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt"] }
+
+[lints]
+workspace = true
