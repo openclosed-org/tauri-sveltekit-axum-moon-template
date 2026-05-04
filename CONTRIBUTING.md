@@ -202,7 +202,7 @@ When working on optional app shells, install dependencies from the app-owned sco
 For local backend runs that need secrets, use SOPS-based injection:
 
 ```bash
-just sops-run DEPLOYABLE=web-bff ENV=dev
+just sops-run web-bff dev
 ```
 
 ## Validation

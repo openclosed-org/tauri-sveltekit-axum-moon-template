@@ -42,6 +42,7 @@ Use `docs/_local/` for material that should not become shared documentation debt
 2. temporary execution checklists
 3. scratch notes and personal planning
 4. exploratory drafts that have not become ADRs or stable guidance
+5. one-time admission evidence snapshots, gate transcripts, or phase completion reports
 
 `docs/_local/` is the gitignored maintainer workspace for active planning material that stays outside the shared docs flow.
 If you need lightweight local revision tracking, use frontmatter metadata or explicit revision notes inside the document.
@@ -55,6 +56,8 @@ Move something out of `_local` only if it becomes one of these:
 3. durable contributor rule
 4. architecture decision with long-term value
 5. template initialization or migration guidance
+
+Do not promote a document only because it records a successful gate run or active development checkpoint. Gate results become stale quickly; keep them in the handoff, PR, local execution notes, or CI logs instead of the shared docs entry flow.
 
 ## GitHub Discussions
 

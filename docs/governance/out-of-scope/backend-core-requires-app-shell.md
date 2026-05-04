@@ -16,6 +16,8 @@ Only add an app-shell requirement to a backend task when the task explicitly cha
 
 Default backend-core gates must remain independent.
 
+Use `just audit-app-shell-boundary strict` only when reviewing optional app-shell paths themselves. It is not part of backend-core admission.
+
 ## Related Guidance
 
 1. `AGENTS.md`

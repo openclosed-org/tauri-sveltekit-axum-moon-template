@@ -166,9 +166,9 @@ curl http://localhost:3010/api/counter/value \
 当前后端参考路径不应把 `.env` 当成主路径。更符合当前仓库约束的 SOPS 对齐方式是：
 
 ```bash
-just sops-run DEPLOYABLE=web-bff ENV=dev
-just sops-run DEPLOYABLE=outbox-relay-worker ENV=dev CMD='cargo run -p outbox-relay-worker'
-just sops-run DEPLOYABLE=projector-worker ENV=dev CMD='cargo run -p projector-worker'
+just sops-run web-bff dev
+just sops-run outbox-relay-worker dev 'cargo run -p outbox-relay-worker'
+just sops-run projector-worker dev 'cargo run -p projector-worker'
 ```
 
 原因：

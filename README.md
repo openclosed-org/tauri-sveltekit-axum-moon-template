@@ -71,7 +71,7 @@ For the full local workflow, including local infrastructure, optional auth, and 
 Template adopters can preview upstream cleanup with:
 
 ```bash
-just template-init PROFILE=backend-core MODE=dry-run
+just template-init backend-core dry-run
 ```
 
 ## Agent-Aware Development

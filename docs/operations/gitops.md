@@ -76,7 +76,7 @@
 
 1. GitOps 路径已经把独立 `counter-service` deployable 提升为 checked/tested default path。
 2. `infra/gitops/flux/apps/api.yaml`、`infra/gitops/flux/apps/web.yaml` 中的所有 health checks、命名和 target resources 都已经与现状完全一致。
-3. `outbox-relay-worker` 与 `projector-worker` 当前在 dev overlay 中都显式配置为 `replicas=1`；因此更需要先通过 `just sops-verify-counter-shared-db ENV=dev` 和 `just verify-counter-delivery strict` 核实 shared secret、overlay 和 Flux 路径没有漂移。
+3. `outbox-relay-worker` 与 `projector-worker` 当前在 dev overlay 中都显式配置为 `replicas=1`；因此更需要先通过 `just sops-verify-counter-shared-db dev` 和 `just verify-counter-delivery strict` 核实 shared secret、overlay 和 Flux 路径没有漂移。
 4. promotion、rollback、drift handling 已经通过一条统一且经验证的流水线完成。
 
 因此这份文档的正确定位是：
