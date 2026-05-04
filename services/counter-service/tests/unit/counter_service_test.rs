@@ -107,28 +107,18 @@ impl CounterRepository for MockCounterRepository {
         Ok(())
     }
 
-    async fn check_idempotency(&self, key: &str) -> Result<Option<(i64, i64)>, RepositoryError> {
-        let map = self.idempotency.lock().await;
-        Ok(map.get(key).cloned())
-    }
-
-    async fn cache_idempotency(
-        &self,
-        key: &str,
-        value: i64,
-        version: i64,
-    ) -> Result<(), RepositoryError> {
-        let mut map = self.idempotency.lock().await;
-        map.insert(key.to_string(), (value, version));
-        Ok(())
-    }
-
     async fn commit_mutation(
         &self,
         m: &CounterMutation<'_>,
         idempotency_key: Option<&str>,
     ) -> Result<CommitOutcome, RepositoryError> {
         // Simulate the atomic commit: mutation + outbox + idempotency cache
+        if let Some(key) = idempotency_key
+            && let Some((value, version)) = self.idempotency.lock().await.get(key).cloned()
+        {
+            return Ok(CommitOutcome::IdempotentReplay { value, version });
+        }
+
         {
             let mut map = self.counters.lock().await;
             let counter = map

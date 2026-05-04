@@ -25,6 +25,16 @@ pub enum CounterOperation {
     Reset,
 }
 
+impl CounterOperation {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Increment => "increment",
+            Self::Decrement => "decrement",
+            Self::Reset => "reset",
+        }
+    }
+}
+
 /// Full specification for an atomic counter mutation commit.
 #[derive(Debug, Clone)]
 pub struct CounterMutation<'a> {
@@ -43,6 +53,10 @@ pub struct CounterMutation<'a> {
 pub enum CommitOutcome {
     /// Mutation succeeded.
     Committed { new_value: i64, new_version: i64 },
+    /// Idempotency key was already completed for the same request fingerprint.
+    IdempotentReplay { value: i64, version: i64 },
+    /// Idempotency key was reused for a different request fingerprint.
+    IdempotencyConflict,
     /// CAS conflict: the counter was modified by another writer.
     CasConflict,
 }
@@ -99,29 +113,16 @@ pub trait CounterRepository: Send + Sync {
         correlation_id: Option<&str>,
     ) -> Result<(), RepositoryError>;
 
-    /// Check if an idempotency key was already processed.
-    /// Returns Some((value, version)) if the key exists, None otherwise.
-    async fn check_idempotency(&self, key: &str) -> Result<Option<(i64, i64)>, RepositoryError>;
-
-    /// Cache an idempotency result for future deduplication.
-    async fn cache_idempotency(
-        &self,
-        key: &str,
-        value: i64,
-        version: i64,
-    ) -> Result<(), RepositoryError>;
-
     /// Atomically commit a counter mutation with CAS + outbox write + idempotency cache.
     ///
     /// Executes CAS counter update + event_outbox write in a single BEGIN/COMMIT
-    /// transaction via `execute_batch`. If either the CAS mutation or outbox write
+    /// transaction. If either the CAS mutation or outbox write
     /// fails, the entire transaction rolls back — no orphaned events, no phantom
     /// counter mutations.
     ///
-    /// Idempotency cache write runs outside the transaction (best-effort). If it
-    /// fails, the next retry with the same key will hit a CAS conflict (counter
-    /// version already incremented), so the result remains correct — just the
-    /// cache entry is missing and the next idempotent request will do a DB round-trip.
+    /// Idempotency reservation and completion run inside the same transaction as
+    /// the mutation and outbox write. Reusing a key for a different request
+    /// fingerprint returns `CommitOutcome::IdempotencyConflict`.
     ///
     /// Returns `CommitOutcome::CasConflict` when the expected_version doesn't match.
     async fn commit_mutation(

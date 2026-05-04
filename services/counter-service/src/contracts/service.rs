@@ -79,4 +79,6 @@ pub enum CounterError {
     /// CAS conflict with version details — used for detailed error responses.
     #[error("CAS conflict: expected version {expected}, actual {actual}")]
     CasConflictWithDetails { expected: i64, actual: i64 },
+    #[error("Idempotency key was reused for a different counter command")]
+    IdempotencyConflict,
 }

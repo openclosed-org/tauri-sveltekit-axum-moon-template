@@ -1,6 +1,6 @@
 //! Event bus tests — publish, subscribe, and handler invocation.
 
-use contracts_events::{AppEvent, CounterChanged, TenantCreated};
+use contracts_events::{AppEvent, CounterChanged, CounterOperation, TenantCreated};
 use event_bus::adapters::memory_bus::InMemoryEventBus;
 use event_bus::ports::{EventBus, EventEnvelope};
 use std::sync::Arc;
@@ -10,7 +10,7 @@ fn make_counter_event() -> AppEvent {
     AppEvent::CounterChanged(CounterChanged {
         tenant_id: "t1".into(),
         counter_key: "default".into(),
-        operation: "increment".into(),
+        operation: CounterOperation::Increment,
         new_value: 0,
         delta: 0,
         version: 0,
@@ -25,7 +25,7 @@ async fn publish_and_receive_via_broadcast() {
     let event = AppEvent::CounterChanged(CounterChanged {
         tenant_id: "t1".into(),
         counter_key: "default".into(),
-        operation: "increment".into(),
+        operation: CounterOperation::Increment,
         new_value: 42,
         delta: 1,
         version: 1,

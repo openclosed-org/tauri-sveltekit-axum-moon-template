@@ -256,6 +256,71 @@ async fn full_stack_idempotency_prevents_duplicate_outbox() {
     );
 }
 
+#[tokio::test]
+async fn concurrent_same_idempotency_key_commits_once() {
+    let dir = tempfile::tempdir().unwrap();
+    let db_path = dir.path().join("test_same_idem.db");
+    let _guard = Box::leak(Box::new(dir));
+    let db = storage_turso::EmbeddedTurso::new(db_path.to_str().unwrap())
+        .await
+        .unwrap();
+    let repo = LibSqlCounterRepository::new(db.clone());
+    repo.migrate().await.unwrap();
+
+    let service = Arc::new(TenantScopedCounterService::new(repo));
+    let tenant = TenantId("same-idem-tenant".into());
+    let idem_key = "same-request-key";
+
+    let mut handles = Vec::new();
+    for _ in 0..8 {
+        let svc = service.clone();
+        let tid = tenant.clone();
+        handles.push(tokio::spawn(async move {
+            svc.increment(&tid, Some(idem_key)).await.unwrap()
+        }));
+    }
+
+    let mut results = Vec::new();
+    for handle in handles {
+        results.push(handle.await.unwrap());
+    }
+
+    assert!(
+        results.iter().all(|value| *value == 1),
+        "same idempotency key must replay the first result"
+    );
+    assert_eq!(service.get_value(&tenant).await.unwrap(), 1);
+    assert_eq!(count_outbox(&db).await, 1);
+    assert_eq!(count_idempotency(&db).await, 1);
+}
+
+#[tokio::test]
+async fn same_idempotency_key_with_different_operation_conflicts() {
+    let dir = tempfile::tempdir().unwrap();
+    let db_path = dir.path().join("test_idem_conflict.db");
+    let _guard = Box::leak(Box::new(dir));
+    let db = storage_turso::EmbeddedTurso::new(db_path.to_str().unwrap())
+        .await
+        .unwrap();
+    let repo = LibSqlCounterRepository::new(db.clone());
+    repo.migrate().await.unwrap();
+
+    let service = TenantScopedCounterService::new(repo);
+    let tenant = TenantId("idem-conflict-tenant".into());
+    let idem_key = "same-key-different-operation";
+
+    let increment = service.increment(&tenant, Some(idem_key)).await.unwrap();
+    assert_eq!(increment, 1);
+
+    let conflict = service.decrement(&tenant, Some(idem_key)).await;
+    assert!(
+        conflict.is_err(),
+        "same idempotency key must not be reused for a different operation"
+    );
+    assert_eq!(service.get_value(&tenant).await.unwrap(), 1);
+    assert_eq!(count_outbox(&db).await, 1);
+}
+
 // ---------------------------------------------------------------------------
 // Concurrency tests with real EmbeddedTurso (multi-connection)
 // ---------------------------------------------------------------------------

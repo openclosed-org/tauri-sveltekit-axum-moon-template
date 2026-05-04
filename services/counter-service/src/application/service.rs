@@ -1,11 +1,12 @@
 //! CounterService implementation backed by CounterRepository.
 //!
 //! Implements the full mutation chain:
-//!   idempotency check → load current state → CAS mutation → outbox event write
+//!   load current state → repository transaction → CAS mutation + outbox event write
 //!
 //! ## Idempotency
-//! When an idempotency_key is provided, the service checks a local idempotency
-//! table before executing the mutation. If the key was already processed, the
+//! When an idempotency_key is provided, the repository reserves, completes, and
+//! replays the key at the same transaction boundary as the mutation and outbox
+//! write. If the key was already processed for the same request fingerprint, the
 //! cached result is returned without re-executing the operation.
 //!
 //! ## CAS (Compare-And-Swap)
@@ -21,7 +22,10 @@
 
 use crate::contracts::service::{CounterCommandContext, CounterError, CounterService};
 use async_trait::async_trait;
-use contracts_events::{AppEvent, CounterChanged, EventEnvelope, event_type_name};
+use contracts_events::{
+    AppEvent, CounterChanged, CounterOperation as EventCounterOperation, EventEnvelope,
+    event_type_name,
+};
 use kernel::id::correlation_id as new_correlation_id;
 use tracing::debug;
 
@@ -175,26 +179,14 @@ impl<R: CounterRepository> RepositoryBackedCounterService<R> {
         context: &CounterCommandContext,
         kind: MutationKind,
     ) -> Result<MutationOutcome, CounterError> {
-        if let Some(key) = idempotency_key
-            && let Some(cached) = self.check_idempotency(key).await?
-        {
-            debug!(counter_id = %counter_id, key, operation = kind.operation(), "counter mutation idempotent hit");
-            return Ok(MutationOutcome {
-                value: cached,
-                version: 0,
-                delta: 0,
-            });
-        }
-
         self.run_atomic_mutation(counter_id, idempotency_key, context, kind)
             .await
     }
 
-    /// Execute the mutation chain atomically using repository-level CTE commit.
+    /// Execute the mutation chain atomically using the repository transaction boundary.
     ///
-    /// The idempotency check (early return) stays at the service layer.
-    /// The CAS mutation + outbox write + idempotency cache are combined
-    /// into a single `commit_mutation` call at the repository layer.
+    /// CAS mutation, outbox write, and idempotency state are combined into a
+    /// single `commit_mutation` call at the repository layer.
     async fn run_atomic_mutation(
         &self,
         counter_id: &CounterId,
@@ -270,6 +262,16 @@ impl<R: CounterRepository> RepositoryBackedCounterService<R> {
                         delta,
                     });
                 }
+                CommitOutcome::IdempotentReplay { value, version } => {
+                    return Ok(MutationOutcome {
+                        value,
+                        version,
+                        delta: 0,
+                    });
+                }
+                CommitOutcome::IdempotencyConflict => {
+                    return Err(CounterError::IdempotencyConflict);
+                }
                 CommitOutcome::CasConflict if retries < 3 => {
                     retries += 1;
                     debug!(
@@ -304,7 +306,11 @@ impl<R: CounterRepository> RepositoryBackedCounterService<R> {
         let event = CounterChanged {
             tenant_id: counter_id.as_str().to_string(),
             counter_key: counter_id.as_str().to_string(),
-            operation: kind.operation().to_string(),
+            operation: match kind {
+                MutationKind::Increment => EventCounterOperation::Increment,
+                MutationKind::Decrement => EventCounterOperation::Decrement,
+                MutationKind::Reset => EventCounterOperation::Reset,
+            },
             new_value,
             delta,
             version: new_version,
@@ -344,16 +350,6 @@ impl<R: CounterRepository> RepositoryBackedCounterService<R> {
             envelope.source_service,
             Some(correlation_id),
         ))
-    }
-
-    /// Check if an idempotency key was already processed.
-    /// Returns Some(value) if the key exists, None otherwise.
-    async fn check_idempotency(&self, key: &str) -> Result<Option<i64>, CounterError> {
-        match self.repo.check_idempotency(key).await {
-            Ok(Some((value, _version))) => Ok(Some(value)),
-            Ok(None) => Ok(None),
-            Err(e) => Err(CounterError::Database(e)),
-        }
     }
 }
 
