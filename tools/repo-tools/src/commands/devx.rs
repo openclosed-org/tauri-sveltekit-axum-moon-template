@@ -17,7 +17,8 @@ use crate::cli::{
 use crate::support;
 use crate::support::{
     Operation, OperationPhase, collect_files_with_extension, has_tool, normalize_slashes, read,
-    require_tool, run_capture, run_inherit, user_home_dir, workspace_root, write,
+    require_tool, run_capture, run_inherit, strip_rust_comments, user_home_dir, workspace_root,
+    write,
 };
 
 const AGE_KEY_RELATIVE_PATH: &str = ".config/sops/age/key.txt";
@@ -1139,6 +1140,81 @@ pub(crate) fn audit_rust() -> Result<()> {
         bail!("cargo audit failed");
     }
     Ok(())
+}
+
+pub(crate) fn validate_unsafe_code() -> Result<()> {
+    let root = workspace_root()?;
+    let scan_roots = [
+        "packages",
+        "services",
+        "servers",
+        "workers",
+        "platform/validators",
+    ];
+    let mut findings = Vec::new();
+
+    for relative_root in scan_roots {
+        let scan_root = root.join(relative_root);
+        if !scan_root.exists() {
+            continue;
+        }
+
+        for file in collect_files_with_extension(&scan_root, "rs") {
+            let content = read(&file)?;
+            if !contains_unsafe_code(&content) {
+                continue;
+            }
+            let relative_path = file.strip_prefix(&root).unwrap_or(&file);
+            findings.push(normalize_slashes(relative_path));
+        }
+    }
+
+    println!("=== Unsafe Code Validation ===");
+    println!("scope: production Rust crates");
+    if findings.is_empty() {
+        println!("PASS: no unsafe Rust markers found in production crate sources.");
+        return Ok(());
+    }
+
+    println!("Findings:");
+    findings.sort();
+    findings.dedup();
+    for finding in &findings {
+        println!("  - {finding}");
+    }
+    bail!("unsafe Rust markers found in production crate sources")
+}
+
+fn contains_unsafe_code(content: &str) -> bool {
+    let stripped = strip_rust_comments(content);
+    stripped.contains("unsafe {")
+        || stripped.contains("unsafe fn")
+        || stripped.contains("unsafe impl")
+        || stripped.contains("#[unsafe")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::contains_unsafe_code;
+
+    #[test]
+    fn unsafe_marker_detection_ignores_comments() {
+        let content = r#"
+            // unsafe fn commented_out() {}
+            /* unsafe { commented_out(); } */
+            fn safe() {}
+        "#;
+
+        assert!(!contains_unsafe_code(content));
+    }
+
+    #[test]
+    fn unsafe_marker_detection_finds_production_markers() {
+        assert!(contains_unsafe_code("unsafe fn call() {}"));
+        assert!(contains_unsafe_code("unsafe impl Send for Worker {}"));
+        assert!(contains_unsafe_code("fn call() { unsafe { ffi(); } }"));
+        assert!(contains_unsafe_code("#[unsafe(no_mangle)] fn entry() {}"));
+    }
 }
 
 const K6_BASELINE_SCRIPT: &str = r#"import http from "k6/http";

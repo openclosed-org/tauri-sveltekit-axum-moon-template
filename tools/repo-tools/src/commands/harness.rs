@@ -182,6 +182,7 @@ pub(crate) fn gate(args: GateArgs) -> Result<()> {
         GateName::Ci | GateName::Release => Mode::Strict,
         GateName::Local | GateName::Prepush => Mode::Warn,
     });
+    let release_type = std::env::var("RELEASE_TYPE").unwrap_or_else(|_| "minor".to_string());
     let commands = match args.gate {
         GateName::Local => vec![
             GateCommand {
@@ -264,6 +265,21 @@ pub(crate) fn gate(args: GateArgs) -> Result<()> {
             },
         ],
         GateName::Release => vec![
+            GateCommand {
+                label: "semver compatibility",
+                program: "just",
+                args: vec!["semver-check".into(), "".into(), release_type],
+            },
+            GateCommand {
+                label: "contract drift",
+                program: "just",
+                args: vec!["drift-check".into()],
+            },
+            GateCommand {
+                label: "backend-core app-shell audit",
+                program: "just",
+                args: vec!["audit-backend-core".into(), "strict".into()],
+            },
             GateCommand {
                 label: "ci gate",
                 program: "cargo",

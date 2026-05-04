@@ -211,6 +211,8 @@ tasks:
     inputs:
       - 'packages/contracts/**/src/**'
       - 'packages/contracts/**/Cargo.toml'
+      - 'servers/bff/web-bff/src/**'
+      - 'servers/bff/web-bff/Cargo.toml'
       - 'tools/repo-tools/src/**'
 
   # ==========================================================================

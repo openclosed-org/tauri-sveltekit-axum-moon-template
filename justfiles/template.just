@@ -1,13 +1,13 @@
 # Template consumer commands
 
 # Preview how this repository would be reduced for template consumers.
-template-init PROFILE='backend-core' MODE='dry-run':
-    cargo run -p repo-tools -- template-init --profile "{{PROFILE}}" --mode "{{MODE}}"
+template-init profile='backend-core' mode='dry-run':
+    cargo run -p repo-tools -- template-init --profile "{{profile}}" --mode "{{mode}}"
 
 # Verify the default backend-core lane is independent from optional app shells.
-audit-backend-core MODE='dry-run':
-    cargo run -p repo-tools -- audit-backend-core "{{MODE}}"
+audit-backend-core mode='dry-run':
+    cargo run -p repo-tools -- audit-backend-core "{{mode}}"
 
 # Repository-level SemVer check for the current template release line.
-semver-check BASELINE='' RELEASE_TYPE='minor' RELEASE_TAG_GLOB='v[0-9]*.[0-9]*.[0-9]*':
-    cargo run -p repo-tools -- semver-check --baseline "{{BASELINE}}" --release-type "{{RELEASE_TYPE}}" --release-tag-glob "{{RELEASE_TAG_GLOB}}"
+semver-check baseline='' release_type='minor' release_tag_glob='v[0-9]*.[0-9]*.[0-9]*':
+    cargo run -p repo-tools -- semver-check --baseline "{{baseline}}" --release-type "{{release_type}}" --release-tag-glob "{{release_tag_glob}}"

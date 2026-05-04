@@ -51,6 +51,7 @@ enum Commands {
     SetupHakariVerify,
     SetupCoverage,
     AuditRust,
+    ValidateUnsafeCode,
     K6Baseline(K6BaselineArgs),
     ValidateResilience(ModeArgs),
     PlatformServices,
@@ -730,6 +731,13 @@ pub(crate) struct AppsArgs {
 pub(crate) enum AppsCommand {
     E2e(AppsE2eArgs),
     DevDesktop(AppsDevDesktopArgs),
+    BoundaryAudit(AppsBoundaryAuditArgs),
+}
+
+#[derive(Args)]
+pub(crate) struct AppsBoundaryAuditArgs {
+    #[arg(value_enum, default_value = "dry-run")]
+    pub(crate) mode: BackendCoreAuditMode,
 }
 
 #[derive(Args)]
@@ -798,6 +806,7 @@ pub(crate) fn run() -> Result<()> {
         Commands::SetupHakariVerify => commands::devx::setup_hakari_verify(),
         Commands::SetupCoverage => commands::devx::setup_coverage(),
         Commands::AuditRust => commands::devx::audit_rust(),
+        Commands::ValidateUnsafeCode => commands::devx::validate_unsafe_code(),
         Commands::K6Baseline(args) => commands::devx::k6_baseline(args),
         Commands::ValidateResilience(args) => {
             commands::workers::validate_resilience(args.mode.into())

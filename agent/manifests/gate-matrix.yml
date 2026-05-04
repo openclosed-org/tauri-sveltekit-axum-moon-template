@@ -141,6 +141,7 @@ gates:
     label: Release gate
     strength: invariant
     scope: release
+    note: Includes SemVer compatibility when a baseline tag exists, contract drift, backend-core app-shell audit, CI gate, and release build. Defaults to RELEASE_TYPE=minor; set RELEASE_TYPE=major for intentional breaking releases.
 
 path_rules:
   - match:

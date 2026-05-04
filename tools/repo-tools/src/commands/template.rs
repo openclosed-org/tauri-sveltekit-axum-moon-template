@@ -42,7 +42,10 @@ pub(crate) fn template_init(args: TemplateInitArgs) -> Result<()> {
     }
 
     println!("\nDry-run only. No files were changed.");
-    println!("Run with MODE=apply only after reviewing the removal candidates.");
+    println!(
+        "Run `just template-init {} apply` only after reviewing the removal candidates.",
+        args.profile.label()
+    );
     println!("See docs/template-users/template-init.md for the current design contract.");
     Ok(())
 }
@@ -219,12 +222,18 @@ fn template_plan(profile: TemplateProfile) -> TemplatePlan {
                 "packages/observability/**",
                 "infra/**",
                 "Justfile",
+                "moon.yml",
                 "justfiles/setup.just",
                 "justfiles/dev.just",
-                "justfiles/test.just",
-                "justfiles/quality.just",
+                "justfiles/build.just",
+                "justfiles/verify.just",
+                "justfiles/ops.just",
+                "justfiles/clean.just",
                 "justfiles/platform.just",
                 "justfiles/sops.just",
+                "justfiles/template.just",
+                "justfiles/skills.just",
+                "tools/repo-tools/**",
             ],
             review: &[
                 "CONTRIBUTING.md",
@@ -345,7 +354,7 @@ fn backend_entry_files() -> &'static [&'static str] {
     &[
         ".moon/workspace.yml",
         "moon.yml",
-        "justfile",
+        "Justfile",
         "justfiles/setup.just",
         "justfiles/build.just",
         "justfiles/dev.just",
@@ -393,4 +402,28 @@ fn scan_backend_entry_file(root: &std::path::Path, file: &str) -> Result<Vec<Fin
         }
     }
     Ok(findings)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn backend_entry_files_include_root_justfile_with_correct_case() {
+        let files = backend_entry_files();
+
+        assert!(files.contains(&"Justfile"));
+        assert!(!files.contains(&"justfile"));
+    }
+
+    #[test]
+    fn backend_core_template_plan_uses_current_justfile_modules() {
+        let plan = template_plan(TemplateProfile::BackendCore);
+
+        assert!(plan.keep.contains(&"justfiles/build.just"));
+        assert!(plan.keep.contains(&"justfiles/verify.just"));
+        assert!(plan.keep.contains(&"tools/repo-tools/**"));
+        assert!(!plan.keep.contains(&"justfiles/test.just"));
+        assert!(!plan.keep.contains(&"justfiles/quality.just"));
+    }
 }

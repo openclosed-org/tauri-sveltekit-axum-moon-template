@@ -122,6 +122,10 @@ rules:
   - match: "docs/language/**"
     primary: planner
 
+  - match: "docs/_local/**"
+    primary: planner
+    condition: "scratch planning notes; not authoritative current-state documentation"
+
   # Root config (planner handles directly)
   - match: "Cargo.toml"
     primary: planner
