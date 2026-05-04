@@ -1,0 +1,492 @@
+openapi: 3.1.0
+info:
+  title: web-bff
+  version: 0.1.0
+paths:
+  /api/counter/decrement:
+    post:
+      tags:
+      - counter
+      summary: Decrement the tenant's counter value.
+      operationId: decrement
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        description: Optional idempotency key for safe retry/replay of the same mutation
+        required: false
+        schema:
+          type:
+          - string
+          - 'null'
+      responses:
+        '200':
+          description: Counter decremented successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CounterResponse'
+        '400':
+          description: Bad request — invalid Idempotency-Key header
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized — missing authenticated request context
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden — user cannot mutate this counter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict — concurrent modification or idempotency key reuse with a different mutation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearer_auth: []
+  /api/counter/increment:
+    post:
+      tags:
+      - counter
+      summary: Increment the tenant's counter value.
+      operationId: increment
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        description: Optional idempotency key for safe retry/replay of the same mutation
+        required: false
+        schema:
+          type:
+          - string
+          - 'null'
+      responses:
+        '200':
+          description: Counter incremented successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CounterResponse'
+        '400':
+          description: Bad request — invalid Idempotency-Key header
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized — missing authenticated request context
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden — user cannot mutate this counter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict — concurrent modification or idempotency key reuse with a different mutation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearer_auth: []
+  /api/counter/reset:
+    post:
+      tags:
+      - counter
+      summary: Reset the tenant's counter value to zero.
+      operationId: reset
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        description: Optional idempotency key for safe retry/replay of the same mutation
+        required: false
+        schema:
+          type:
+          - string
+          - 'null'
+      responses:
+        '200':
+          description: Counter reset successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CounterResponse'
+        '400':
+          description: Bad request — invalid Idempotency-Key header
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized — missing authenticated request context
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden — user cannot mutate this counter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict — concurrent modification or idempotency key reuse with a different mutation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearer_auth: []
+  /api/counter/value:
+    get:
+      tags:
+      - counter
+      summary: |-
+        Get the current counter value for the authenticated tenant.
+        Cache-first: checks cache before hitting the database.
+      operationId: get_value
+      responses:
+        '200':
+          description: Current counter value
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CounterResponse'
+        '401':
+          description: Unauthorized — missing authenticated request context
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden — user cannot read this counter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearer_auth: []
+  /api/tenant/init:
+    post:
+      tags:
+      - tenant
+      summary: POST /api/tenant/init
+      description: |-
+        Ensures a tenant exists for the given user_sub.
+        - First login: creates tenant + user_tenant (role: 'owner')
+        - Subsequent login: returns existing tenant_id
+      operationId: init_tenant
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InitTenantRequest'
+        required: true
+      responses:
+        '200':
+          description: Tenant initialized successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InitTenantResponse'
+        '400':
+          description: Bad request — malformed JSON payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized — missing or invalid JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '415':
+          description: Unsupported media type — expected application/json
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Unprocessable Entity — invalid request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error — database failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/user/me:
+    get:
+      tags:
+      - user
+      summary: Get current user profile.
+      operationId: get_user_profile
+      responses:
+        '200':
+          description: User profile retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfileResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearer_auth: []
+  /api/user/tenants:
+    get:
+      tags:
+      - user
+      summary: List user's tenant bindings.
+      operationId: get_user_tenants
+      responses:
+        '200':
+          description: User tenants retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserTenantResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+      - bearer_auth: []
+  /healthz:
+    get:
+      tags:
+      - health
+      summary: GET /healthz — 存活探针。
+      operationId: healthz
+      responses:
+        '200':
+          description: Service is alive
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+  /readyz:
+    get:
+      tags:
+      - health
+      summary: GET /readyz — 就绪探针。
+      operationId: readyz
+      responses:
+        '200':
+          description: Service is ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+components:
+  schemas:
+    CounterResponse:
+      type: object
+      description: Generic counter operation response.
+      required:
+      - value
+      properties:
+        value:
+          type: integer
+          format: int64
+          description: The current counter value after the operation.
+    ErrorCode:
+      type: string
+      description: |-
+        Machine-readable error codes.
+
+        These codes are stable across releases and form the public API contract.
+      enum:
+      - BadRequest
+      - Unauthorized
+      - Forbidden
+      - NotFound
+      - Conflict
+      - ValidationError
+      - RateLimited
+      - InternalError
+      - ServiceUnavailable
+      - DatabaseError
+      - CacheError
+      - ExternalServiceError
+    ErrorResponse:
+      type: object
+      description: |-
+        Standardized API error response.
+
+        Every error returned by the API conforms to this shape.
+        Callers depend on this public DTO, not on individual service error enums.
+      required:
+      - code
+      - message
+      properties:
+        code:
+          $ref: '#/components/schemas/ErrorCode'
+          description: Machine-readable error code (e.g., `validation_error`, `not_found`).
+        details:
+          description: |-
+            Optional additional details for debugging.
+            Never sent in production responses.
+        message:
+          type: string
+          description: Human-readable error message.
+    HealthResponse:
+      type: object
+      description: Health check response.
+      required:
+      - status
+      properties:
+        status:
+          type: string
+          description: 'Server status: "ok" or "degraded"'
+    InitTenantRequest:
+      type: object
+      description: Request body for tenant initialization.
+      required:
+      - user_sub
+      - user_name
+      properties:
+        user_name:
+          type: string
+          description: Display name for the user.
+        user_sub:
+          type: string
+          description: OAuth provider's subject identifier.
+    InitTenantResponse:
+      type: object
+      description: Response from tenant initialization.
+      required:
+      - tenant_id
+      - role
+      - created
+      properties:
+        created:
+          type: boolean
+          description: Whether a new tenant was created.
+        role:
+          type: string
+          description: User's role within the tenant.
+        tenant_id:
+          type: string
+          description: The tenant ID in "table:key" format.
+    UserProfileResponse:
+      type: object
+      description: Current authenticated user profile.
+      required:
+      - id
+      - user_sub
+      - display_name
+      - created_at
+      properties:
+        created_at:
+          type: string
+        display_name:
+          type: string
+        email:
+          type:
+          - string
+          - 'null'
+        id:
+          type: string
+        last_login_at:
+          type:
+          - string
+          - 'null'
+        user_sub:
+          type: string
+    UserTenantResponse:
+      type: object
+      description: Tenant binding visible to the authenticated user.
+      required:
+      - tenant_id
+      - role
+      - joined_at
+      properties:
+        joined_at:
+          type: string
+        role:
+          type: string
+        tenant_id:
+          type: string
+        tenant_name:
+          type:
+          - string
+          - 'null'
+  securitySchemes:
+    bearer_auth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Bearer JWT used to build authenticated request context
+tags:
+- name: health
+  description: Service health and readiness probes
+- name: tenant
+  description: Tenant bootstrap endpoints
+- name: counter
+  description: Tenant-scoped counter endpoints
+- name: user
+  description: Authenticated user read endpoints

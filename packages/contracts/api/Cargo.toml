@@ -9,7 +9,6 @@ rust-version.workspace = true
 serde = { workspace = true }
 serde_json = { workspace = true }
 utoipa = { workspace = true }
-ts-rs = { workspace = true }
 validator = { workspace = true }
 workspace-hack = { version = "0.1", path = "../../workspace-hack" }
 

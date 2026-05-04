@@ -2,7 +2,7 @@
 //!
 //! This crate defines the **single source of truth** for error responses
 //! across all services and clients. All error types serialize to the same
-//! JSON shape, ensuring frontend and services share a common understanding.
+//! JSON shape, ensuring callers and services share a common understanding.
 //!
 //! ```json
 //! {
@@ -22,7 +22,6 @@
 #![deny(unused_imports, unused_variables)]
 
 use serde::{Deserialize, Serialize, ser::SerializeStruct};
-use ts_rs::TS;
 use utoipa::ToSchema;
 
 // ── Error Response DTO ──────────────────────────────────────────
@@ -30,10 +29,8 @@ use utoipa::ToSchema;
 /// Standardized API error response.
 ///
 /// Every error returned by the API conforms to this shape.
-/// Frontend code depends on this type (generated via `ts-rs`),
-/// not on individual service error enums.
-#[derive(Debug, Clone, Deserialize, ToSchema, TS)]
-#[ts(export, export_to = "errors/")]
+/// Callers depend on this public DTO, not on individual service error enums.
+#[derive(Debug, Clone, Deserialize, ToSchema)]
 pub struct ErrorResponse {
     /// Machine-readable error code (e.g., `validation_error`, `not_found`).
     pub code: ErrorCode,
@@ -91,8 +88,7 @@ impl ErrorResponse {
 /// Machine-readable error codes.
 ///
 /// These codes are stable across releases and form the public API contract.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema, TS)]
-#[ts(export, export_to = "errors/")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 pub enum ErrorCode {
     // ── Client Errors (4xx) ─────────────────────────────────
     /// Request was malformed or invalid.

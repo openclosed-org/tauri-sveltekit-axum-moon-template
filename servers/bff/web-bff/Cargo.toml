@@ -59,7 +59,8 @@ async-trait = "0.1"
 futures-util = "0.3"
 
 # API documentation
-utoipa = { version = "5", features = ["axum_extras"] }
+utoipa = { workspace = true }
+utoipa-axum = { workspace = true }
 utoipa-scalar = { version = "0.2", features = ["axum"] }
 
 [dev-dependencies]

@@ -104,13 +104,17 @@ impl CounterService for CounterHttpClient {
     async fn increment(
         &self,
         counter_id: &CounterId,
-        _idempotency_key: Option<&str>,
+        idempotency_key: Option<&str>,
     ) -> Result<i64, CounterError> {
-        let response = self
+        let mut request = self
             .client
             .post(self.url("/api/counter/increment"))
             .header("Authorization", self.auth_header_value())
-            .header("X-Tenant-Id", counter_id.as_str())
+            .header("X-Tenant-Id", counter_id.as_str());
+        if let Some(key) = idempotency_key {
+            request = request.header("Idempotency-Key", key);
+        }
+        let response = request
             .send()
             .await
             .map_err(|e| CounterError::Database(format!("HTTP request failed: {}", e)))?;
@@ -121,13 +125,17 @@ impl CounterService for CounterHttpClient {
     async fn decrement(
         &self,
         counter_id: &CounterId,
-        _idempotency_key: Option<&str>,
+        idempotency_key: Option<&str>,
     ) -> Result<i64, CounterError> {
-        let response = self
+        let mut request = self
             .client
             .post(self.url("/api/counter/decrement"))
             .header("Authorization", self.auth_header_value())
-            .header("X-Tenant-Id", counter_id.as_str())
+            .header("X-Tenant-Id", counter_id.as_str());
+        if let Some(key) = idempotency_key {
+            request = request.header("Idempotency-Key", key);
+        }
+        let response = request
             .send()
             .await
             .map_err(|e| CounterError::Database(format!("HTTP request failed: {}", e)))?;
@@ -138,17 +146,50 @@ impl CounterService for CounterHttpClient {
     async fn reset(
         &self,
         counter_id: &CounterId,
-        _idempotency_key: Option<&str>,
+        idempotency_key: Option<&str>,
     ) -> Result<i64, CounterError> {
-        let response = self
+        let mut request = self
             .client
             .post(self.url("/api/counter/reset"))
             .header("Authorization", self.auth_header_value())
-            .header("X-Tenant-Id", counter_id.as_str())
+            .header("X-Tenant-Id", counter_id.as_str());
+        if let Some(key) = idempotency_key {
+            request = request.header("Idempotency-Key", key);
+        }
+        let response = request
             .send()
             .await
             .map_err(|e| CounterError::Database(format!("HTTP request failed: {}", e)))?;
 
         Self::parse_counter_response(response).await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn increment_sends_idempotency_key_header() {
+        let mut server = mockito::Server::new_async().await;
+        let mock = server
+            .mock("POST", "/api/counter/increment")
+            .match_header("authorization", "Bearer token")
+            .match_header("x-tenant-id", "tenant-a")
+            .match_header("idempotency-key", "idem-123")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(r#"{"value":1}"#)
+            .create_async()
+            .await;
+
+        let client = CounterHttpClient::new(&server.url(), "token");
+        let value = client
+            .increment(&CounterId::new("tenant-a"), Some("idem-123"))
+            .await
+            .unwrap();
+
+        assert_eq!(value, 1);
+        mock.assert_async().await;
     }
 }

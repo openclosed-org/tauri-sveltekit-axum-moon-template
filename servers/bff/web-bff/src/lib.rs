@@ -12,7 +12,7 @@ pub mod handlers;
 pub mod middleware;
 pub mod state;
 
-use axum::Router;
+use axum::{Json, Router, response::IntoResponse};
 use state::BffState;
 use std::time::Duration;
 use tower_http::{
@@ -22,7 +22,9 @@ use tower_http::{
     trace::TraceLayer,
 };
 use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
+use utoipa::openapi::{Info, OpenApi as OpenApiSpec};
 use utoipa::{Modify, OpenApi};
+use utoipa_axum::router::OpenApiRouter;
 use utoipa_scalar::Scalar;
 
 struct SecurityAddon;
@@ -47,17 +49,15 @@ impl Modify for SecurityAddon {
 
 /// Unified OpenAPI documentation for web-bff.
 #[derive(OpenApi)]
-#[openapi(paths(
-    handlers::counter::increment,
-    handlers::counter::decrement,
-    handlers::counter::reset,
-    handlers::counter::get_value,
-    handlers::user::get_user_profile,
-    handlers::user::get_user_tenants,
-    handlers::tenant::init_tenant,
-    handlers::health::healthz,
-    handlers::health::readyz,
-), modifiers(&SecurityAddon))]
+#[openapi(
+    modifiers(&SecurityAddon),
+    tags(
+        (name = "health", description = "Service health and readiness probes"),
+        (name = "tenant", description = "Tenant bootstrap endpoints"),
+        (name = "counter", description = "Tenant-scoped counter endpoints"),
+        (name = "user", description = "Authenticated user read endpoints")
+    )
+)]
 pub struct ApiDoc;
 
 /// 生成 UUID v7 请求 ID。
@@ -71,33 +71,68 @@ impl MakeRequestId for MakeRequestUuidV7 {
     }
 }
 
+pub fn openapi() -> OpenApiSpec {
+    let mut router = openapi_router();
+    router.to_openapi()
+}
+
+fn openapi_router() -> OpenApiRouter<BffState> {
+    let mut api_doc = ApiDoc::openapi();
+    api_doc.info = Info::new("web-bff", env!("CARGO_PKG_VERSION"));
+
+    let api_routes = OpenApiRouter::new()
+        .merge(handlers::tenant::openapi_router())
+        .merge(handlers::counter::openapi_router())
+        .merge(handlers::user::openapi_router())
+        .route_layer(axum::middleware::from_fn(
+            middleware::tenant::tenant_middleware,
+        ));
+
+    OpenApiRouter::with_openapi(api_doc)
+        .merge(handlers::health::openapi_router())
+        .merge(api_routes)
+}
+
 /// 构建路由器。
 pub fn create_router(state: BffState) -> Router {
     let cors = build_cors_layer(&state.config.cors_allowed_origins);
+    let config = state.config.clone();
+    let (router, openapi) = openapi_router()
+        .layer(axum::Extension(config))
+        .split_for_parts();
 
-    // Public routes — no auth required
-    let public_routes: Router<BffState> = handlers::health::router();
+    let scalar_html: String = Scalar::new(openapi.clone()).to_html();
+    let openapi_json = openapi.clone();
+    let openapi_yaml = openapi
+        .to_yaml()
+        .expect("OpenAPI YAML serialization must succeed");
 
-    // API routes — authenticated request path backed by JWT auth
-    let api_routes = Router::new()
-        .merge(handlers::tenant::router())
-        .merge(handlers::counter::router())
-        .merge(handlers::user::router())
-        .route_layer(axum::middleware::from_fn(
-            middleware::tenant::tenant_middleware,
-        ))
-        .layer(axum::Extension(state.config.clone()));
-
-    let scalar_html: String = Scalar::new(ApiDoc::openapi()).to_html();
-
-    Router::new()
-        .merge(public_routes)
-        .merge(api_routes)
+    router
         .route(
             "/scalar",
             axum::routing::get(move || {
                 let html = scalar_html.clone();
                 async move { axum::response::Html(html) }
+            }),
+        )
+        .route(
+            "/openapi.json",
+            axum::routing::get(move || {
+                let openapi = openapi_json.clone();
+                async move { Json(openapi) }
+            }),
+        )
+        .route(
+            "/openapi.yaml",
+            axum::routing::get(move || {
+                let yaml = openapi_yaml.clone();
+                async move {
+                    (
+                        [(axum::http::header::CONTENT_TYPE, "application/yaml")],
+                        yaml,
+                    )
+                        .into_response()
+                }
             }),
         )
         .with_state(state)
@@ -151,6 +186,8 @@ fn build_cors_layer(allowed_origins: &[String]) -> CorsLayer {
             axum::http::header::AUTHORIZATION,
             axum::http::header::CONTENT_TYPE,
             axum::http::header::ACCEPT,
+            axum::http::HeaderName::from_static("idempotency-key"),
+            axum::http::HeaderName::from_static("x-request-id"),
         ])
         .allow_credentials(true)
 }
