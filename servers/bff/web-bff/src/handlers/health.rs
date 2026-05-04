@@ -2,8 +2,9 @@
 //!
 //! Phase 0: 无外部依赖检查。Phase 1+: readyz 检查 DB, EventBus 等。
 
-use axum::{Json, Router, routing::get};
-use serde_json::json;
+use axum::Json;
+use contracts_api::HealthResponse;
+use utoipa_axum::{router::OpenApiRouter, routes};
 
 /// GET /healthz — 存活探针。
 #[utoipa::path(
@@ -11,11 +12,11 @@ use serde_json::json;
     path = "/healthz",
     tag = "health",
     responses(
-        (status = 200, description = "Service is alive", body = serde_json::Value)
+        (status = 200, description = "Service is alive", body = HealthResponse)
     )
 )]
-pub async fn healthz() -> Json<serde_json::Value> {
-    Json(json!({ "status": "ok" }))
+pub async fn healthz() -> Json<HealthResponse> {
+    Json(HealthResponse::new("ok"))
 }
 
 /// GET /readyz — 就绪探针。
@@ -24,19 +25,19 @@ pub async fn healthz() -> Json<serde_json::Value> {
     path = "/readyz",
     tag = "health",
     responses(
-        (status = 200, description = "Service is ready", body = serde_json::Value)
+        (status = 200, description = "Service is ready", body = HealthResponse)
     )
 )]
-pub async fn readyz() -> (axum::http::StatusCode, Json<serde_json::Value>) {
+pub async fn readyz() -> (axum::http::StatusCode, Json<HealthResponse>) {
     (
         axum::http::StatusCode::OK,
-        Json(json!({ "status": "ready" })),
+        Json(HealthResponse::new("ready")),
     )
 }
 
 /// 健康检查路由 — 无状态路由。
-pub fn router<S: Clone + Send + Sync + 'static>() -> Router<S> {
-    Router::new()
-        .route("/healthz", get(healthz))
-        .route("/readyz", get(readyz))
+pub fn openapi_router<S: Clone + Send + Sync + 'static>() -> OpenApiRouter<S> {
+    OpenApiRouter::new()
+        .routes(routes!(healthz))
+        .routes(routes!(readyz))
 }

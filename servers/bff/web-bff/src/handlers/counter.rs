@@ -4,10 +4,9 @@
 //! All responses use contract DTOs from `contracts_api` and `contracts_errors`.
 
 use axum::{
-    Json, Router,
+    Json,
     extract::{Extension, State},
-    http::StatusCode,
-    routing::{get, post},
+    http::{HeaderMap, StatusCode},
 };
 use contracts_api::CounterResponse;
 use contracts_errors::{ErrorCode, ErrorResponse};
@@ -15,17 +14,18 @@ use counter_service::contracts::service::CounterCommandContext;
 use counter_service::contracts::service::{CounterError, CounterService};
 use counter_service::domain::CounterId;
 use user_service::ports::UserTenantRepository;
+use utoipa_axum::{router::OpenApiRouter, routes};
 
 use crate::composition::CounterServiceHandle;
 use crate::middleware::tenant::RequestContext;
 use crate::state::BffState;
 
-pub fn router() -> Router<BffState> {
-    Router::new()
-        .route("/api/counter/increment", post(increment))
-        .route("/api/counter/decrement", post(decrement))
-        .route("/api/counter/reset", post(reset))
-        .route("/api/counter/value", get(get_value))
+pub fn openapi_router() -> OpenApiRouter<BffState> {
+    OpenApiRouter::new()
+        .routes(routes!(increment))
+        .routes(routes!(decrement))
+        .routes(routes!(reset))
+        .routes(routes!(get_value))
 }
 
 /// Increment the tenant's counter value.
@@ -34,15 +34,19 @@ pub fn router() -> Router<BffState> {
     path = "/api/counter/increment",
     tag = "counter",
     security(("bearer_auth" = [])),
+    params(("Idempotency-Key" = Option<String>, Header, description = "Optional idempotency key for safe retry/replay of the same mutation")),
     responses(
         (status = 200, description = "Counter incremented successfully", body = CounterResponse, content_type = "application/json"),
+        (status = 400, description = "Bad request — invalid Idempotency-Key header", body = ErrorResponse),
         (status = 401, description = "Unauthorized — missing authenticated request context", body = ErrorResponse),
-        (status = 409, description = "CAS conflict — concurrent modification", body = ErrorResponse),
+        (status = 403, description = "Forbidden — user cannot mutate this counter", body = ErrorResponse),
+        (status = 409, description = "Conflict — concurrent modification or idempotency key reuse with a different mutation", body = ErrorResponse),
         (status = 500, description = "Internal server error", body = ErrorResponse),
     ),
 )]
-async fn increment(
+pub async fn increment(
     State(state): State<BffState>,
+    headers: HeaderMap,
     request_context: Option<Extension<RequestContext>>,
 ) -> Result<(StatusCode, Json<CounterResponse>), (StatusCode, Json<ErrorResponse>)> {
     let request_context = extract_request_context(request_context)?;
@@ -58,10 +62,15 @@ async fn increment(
     .await?;
 
     let command_context = build_command_context(request_context);
+    let idempotency_key = idempotency_key(&headers)?;
     let service = build_service(&state)?;
 
     let value = service
-        .increment_with_context(&CounterId::new(tenant_id.as_str()), None, &command_context)
+        .increment_with_context(
+            &CounterId::new(tenant_id.as_str()),
+            idempotency_key.as_deref(),
+            &command_context,
+        )
         .await
         .map_err(map_counter_error)?;
 
@@ -78,15 +87,19 @@ async fn increment(
     path = "/api/counter/decrement",
     tag = "counter",
     security(("bearer_auth" = [])),
+    params(("Idempotency-Key" = Option<String>, Header, description = "Optional idempotency key for safe retry/replay of the same mutation")),
     responses(
         (status = 200, description = "Counter decremented successfully", body = CounterResponse, content_type = "application/json"),
+        (status = 400, description = "Bad request — invalid Idempotency-Key header", body = ErrorResponse),
         (status = 401, description = "Unauthorized — missing authenticated request context", body = ErrorResponse),
-        (status = 409, description = "CAS conflict — concurrent modification", body = ErrorResponse),
+        (status = 403, description = "Forbidden — user cannot mutate this counter", body = ErrorResponse),
+        (status = 409, description = "Conflict — concurrent modification or idempotency key reuse with a different mutation", body = ErrorResponse),
         (status = 500, description = "Internal server error", body = ErrorResponse),
     ),
 )]
-async fn decrement(
+pub async fn decrement(
     State(state): State<BffState>,
+    headers: HeaderMap,
     request_context: Option<Extension<RequestContext>>,
 ) -> Result<(StatusCode, Json<CounterResponse>), (StatusCode, Json<ErrorResponse>)> {
     let request_context = extract_request_context(request_context)?;
@@ -101,10 +114,15 @@ async fn decrement(
     .await?;
 
     let command_context = build_command_context(request_context);
+    let idempotency_key = idempotency_key(&headers)?;
     let service = build_service(&state)?;
 
     let value = service
-        .decrement_with_context(&CounterId::new(tenant_id.as_str()), None, &command_context)
+        .decrement_with_context(
+            &CounterId::new(tenant_id.as_str()),
+            idempotency_key.as_deref(),
+            &command_context,
+        )
         .await
         .map_err(map_counter_error)?;
 
@@ -121,15 +139,19 @@ async fn decrement(
     path = "/api/counter/reset",
     tag = "counter",
     security(("bearer_auth" = [])),
+    params(("Idempotency-Key" = Option<String>, Header, description = "Optional idempotency key for safe retry/replay of the same mutation")),
     responses(
         (status = 200, description = "Counter reset successfully", body = CounterResponse, content_type = "application/json"),
+        (status = 400, description = "Bad request — invalid Idempotency-Key header", body = ErrorResponse),
         (status = 401, description = "Unauthorized — missing authenticated request context", body = ErrorResponse),
-        (status = 409, description = "CAS conflict — concurrent modification", body = ErrorResponse),
+        (status = 403, description = "Forbidden — user cannot mutate this counter", body = ErrorResponse),
+        (status = 409, description = "Conflict — concurrent modification or idempotency key reuse with a different mutation", body = ErrorResponse),
         (status = 500, description = "Internal server error", body = ErrorResponse),
     ),
 )]
-async fn reset(
+pub async fn reset(
     State(state): State<BffState>,
+    headers: HeaderMap,
     request_context: Option<Extension<RequestContext>>,
 ) -> Result<(StatusCode, Json<CounterResponse>), (StatusCode, Json<ErrorResponse>)> {
     let request_context = extract_request_context(request_context)?;
@@ -144,10 +166,15 @@ async fn reset(
     .await?;
 
     let command_context = build_command_context(request_context);
+    let idempotency_key = idempotency_key(&headers)?;
     let service = build_service(&state)?;
 
     let value = service
-        .reset_with_context(&CounterId::new(tenant_id.as_str()), None, &command_context)
+        .reset_with_context(
+            &CounterId::new(tenant_id.as_str()),
+            idempotency_key.as_deref(),
+            &command_context,
+        )
         .await
         .map_err(map_counter_error)?;
 
@@ -168,10 +195,11 @@ async fn reset(
     responses(
         (status = 200, description = "Current counter value", body = CounterResponse, content_type = "application/json"),
         (status = 401, description = "Unauthorized — missing authenticated request context", body = ErrorResponse),
+        (status = 403, description = "Forbidden — user cannot read this counter", body = ErrorResponse),
         (status = 500, description = "Internal server error", body = ErrorResponse),
     ),
 )]
-async fn get_value(
+pub async fn get_value(
     State(state): State<BffState>,
     request_context: Option<Extension<RequestContext>>,
 ) -> Result<(StatusCode, Json<CounterResponse>), (StatusCode, Json<ErrorResponse>)> {
@@ -291,6 +319,36 @@ fn build_command_context(request_context: RequestContext) -> CounterCommandConte
     }
 }
 
+fn idempotency_key(
+    headers: &HeaderMap,
+) -> Result<Option<String>, (StatusCode, Json<ErrorResponse>)> {
+    let Some(value) = headers.get("Idempotency-Key") else {
+        return Ok(None);
+    };
+
+    let key = value.to_str().map_err(|_| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::new(
+                ErrorCode::BadRequest,
+                "Idempotency-Key must be valid ASCII",
+            )),
+        )
+    })?;
+    let key = key.trim();
+    if key.is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse::new(
+                ErrorCode::BadRequest,
+                "Idempotency-Key must not be empty",
+            )),
+        ));
+    }
+
+    Ok(Some(key.to_string()))
+}
+
 async fn resolve_tenant_id(
     state: &BffState,
     request_context: &RequestContext,
@@ -379,12 +437,22 @@ fn map_counter_error(err: CounterError) -> (StatusCode, Json<ErrorResponse>) {
             StatusCode::NOT_FOUND,
             Json(ErrorResponse::new(ErrorCode::NotFound, &msg)),
         ),
-        CounterError::Database(e) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
+        CounterError::IdempotencyConflict => (
+            StatusCode::CONFLICT,
             Json(ErrorResponse::new(
-                ErrorCode::DatabaseError,
-                format!("Database error: {}", e),
+                ErrorCode::Conflict,
+                "Idempotency key was reused for a different counter command",
             )),
         ),
+        CounterError::Database(e) => {
+            tracing::error!(error = %e, "counter database error");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse::new(
+                    ErrorCode::DatabaseError,
+                    "Counter operation failed",
+                )),
+            )
+        }
     }
 }

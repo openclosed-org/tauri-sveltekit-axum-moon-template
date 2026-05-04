@@ -4,21 +4,22 @@
 //! GET    /api/user/tenants  — list user's tenant bindings
 
 use axum::{
-    Json, Router,
+    Json,
     extract::{Extension, State},
     http::StatusCode,
-    routing::get,
 };
+use contracts_api::{UserProfileResponse, UserTenantResponse};
 use contracts_errors::{ErrorCode, ErrorResponse};
 use user_service::ports::{TenantRepository, UserRepository, UserTenantRepository};
+use utoipa_axum::{router::OpenApiRouter, routes};
 
 use crate::middleware::tenant::RequestContext;
 use crate::state::BffState;
 
-pub fn router() -> Router<BffState> {
-    Router::new()
-        .route("/api/user/me", get(get_user_profile))
-        .route("/api/user/tenants", get(get_user_tenants))
+pub fn openapi_router() -> OpenApiRouter<BffState> {
+    OpenApiRouter::new()
+        .routes(routes!(get_user_profile))
+        .routes(routes!(get_user_tenants))
 }
 
 /// Get current user profile.
@@ -28,7 +29,7 @@ pub fn router() -> Router<BffState> {
     tag = "user",
     security(("bearer_auth" = [])),
     responses(
-        (status = 200, description = "User profile retrieved", body = serde_json::Value, content_type = "application/json"),
+        (status = 200, description = "User profile retrieved", body = UserProfileResponse, content_type = "application/json"),
         (status = 401, description = "Unauthorized", body = ErrorResponse),
         (status = 404, description = "User not found", body = ErrorResponse),
         (status = 500, description = "Internal server error", body = ErrorResponse),
@@ -37,7 +38,7 @@ pub fn router() -> Router<BffState> {
 pub async fn get_user_profile(
     State(state): State<BffState>,
     request_context: Option<Extension<RequestContext>>,
-) -> Result<(StatusCode, Json<serde_json::Value>), (StatusCode, Json<ErrorResponse>)> {
+) -> Result<(StatusCode, Json<UserProfileResponse>), (StatusCode, Json<ErrorResponse>)> {
     let user_sub = match extract_user_sub(request_context) {
         Ok(id) => id,
         Err(error) => return Err(error),
@@ -52,14 +53,14 @@ pub async fn get_user_profile(
     match result {
         Ok(Some(user)) => Ok((
             StatusCode::OK,
-            Json(serde_json::json!({
-                "id": user.id,
-                "user_sub": user.user_sub,
-                "display_name": user.display_name,
-                "email": user.email,
-                "created_at": user.created_at.to_rfc3339(),
-                "last_login_at": user.last_login_at.map(|dt| dt.to_rfc3339()),
-            })),
+            Json(UserProfileResponse {
+                id: user.id,
+                user_sub: user.user_sub,
+                display_name: user.display_name,
+                email: user.email,
+                created_at: user.created_at.to_rfc3339(),
+                last_login_at: user.last_login_at.map(|dt| dt.to_rfc3339()),
+            }),
         )),
         Ok(None) => Err((
             StatusCode::NOT_FOUND,
@@ -82,7 +83,7 @@ pub async fn get_user_profile(
     tag = "user",
     security(("bearer_auth" = [])),
     responses(
-        (status = 200, description = "User tenants retrieved", body = serde_json::Value, content_type = "application/json"),
+        (status = 200, description = "User tenants retrieved", body = Vec<UserTenantResponse>, content_type = "application/json"),
         (status = 401, description = "Unauthorized", body = ErrorResponse),
         (status = 500, description = "Internal server error", body = ErrorResponse),
     ),
@@ -90,7 +91,7 @@ pub async fn get_user_profile(
 pub async fn get_user_tenants(
     State(state): State<BffState>,
     request_context: Option<Extension<RequestContext>>,
-) -> Result<(StatusCode, Json<serde_json::Value>), (StatusCode, Json<ErrorResponse>)> {
+) -> Result<(StatusCode, Json<Vec<UserTenantResponse>>), (StatusCode, Json<ErrorResponse>)> {
     let user_sub = match extract_user_sub(request_context) {
         Ok(id) => id,
         Err(error) => return Err(error),
@@ -105,20 +106,21 @@ pub async fn get_user_tenants(
         Ok(Some(binding)) => match tenant_repo.find_by_id(&binding.tenant_id).await {
             Ok(Some(tenant_info)) => Ok((
                 StatusCode::OK,
-                Json(serde_json::json!([{
-                    "tenant_id": tenant_info.id,
-                    "tenant_name": tenant_info.name,
-                    "role": binding.role,
-                    "joined_at": binding.joined_at.to_rfc3339(),
-                }])),
+                Json(vec![UserTenantResponse {
+                    tenant_id: tenant_info.id,
+                    tenant_name: Some(tenant_info.name),
+                    role: binding.role,
+                    joined_at: binding.joined_at.to_rfc3339(),
+                }]),
             )),
             Ok(None) => Ok((
                 StatusCode::OK,
-                Json(serde_json::json!([{
-                    "tenant_id": binding.tenant_id,
-                    "role": binding.role,
-                    "joined_at": binding.joined_at.to_rfc3339(),
-                }])),
+                Json(vec![UserTenantResponse {
+                    tenant_id: binding.tenant_id,
+                    tenant_name: None,
+                    role: binding.role,
+                    joined_at: binding.joined_at.to_rfc3339(),
+                }]),
             )),
             Err(e) => Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -128,7 +130,7 @@ pub async fn get_user_tenants(
                 )),
             )),
         },
-        Ok(None) => Ok((StatusCode::OK, Json(serde_json::json!([])))),
+        Ok(None) => Ok((StatusCode::OK, Json(Vec::new()))),
         Err(e) => Err((
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(ErrorResponse::new(

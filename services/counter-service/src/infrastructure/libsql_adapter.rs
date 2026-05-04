@@ -10,6 +10,7 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use data::ports::lib_sql::LibSqlPort;
+use event_bus::outbox::{OUTBOX_PENDING_INDEX_SQL, OUTBOX_TABLE_SQL};
 use serde::Deserialize;
 
 use crate::domain::{Counter, CounterId};
@@ -37,8 +38,11 @@ struct ValueRow {
 /// Row shape from the counter_idempotency table.
 #[derive(Debug, Deserialize)]
 struct IdempotencyRow {
-    result_value: i64,
-    result_version: i64,
+    request_hash: String,
+    operation: String,
+    status: String,
+    result_value: Option<i64>,
+    result_version: Option<i64>,
 }
 
 /// CounterRepository backed by a libsql port.
@@ -67,6 +71,8 @@ impl<P: LibSqlPort> LibSqlCounterRepository<P> {
     pub async fn migrate(&self) -> Result<(), RepositoryError> {
         let migration_sql = include_str!("../../migrations/001_create_counter.sql");
 
+        self.port.execute_batch(OUTBOX_TABLE_SQL).await?;
+        self.port.execute_batch(OUTBOX_PENDING_INDEX_SQL).await?;
         self.port.execute_batch(migration_sql).await?;
         Ok(())
     }
@@ -264,48 +270,50 @@ impl<P: LibSqlPort> CounterRepository for LibSqlCounterRepository<P> {
         Ok(())
     }
 
-    async fn check_idempotency(&self, key: &str) -> Result<Option<(i64, i64)>, RepositoryError> {
-        let rows: Vec<IdempotencyRow> = self
-            .port
-            .query(
-                "SELECT result_value, result_version FROM counter_idempotency \
-                 WHERE idempotency_key = ?",
-                vec![key.to_string()],
-            )
-            .await?;
-
-        match rows.first() {
-            Some(r) => Ok(Some((r.result_value, r.result_version))),
-            None => Ok(None),
-        }
-    }
-
-    async fn cache_idempotency(
-        &self,
-        key: &str,
-        value: i64,
-        version: i64,
-    ) -> Result<(), RepositoryError> {
-        self.port
-            .execute(
-                "INSERT INTO counter_idempotency (idempotency_key, result_value, result_version) \
-                 VALUES (?, ?, ?) \
-                 ON CONFLICT(idempotency_key) DO NOTHING",
-                vec![key.to_string(), value.to_string(), version.to_string()],
-            )
-            .await?;
-        Ok(())
-    }
-
     async fn commit_mutation(
         &self,
         m: &CounterMutation<'_>,
         idempotency_key: Option<&str>,
     ) -> Result<CommitOutcome, RepositoryError> {
         let expected_version = m.new_version - 1;
+        let operation = m.operation.as_str();
+        let request_hash = format!("{}:{operation}", m.counter_id.as_str());
+
+        if let Some(key) = idempotency_key
+            && let Some(outcome) = self
+                .load_idempotency_outcome(m.counter_id.as_str(), key, &request_hash)
+                .await?
+        {
+            return Ok(outcome);
+        }
 
         // ── Begin typed transaction (compile-time connection guarantee) ──
         let tx = self.port.begin().await?;
+
+        if let Some(key) = idempotency_key {
+            let rows = tx
+                .execute(
+                    "INSERT INTO counter_idempotency \
+                     (counter_id, idempotency_key, request_hash, operation, status) \
+                     VALUES (?, ?, ?, ?, 'in_progress') \
+                     ON CONFLICT(counter_id, idempotency_key) DO NOTHING",
+                    vec![
+                        m.counter_id.as_str().to_string(),
+                        key.to_string(),
+                        request_hash.clone(),
+                        operation.to_string(),
+                    ],
+                )
+                .await?;
+
+            if rows == 0 {
+                tx.rollback().await?;
+                return self
+                    .load_idempotency_outcome(m.counter_id.as_str(), key, &request_hash)
+                    .await?
+                    .ok_or_else(|| "idempotency key is still in progress".into());
+            }
+        }
 
         // ── CAS mutation ──
         let rows_affected = if expected_version == 0 {
@@ -363,31 +371,62 @@ impl<P: LibSqlPort> CounterRepository for LibSqlCounterRepository<P> {
         )
         .await?;
 
+        if let Some(key) = idempotency_key {
+            tx.execute(
+                "UPDATE counter_idempotency \
+                 SET status = 'completed', result_value = ?, result_version = ?, completed_at = datetime('now') \
+                 WHERE counter_id = ? AND idempotency_key = ? AND request_hash = ?",
+                vec![
+                    m.new_value.to_string(),
+                    m.new_version.to_string(),
+                    m.counter_id.as_str().to_string(),
+                    key.to_string(),
+                    request_hash,
+                ],
+            )
+            .await?;
+        }
+
         // ── Commit ──
         tx.commit().await?;
-
-        // ── Idempotency cache: best-effort after commit ──
-        // If this fails, the next retry with the same key hits CAS conflict
-        // (counter version already incremented), so the result stays correct.
-        if let Some(key) = idempotency_key {
-            let _ = self
-                .port
-                .execute(
-                    "INSERT INTO counter_idempotency (idempotency_key, result_value, result_version) \
-                     VALUES (?, ?, ?) \
-                     ON CONFLICT(idempotency_key) DO NOTHING",
-                    vec![
-                        key.to_string(),
-                        m.new_value.to_string(),
-                        m.new_version.to_string(),
-                    ],
-                )
-                .await;
-        }
 
         Ok(CommitOutcome::Committed {
             new_value: m.new_value,
             new_version: m.new_version,
         })
+    }
+}
+
+impl<P: LibSqlPort> LibSqlCounterRepository<P> {
+    async fn load_idempotency_outcome(
+        &self,
+        counter_id: &str,
+        key: &str,
+        request_hash: &str,
+    ) -> Result<Option<CommitOutcome>, RepositoryError> {
+        let rows: Vec<IdempotencyRow> = self
+            .port
+            .query(
+                "SELECT request_hash, operation, status, result_value, result_version \
+                 FROM counter_idempotency WHERE counter_id = ? AND idempotency_key = ?",
+                vec![counter_id.to_string(), key.to_string()],
+            )
+            .await?;
+
+        let Some(row) = rows.first() else {
+            return Ok(None);
+        };
+
+        if row.request_hash != request_hash {
+            return Ok(Some(CommitOutcome::IdempotencyConflict));
+        }
+
+        if row.status == "completed"
+            && let (Some(value), Some(version)) = (row.result_value, row.result_version)
+        {
+            return Ok(Some(CommitOutcome::IdempotentReplay { value, version }));
+        }
+
+        Ok(None)
     }
 }

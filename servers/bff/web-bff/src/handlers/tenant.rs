@@ -3,14 +3,13 @@
 //! POST /api/tenant/init — ensure tenant exists for user (auto-create on first login).
 
 use axum::{
-    Json, Router,
+    Json,
     extract::{FromRequest, Request, State, rejection::JsonRejection},
-    routing::post,
 };
 use contracts_errors::ErrorResponse;
-use serde_json::{Value, json};
+use utoipa_axum::{router::OpenApiRouter, routes};
 
-use contracts_api::InitTenantRequest;
+use contracts_api::{InitTenantRequest, InitTenantResponse};
 use tenant_service::application::TenantServiceTrait;
 use validator::Validate;
 
@@ -18,11 +17,11 @@ use crate::error::{BffError, BffResult};
 use crate::middleware::tenant::RequestContext;
 use crate::state::BffState;
 
-pub fn router() -> Router<BffState> {
-    Router::<BffState>::new().route("/api/tenant/init", post(init_tenant))
+pub fn openapi_router() -> OpenApiRouter<BffState> {
+    OpenApiRouter::new().routes(routes!(init_tenant))
 }
 
-pub(crate) struct ContractJson<T>(T);
+pub struct ContractJson<T>(T);
 
 impl<S, T> FromRequest<S> for ContractJson<T>
 where
@@ -59,7 +58,7 @@ where
     tag = "tenant",
     request_body = InitTenantRequest,
     responses(
-        (status = 200, description = "Tenant initialized successfully", body = serde_json::Value, content_type = "application/json"),
+        (status = 200, description = "Tenant initialized successfully", body = InitTenantResponse, content_type = "application/json"),
         (status = 400, description = "Bad request — malformed JSON payload", body = ErrorResponse),
         (status = 401, description = "Unauthorized — missing or invalid JWT", body = ErrorResponse),
         (status = 415, description = "Unsupported media type — expected application/json", body = ErrorResponse),
@@ -67,11 +66,11 @@ where
         (status = 500, description = "Internal server error — database failure", body = ErrorResponse),
     ),
 )]
-async fn init_tenant(
+pub async fn init_tenant(
     State(state): State<BffState>,
     axum::extract::Extension(request_context): axum::extract::Extension<RequestContext>,
     ContractJson(body): ContractJson<InitTenantRequest>,
-) -> BffResult<Json<Value>> {
+) -> BffResult<Json<InitTenantResponse>> {
     body.validate()
         .map_err(|e| BffError::Validation(e.to_string()))?;
 
@@ -94,9 +93,9 @@ async fn init_tenant(
         .await
         .map_err(|e| BffError::Internal(format!("Failed to seed authz tuples: {e}")))?;
 
-    Ok(Json(json!({
-        "tenant_id": result.tenant_id,
-        "role": result.role,
-        "created": result.created,
-    })))
+    Ok(Json(InitTenantResponse::new(
+        result.tenant_id,
+        result.role,
+        result.created,
+    )))
 }

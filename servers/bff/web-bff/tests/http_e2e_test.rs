@@ -14,7 +14,7 @@ use mockito::Server;
 use storage_turso::EmbeddedTurso;
 use tower::ServiceExt;
 use user_service::{domain::User, infrastructure::LibSqlUserRepository, ports::UserRepository};
-use web_bff::{create_router, state::BffState};
+use web_bff::{create_router, openapi, state::BffState};
 
 /// Helper: build test AppState with embedded Turso
 async fn build_test_state() -> BffState {
@@ -196,6 +196,19 @@ async fn readyz_returns_200_when_db_is_connected() {
     assert_eq!(response.status(), StatusCode::OK);
     let body: serde_json::Value = body_to_json(response).await;
     assert_eq!(body.get("status").unwrap(), "ready");
+}
+
+#[test]
+fn generated_openapi_documents_counter_idempotency_and_error_statuses() {
+    let yaml = openapi().to_yaml().unwrap();
+
+    assert!(yaml.contains("openapi: 3.1.0"));
+    assert!(yaml.contains("/api/counter/increment:"));
+    assert!(yaml.contains("name: Idempotency-Key"));
+    assert!(yaml.contains("'400':"));
+    assert!(yaml.contains("'403':"));
+    assert!(yaml.contains("'409':"));
+    assert!(yaml.contains("/api/user/me:"));
 }
 
 // ─── 404 Fallback ────────────────────────────────────────────────────────────
@@ -915,6 +928,64 @@ async fn counter_endpoints_resolve_real_tenant_binding_after_init() {
 }
 
 #[tokio::test]
+async fn counter_increment_replays_same_idempotency_key() {
+    let state = build_test_state().await;
+    let app = create_router(state);
+    let token = make_test_token("http-idem-user");
+
+    let init_response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/tenant/init")
+                .method(http::Method::POST)
+                .header(http::header::AUTHORIZATION, format!("Bearer {token}"))
+                .header(http::header::CONTENT_TYPE, "application/json")
+                .body(Body::from(
+                    r#"{"user_sub":"http-idem-user","user_name":"HTTP Idem User"}"#,
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(init_response.status(), StatusCode::OK);
+
+    for _ in 0..2 {
+        let response = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/api/counter/increment")
+                    .method(http::Method::POST)
+                    .header(http::header::AUTHORIZATION, format!("Bearer {token}"))
+                    .header("Idempotency-Key", "http-idem-key-1")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        let body: serde_json::Value = body_to_json(response).await;
+        assert_eq!(body.get("value").unwrap(), 1);
+    }
+
+    let value_response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/counter/value")
+                .method(http::Method::GET)
+                .header(http::header::AUTHORIZATION, format!("Bearer {token}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(value_response.status(), StatusCode::OK);
+    let value_body: serde_json::Value = body_to_json(value_response).await;
+    assert_eq!(value_body.get("value").unwrap(), 1);
+}
+
+#[tokio::test]
 async fn counter_endpoints_continue_to_work_after_repeated_tenant_init() {
     let state = build_test_state().await;
     let app = create_router(state);
@@ -1096,7 +1167,8 @@ async fn counter_endpoint_rejects_tenant_claim_mismatch_with_forbidden_contract(
 
 #[tokio::test]
 async fn healthz_includes_cors_headers_on_preflight() {
-    let state = build_test_state().await;
+    let mut state = build_test_state().await;
+    state.config.cors_allowed_origins = vec!["http://localhost:5173".to_string()];
     let app = create_router(state);
 
     let response = app
@@ -1106,6 +1178,10 @@ async fn healthz_includes_cors_headers_on_preflight() {
                 .method(http::Method::OPTIONS)
                 .header(http::header::ORIGIN, "http://localhost:5173")
                 .header(http::header::ACCESS_CONTROL_REQUEST_METHOD, "GET")
+                .header(
+                    http::header::ACCESS_CONTROL_REQUEST_HEADERS,
+                    "Idempotency-Key",
+                )
                 .body(Body::empty())
                 .unwrap(),
         )
@@ -1113,6 +1189,13 @@ async fn healthz_includes_cors_headers_on_preflight() {
         .unwrap();
 
     assert_eq!(response.status(), StatusCode::OK);
+    let allowed_headers = response
+        .headers()
+        .get(http::header::ACCESS_CONTROL_ALLOW_HEADERS)
+        .and_then(|value| value.to_str().ok())
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    assert!(allowed_headers.contains("idempotency-key"));
 }
 
 // ─── Middleware + DB Integration ─────────────────────────────────────────────
