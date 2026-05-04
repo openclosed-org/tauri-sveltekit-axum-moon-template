@@ -213,6 +213,7 @@ jobs:
 
   semver:
     name: Repository SemVer Check
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -334,12 +335,14 @@ jobs:
           echo "| Supply Chain Scan | ${{ needs.supply-chain.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
+          semver_result="${{ needs.semver.result }}"
+
           if [ "${{ needs.security.result }}" = "success" ] && \
              [ "${{ needs.governance-static.result }}" = "success" ] && \
              [ "${{ needs.secondary-runtime.result }}" = "success" ] && \
              [ "${{ needs.platform-drift.result }}" = "success" ] && \
              [ "${{ needs.contract-drift.result }}" = "success" ] && \
-             [ "${{ needs.semver.result }}" = "success" ] && \
+             { [ "$semver_result" = "success" ] || [ "$semver_result" = "skipped" ]; } && \
              [ "${{ needs.validation-scripts.result }}" = "success" ] && \
              [ "${{ needs.supply-chain.result }}" = "success" ]; then
             echo "All governance checks passed." >> $GITHUB_STEP_SUMMARY

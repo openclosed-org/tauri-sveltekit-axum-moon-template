@@ -12,8 +12,9 @@ For general readers and template adopters:
 2. `docs/architecture/north-star.md`
 3. `docs/operations/local-dev.md`
 4. `docs/operations/counter-service-reference-chain.md`
-5. `docs/operations/secret-management.md`
-6. `docs/template-users/template-init.md`
+5. `docs/operations/release-process.md`
+6. `docs/operations/secret-management.md`
+7. `docs/template-users/template-init.md`
 
 For maintainers and agent-assisted development:
 
@@ -71,8 +72,11 @@ This upstream repository is versioned as a single template product. The release 
 
 1. the repository tag/release is the version contract template users should follow
 2. pre-`1.0.0` releases cover iterative template improvements, docs fixes, tooling updates, and internal refactors within the active pre-1.0 line
-3. bump the minor version when template structure, migration expectations, or public usage patterns change materially
-4. start `1.0.0` only when the template is ready to make a stronger stability promise to adopters
+3. ordinary PRs and `main` pushes accumulate unreleased changes; they do not automatically publish tags
+4. prepare version and changelog updates in an intentional release-prep PR when maintainers decide to cut a release
+5. run `Release Automation` manually with the selected `release_type` to publish the prepared release
+6. bump the minor version when template structure, migration expectations, or public usage patterns change materially
+7. start `1.0.0` only when the template is ready to make a stronger stability promise to adopters
 
 Cargo crate versions still exist as workspace metadata, but they do not represent independent product release channels. The root `axum-harness` package is a maintainer-only release anchor with `publish = false`; it is not required for projects derived from the template.
 
@@ -84,7 +88,7 @@ Maintainers can override the default release tag strategy without changing track
 2. `RELEASE_TAG_GLOB` controls which tags CI treats as the current release line, defaulting to `v[0-9]*.[0-9]*.[0-9]*`
 3. `RELEASE_BOOTSTRAP_TAG` can pin an explicit existing tag as the release baseline until the next official tag is created
 
-`release-plz` prepares repository releases and updates the root `CHANGELOG.md`. `just semver-check` is the local visibility check for repository-level compatibility assumptions within the active pre-1.0 line.
+`release-plz` publishes prepared repository releases only when maintainers trigger it manually. `just semver-check` is the local visibility check for repository-level compatibility assumptions within the active pre-1.0 line. See `docs/operations/release-process.md` before changing release automation, version anchors, or changelog policy.
 
 ### Configuration
 
