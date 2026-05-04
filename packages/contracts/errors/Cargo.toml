@@ -8,5 +8,4 @@ description = "Unified error contract definitions"
 serde = { workspace = true }
 serde_json = { workspace = true }
 utoipa = { workspace = true }
-ts-rs = { workspace = true }
 thiserror = { workspace = true }

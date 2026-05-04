@@ -107,8 +107,7 @@ jobs:
           check advisories
 
       - name: Check for unsafe code in production crates
-        run: |
-          ! grep -rn '#\[unsafe\]' --include="*.rs" packages/ services/ servers/ workers/ platform/validators/ 2>/dev/null || true
+        run: cargo run -p repo-tools -- validate-unsafe-code
 
   governance-static:
     name: Governance Static Checks

@@ -8,7 +8,6 @@
 #![deny(unused_imports, unused_variables)]
 
 use serde::{Deserialize, Serialize};
-use ts_rs::TS;
 use utoipa::ToSchema;
 
 pub const NATS_EVENT_SUBJECT_PREFIX: &str = "events";
@@ -16,16 +15,14 @@ pub const NATS_OUTBOX_TOPIC_PREFIX: &str = "outbox";
 pub const PROJECTOR_QUEUE_GROUP: &str = "projector-worker";
 
 /// Tenant created event.
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, TS)]
-#[ts(export, export_to = "events/")]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct TenantCreated {
     pub tenant_id: String,
     pub owner_sub: String,
 }
 
 /// Tenant member added event.
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, TS)]
-#[ts(export, export_to = "events/")]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct TenantMemberAdded {
     pub tenant_id: String,
     pub user_sub: String,
@@ -36,20 +33,27 @@ pub struct TenantMemberAdded {
 ///
 /// ## Dedupe rule (per model.yaml)
 /// `tenant_id + counter_key + version`
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, TS)]
-#[ts(export, export_to = "events/")]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct CounterChanged {
     pub tenant_id: String,
     pub counter_key: String,
-    pub operation: String,
+    pub operation: CounterOperation,
     pub new_value: i64,
     pub delta: i64,
     pub version: i64,
 }
 
+/// Stable counter mutation operations used by `counter.changed` events.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum CounterOperation {
+    Increment,
+    Decrement,
+    Reset,
+}
+
 /// Chat message sent event.
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, TS)]
-#[ts(export, export_to = "events/")]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct ChatMessageSent {
     pub conversation_id: String,
     pub message_id: String,
@@ -297,19 +301,4 @@ pub fn runtime_outbox_topic_for_type(event_type: &str) -> String {
 
 fn normalize_event_type(event_type: &str) -> &str {
     event_type.trim_matches('.')
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn export_tenant_created() {
-        TenantCreated::export().unwrap();
-    }
-
-    #[test]
-    fn export_tenant_member_added() {
-        TenantMemberAdded::export().unwrap();
-    }
 }
