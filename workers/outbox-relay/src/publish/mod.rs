@@ -130,7 +130,7 @@ mod tests {
         let event = contracts_events::AppEvent::CounterChanged(contracts_events::CounterChanged {
             tenant_id: "test-tenant".to_string(),
             counter_key: "default".to_string(),
-            operation: "increment".to_string(),
+            operation: contracts_events::CounterOperation::Increment,
             new_value: 42,
             delta: 1,
             version: 1,

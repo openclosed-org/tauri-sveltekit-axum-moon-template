@@ -67,7 +67,7 @@ impl EventTransform for PassthroughTransform {
         let fallback = AppEvent::CounterChanged(contracts_events::CounterChanged {
             tenant_id: raw.metadata.get("tenant_id").cloned().unwrap_or_default(),
             counter_key: "default".to_string(),
-            operation: "unknown".to_string(),
+            operation: contracts_events::CounterOperation::Increment,
             new_value: 0,
             delta: 0,
             version: 0,
@@ -92,7 +92,7 @@ mod tests {
                 AppEvent::CounterChanged(contracts_events::CounterChanged {
                     tenant_id: "tenant-a".to_string(),
                     counter_key: "counter-a".to_string(),
-                    operation: "increment".to_string(),
+                    operation: contracts_events::CounterOperation::Increment,
                     new_value: 1,
                     delta: 1,
                     version: 1,
@@ -122,7 +122,7 @@ mod tests {
                 contracts_events::CounterChanged {
                     tenant_id: "tenant-a".to_string(),
                     counter_key: "counter-a".to_string(),
-                    operation: "increment".to_string(),
+                    operation: contracts_events::CounterOperation::Increment,
                     new_value: 1,
                     delta: 1,
                     version: 1,

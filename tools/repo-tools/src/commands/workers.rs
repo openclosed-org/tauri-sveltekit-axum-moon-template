@@ -14,12 +14,31 @@ pub(crate) fn verify_replay(mode: Mode) -> Result<()> {
         (
             "workers/projector/src/replay/mod.rs",
             "projector replay module missing",
-            None,
+            Some(Regex::new("ReplayStrategy|start_sequence")?),
+        ),
+        (
+            "workers/projector/src/source.rs",
+            "projector replay source must read event_outbox by sequence",
+            Some(Regex::new("event_outbox[\\s\\S]*sequence > \\?")?),
+        ),
+        (
+            "workers/projector/src/main.rs",
+            "projector must replay outbox and advance checkpoint only after processing",
+            Some(Regex::new(
+                "replay_outbox[\\s\\S]*process_event[\\s\\S]*checkpoint\\(\\)\\.advance",
+            )?),
+        ),
+        (
+            "workers/projector/src/readmodels/mod.rs",
+            "projector read model must be rebuildable from replayed events and not authoritative truth",
+            Some(Regex::new(
+                "counter_projection|Read model|materialized view",
+            )?),
         ),
         (
             "workers/projector/README.md",
             "projector README missing replay/rebuild guidance",
-            Some(Regex::new("replay|rebuild")?),
+            Some(Regex::new("replay|rebuild|read model|replicas=1")?),
         ),
         (
             "services/counter-service/README.md",
@@ -29,7 +48,7 @@ pub(crate) fn verify_replay(mode: Mode) -> Result<()> {
         (
             "platform/model/deployables/projector-worker.yaml",
             "projector deployable missing async projection profile",
-            Some(Regex::new("async-projection")?),
+            Some(Regex::new("async-projection|replicas:\\s*1")?),
         ),
         (
             "verification/golden/README.md",
@@ -288,6 +307,16 @@ fn detect_strategy(src_dir: &Path, strategy: &str) -> Result<(bool, String)> {
                 Detector::deep(Regex::new(
                     r"\b(retry_policy|retry_count|ExponentialBackoff|retry\b)",
                 )?),
+            ],
+        ),
+        "rebuildable_read_model" => detect_with_rules(
+            src_dir,
+            &[
+                Detector::directory("readmodels", "readmodels/ module found"),
+                Detector::deep(Regex::new(
+                    r"\b(counter_projection|ReadModel|read model|materialized view)\b",
+                )?),
+                Detector::deep(Regex::new(r"\b(init|CREATE TABLE IF NOT EXISTS)\b")?),
             ],
         ),
         "replay_strategy" => detect_with_rules(

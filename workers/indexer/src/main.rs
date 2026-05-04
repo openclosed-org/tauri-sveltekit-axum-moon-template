@@ -314,7 +314,7 @@ mod tests {
             AppEvent::CounterChanged(CounterChanged {
                 tenant_id: "tenant-a".to_string(),
                 counter_key: "counter-a".to_string(),
-                operation: "increment".to_string(),
+                operation: contracts_events::CounterOperation::Increment,
                 new_value: 1,
                 delta: 1,
                 version: 1,
