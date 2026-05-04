@@ -230,8 +230,30 @@ jobs:
       - name: Install cargo-semver-checks
         uses: taiki-e/install-action@cargo-semver-checks
 
+      - name: Resolve SemVer release type
+        id: release-type
+        env:
+          DEFAULT_RELEASE_TYPE: ${{ vars.RELEASE_TYPE || 'minor' }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          release_type="$DEFAULT_RELEASE_TYPE"
+
+          if [ -n "$BASE_SHA" ] && git rev-parse -q --verify "$BASE_SHA" >/dev/null; then
+            commits="$(git log --format=%B "$BASE_SHA..$HEAD_SHA")"
+          else
+            commits="$(git log --format=%B -1 "$HEAD_SHA")"
+          fi
+
+          if printf '%s\n' "$commits" | grep -Eq '^[a-z]+(\([^)]+\))?!:|^BREAKING CHANGE:'; then
+            release_type="major"
+          fi
+
+          echo "release_type=$release_type" >> "$GITHUB_OUTPUT"
+          echo "SemVer release type: $release_type" >> "$GITHUB_STEP_SUMMARY"
+
       - name: SemVer compatibility check
-        run: just semver-check
+        run: just semver-check '' '${{ steps.release-type.outputs.release_type }}'
 
 
   validation-scripts:
