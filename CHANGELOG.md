@@ -13,6 +13,30 @@ Preferred release views:
 - Releases: <https://github.com/openclosed-org/axum-harness/releases>
 - Tags: <https://github.com/openclosed-org/axum-harness/tags>
 
+## v0.4.0 - 2026-05-04
+
+### Changed
+
+- Switched the HTTP contract generation path to the web-bff `utoipa-axum` route collection so generated OpenAPI is produced from Axum handlers plus the live Rust DTO schemas.
+- Reset the contract artifact layout around `packages/contracts/generated/openapi/web-bff.openapi.yaml` and removed the legacy `ts-rs` TypeScript binding output from the backend-core contract surface.
+- Tightened release and template gates so repository release automation checks the selected SemVer compatibility line before preparing release state.
+- Streamlined agent, architecture, command, and gate guidance around executable evidence, backend-core boundaries, replay/resilience semantics, and generated-artifact ownership.
+
+### Fixed
+
+- Hardened counter outbox delivery and worker replay/resilience verification so idempotency, recovery, and projection semantics have stronger executable coverage.
+- Aligned generated artifact baselines after the OpenAPI contract source reset.
+
+### Breaking Changes
+
+- `packages/contracts/api` no longer exposes legacy DTOs that only existed for the removed `ts-rs` TypeScript binding pipeline, including agent/admin/conversation DTOs and the old local `ErrorResponse`; HTTP error responses now use `contracts_errors::ErrorResponse` and HTTP API consumers should treat the generated OpenAPI artifact as the external contract reference.
+- TypeScript consumers should stop importing generated files from `packages/contracts/generated/api/**` and consume the generated OpenAPI contract or SDK output produced from it instead.
+
+### Migration Notes
+
+- Regenerate HTTP contract artifacts with `just typegen` after route or DTO changes, then verify drift with `just drift-check` and contract checks with `just verify-contracts strict`.
+- For release checks that intentionally cross this contract boundary, run the repository SemVer gate with the `major` compatibility expectation instead of weakening the contract API surface for a minor check.
+
 ## v0.3.1 - 2026-04-29
 
 ### Changed
