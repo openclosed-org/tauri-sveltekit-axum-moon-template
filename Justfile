@@ -130,6 +130,7 @@ help-template:
     @printf "  just audit-backend-core dry-run\n"
     @printf "  just semver-check\n"
     @printf "  just skills-list\n"
+    @printf "  just clean-local-storage\n"
     @printf "\n"
 
 help-all:

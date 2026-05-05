@@ -1,4 +1,6 @@
-# infra/terraform — Infrastructure as Code (Phase 2+)
+# infra/terraform — Planned Infrastructure As Code
+
+This directory is a planning placeholder. It is not the current default deployment path and does not prove cloud infrastructure readiness.
 
 ## Planned Structure
 
@@ -17,22 +19,20 @@ terraform/
 
 ## Status
 
-- [ ] Phase 2: Implement Terraform modules
-- [ ] Phase 2: Set up remote state backend (S3 + DynamoDB)
-- [ ] Phase 2: Configure environment overrides
-- [ ] Phase 3: Multi-region deployment
+- Terraform modules are not implemented.
+- Remote state, environment overrides, and multi-region deployment are not wired.
+- Current delivery evidence should come from `infra/k3s/**`, `infra/gitops/flux/**`, SOPS templates, validators, and executed gates.
 
 ## Current Alternative
 
-For Phase 1, use k3s on a single VPS with Podman:
+For current cluster-shape work, start from K3s and GitOps documentation instead of this Terraform placeholder:
 
 ```bash
-just deploy bootstrap-k3s
-just deploy-prod dev
+just validate-topology
 ```
 
 ## Stack Notes
 
-- **No PostgreSQL RDS** — We use Turso (libSQL) and SurrealDB
-- **No Elasticache/Redis** — We use Moka (in-process cache)
-- **No NATS cluster** — Phase 1 uses in-process event bus; Phase 2 may add NATS if needed
+- The minimal backend-core path should not require managed PostgreSQL, Redis, or NATS.
+- Local and cluster profiles can still include libSQL/Turso-compatible infrastructure, optional SurrealDB, Valkey, NATS, and MinIO.
+- Do not use this README to infer production resource choices; verify current topology and deployable declarations instead.

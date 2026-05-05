@@ -1,6 +1,8 @@
 # Operations Runbooks
 
-This directory contains runbooks for common operational tasks.
+This directory contains template runbooks for common operational tasks. They are operator starting points, not proof of production readiness.
+
+Derived projects must replace placeholder contacts, environment names, and cluster assumptions with their own operational facts.
 
 ## Available Runbooks
 
@@ -24,10 +26,12 @@ cargo run -p repo-tools -- infra local up
 cargo run -p repo-tools -- ops migrate --env local --direction up --dry-run
 ```
 
-### Deploy to Kubernetes
+### Apply Dev Overlay To A Kubernetes Sandbox
 ```bash
 kubectl apply -k infra/k3s/overlays/dev
 ```
+
+For GitOps or production delivery, read `docs/operations/gitops.md` and `infra/k3s/README.md` first. Do not treat the dev overlay command as a complete release process.
 
 ### Check Service Health
 ```bash
@@ -45,8 +49,8 @@ cargo run -p repo-tools -- infra local logs --follow
 kubectl logs -n app -l app=api
 ```
 
-## Emergency Contacts
+## Emergency Contacts Template
 
-- Infrastructure Team: #infra Slack channel
-- On-Call: PagerDuty rotation
-- Escalation: See [Incident Response](incident-response.md)
+- Infrastructure Team: replace with project-owned channel
+- On-Call: replace with project-owned rotation
+- Escalation: See [Incident Response](incident-response.md) after adapting it for the derived project

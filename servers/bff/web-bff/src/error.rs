@@ -16,14 +16,29 @@ pub enum BffError {
     #[error("Internal error: {0}")]
     Internal(String),
 
+    #[error("Dependency failure: {0}")]
+    Dependency(String),
+
     #[error("Unauthorized: {0}")]
     Unauthorized(String),
+
+    #[error("Forbidden: {0}")]
+    Forbidden(String),
+
+    #[error("Not found: {0}")]
+    NotFound(String),
+
+    #[error("Conflict: {0}")]
+    Conflict(String),
 
     #[error("Unsupported media type: {0}")]
     UnsupportedMediaType(String),
 
     #[error("Validation failed: {0}")]
     Validation(String),
+
+    #[error("Payload too large: {0}")]
+    PayloadTooLarge(String),
 }
 
 impl IntoResponse for BffError {
@@ -37,9 +52,25 @@ impl IntoResponse for BffError {
                 StatusCode::INTERNAL_SERVER_ERROR,
                 ErrorResponse::new(ErrorCode::InternalError, message),
             ),
+            BffError::Dependency(message) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                ErrorResponse::new(ErrorCode::DatabaseError, message),
+            ),
             BffError::Unauthorized(message) => (
                 StatusCode::UNAUTHORIZED,
                 ErrorResponse::new(ErrorCode::Unauthorized, message),
+            ),
+            BffError::Forbidden(message) => (
+                StatusCode::FORBIDDEN,
+                ErrorResponse::new(ErrorCode::Forbidden, message),
+            ),
+            BffError::NotFound(message) => (
+                StatusCode::NOT_FOUND,
+                ErrorResponse::new(ErrorCode::NotFound, message),
+            ),
+            BffError::Conflict(message) => (
+                StatusCode::CONFLICT,
+                ErrorResponse::new(ErrorCode::Conflict, message),
             ),
             BffError::UnsupportedMediaType(message) => (
                 StatusCode::UNSUPPORTED_MEDIA_TYPE,
@@ -48,6 +79,10 @@ impl IntoResponse for BffError {
             BffError::Validation(message) => (
                 StatusCode::UNPROCESSABLE_ENTITY,
                 ErrorResponse::new(ErrorCode::ValidationError, message),
+            ),
+            BffError::PayloadTooLarge(message) => (
+                StatusCode::PAYLOAD_TOO_LARGE,
+                ErrorResponse::new(ErrorCode::RateLimited, message),
             ),
         };
 

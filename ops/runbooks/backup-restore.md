@@ -47,7 +47,7 @@ spec:
     spec:
       containers:
       - name: backup
-        image: alpine:latest
+        image: alpine:3.22.2
         command:
         - /bin/sh
         - -c
@@ -168,7 +168,7 @@ spec:
         spec:
           containers:
           - name: backup
-            image: alpine:latest
+            image: alpine:3.22.2
             command:
             - /bin/sh
             - -c

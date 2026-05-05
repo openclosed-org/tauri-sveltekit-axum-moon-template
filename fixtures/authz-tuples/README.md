@@ -1,6 +1,6 @@
-# Authorization Tuples — OpenFGA / MockAuthz 种子数据
+# Authorization Tuples — Authz 种子数据
 
-> Phase 5 当前已补齐仓库内集成面：`counter` 路径会真实调用 `AuthzPort`，`web-bff` 可在 `MockAuthzAdapter` 与 `OpenFGA` adapter 间切换。
+> 当前 `counter` 路径通过 `AuthzPort` 做授权检查。`web-bff` 可以在 dev/test `MockAuthzAdapter` 与 configured authz provider（当前本地参考为 OpenFGA）之间切换。
 > 当 OpenFGA 实例部署后，这些元组可通过 `write_tuple` API 写入 OpenFGA store；在 dev/test 中，`tenant/init` 也会向当前 authz adapter 写入最小授权元组。
 
 ## 授权模型
@@ -36,6 +36,6 @@ authz.seed(vec![
 
 ## 注意
 
-- MockAuthzAdapter 在 store 为空时默认 **allow-all**（dev 模式便利）。
+- MockAuthzAdapter 在 store 为空时默认 **allow-all**（dev 模式便利，不代表 prod 行为）。
 - 一旦 seed 了元组，就进入 **strict** 模式，只有显式匹配的元组才通过。
-- 这确保了 dev 和 prod 的行为一致性（prod 的 OpenFGA 不会 allow-all）。
+- seed 后的 strict fixture 可帮助 dev/test 接近 prod authz 语义；prod provider 不应依赖 allow-all 行为。

@@ -2,6 +2,7 @@
 
 use crate::config::Config;
 use crate::state::{BffCompositionRoot, BffState, DatabaseBackend};
+use authn_oidc_verifier::{OidcVerifier, OidcVerifierConfig};
 use authz::{AuthzPort, MockAuthzAdapter, OpenFgaAdapter, OpenFgaConfig};
 use counter_service::{
     application::RepositoryBackedCounterService, infrastructure::LibSqlCounterRepository,
@@ -20,17 +21,21 @@ use user_service::infrastructure::{
 };
 
 pub async fn bootstrap_bff_state(config: Config) -> anyhow::Result<BffState> {
+    config.validate_runtime()?;
     let db = initialize_database(&config).await?;
     let authz = build_authz_adapter(&config)?;
     let composition = build_composition_root(db.clone());
+    let http_client = build_http_client();
+    let oidc_verifier = build_oidc_verifier(&config, http_client.clone());
 
     Ok(BffState {
         config,
         db,
         composition,
         counter_cache: build_counter_cache(),
-        http_client: build_http_client(),
+        http_client,
         authz,
+        oidc_verifier,
     })
 }
 
@@ -45,6 +50,7 @@ pub async fn bootstrap_test_state(db: EmbeddedTurso) -> anyhow::Result<BffState>
         counter_cache: build_counter_cache(),
         http_client: build_http_client(),
         authz: Arc::new(MockAuthzAdapter::new()),
+        oidc_verifier: None,
     })
 }
 
@@ -122,17 +128,36 @@ async fn run_user_migrations<P: LibSqlPort>(db: &P) -> anyhow::Result<()> {
 }
 
 fn build_authz_adapter(config: &Config) -> anyhow::Result<Arc<dyn AuthzPort>> {
-    if config.openfga_endpoint.trim().is_empty() {
+    if config.authz_endpoint.trim().is_empty() {
         return Ok(Arc::new(MockAuthzAdapter::new()));
     }
 
+    if !config.authz_provider.eq_ignore_ascii_case("openfga") {
+        anyhow::bail!("unsupported APP_AUTHZ_PROVIDER: {}", config.authz_provider);
+    }
+
     let adapter = OpenFgaAdapter::new(OpenFgaConfig {
-        endpoint: config.openfga_endpoint.clone(),
-        store_id: config.openfga_store_id.clone(),
-        authorization_model_id: (!config.openfga_authorization_model_id.trim().is_empty())
-            .then(|| config.openfga_authorization_model_id.clone()),
+        endpoint: config.authz_endpoint.clone(),
+        store_id: config.authz_store_id.clone(),
+        authorization_model_id: (!config.authz_model_id.trim().is_empty())
+            .then(|| config.authz_model_id.clone()),
     })
     .map_err(anyhow::Error::msg)?;
 
     Ok(Arc::new(adapter))
+}
+
+fn build_oidc_verifier(config: &Config, client: reqwest::Client) -> Option<OidcVerifier> {
+    (!config.oidc_issuer.trim().is_empty()).then(|| {
+        OidcVerifier::new(
+            OidcVerifierConfig {
+                issuer: config.oidc_issuer.clone(),
+                audience: config.oidc_audience.clone(),
+                introspection_url: config.oidc_introspection_url.clone(),
+                introspection_client_id: config.oidc_introspection_client_id.clone(),
+                introspection_client_secret: config.oidc_introspection_client_secret.clone(),
+            },
+            client,
+        )
+    })
 }

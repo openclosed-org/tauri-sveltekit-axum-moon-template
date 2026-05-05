@@ -6,14 +6,14 @@
 use axum::{
     Json,
     extract::{Extension, State},
-    http::StatusCode,
 };
 use contracts_api::{UserProfileResponse, UserTenantResponse};
-use contracts_errors::{ErrorCode, ErrorResponse};
+use contracts_errors::ErrorResponse;
 use user_service::ports::{TenantRepository, UserRepository, UserTenantRepository};
 use utoipa_axum::{router::OpenApiRouter, routes};
 
-use crate::middleware::tenant::RequestContext;
+use crate::error::{BffError, BffResult};
+use crate::request_context::RequestContext;
 use crate::state::BffState;
 
 pub fn openapi_router() -> OpenApiRouter<BffState> {
@@ -38,41 +38,28 @@ pub fn openapi_router() -> OpenApiRouter<BffState> {
 pub async fn get_user_profile(
     State(state): State<BffState>,
     request_context: Option<Extension<RequestContext>>,
-) -> Result<(StatusCode, Json<UserProfileResponse>), (StatusCode, Json<ErrorResponse>)> {
-    let user_sub = match extract_user_sub(request_context) {
-        Ok(id) => id,
-        Err(error) => return Err(error),
-    };
+) -> BffResult<Json<UserProfileResponse>> {
+    let user_sub = extract_user_sub(request_context)?;
 
-    let user_repo = match state.user_profile_repository() {
-        Some(repo) => repo,
-        None => return Err(db_not_ready()),
-    };
+    let user_repo = state.user_profile_repository().ok_or_else(db_not_ready)?;
     let result = user_repo.find_by_sub(&user_sub).await;
 
     match result {
-        Ok(Some(user)) => Ok((
-            StatusCode::OK,
-            Json(UserProfileResponse {
-                id: user.id,
-                user_sub: user.user_sub,
-                display_name: user.display_name,
-                email: user.email,
-                created_at: user.created_at.to_rfc3339(),
-                last_login_at: user.last_login_at.map(|dt| dt.to_rfc3339()),
-            }),
-        )),
-        Ok(None) => Err((
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse::new(ErrorCode::NotFound, "User not found")),
-        )),
-        Err(e) => Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new(
-                ErrorCode::InternalError,
-                format!("Failed to load user profile: {e}"),
-            )),
-        )),
+        Ok(Some(user)) => Ok(Json(UserProfileResponse {
+            id: user.id,
+            user_sub: user.user_sub,
+            display_name: user.display_name,
+            email: user.email,
+            created_at: user.created_at.to_rfc3339(),
+            last_login_at: user.last_login_at.map(|dt| dt.to_rfc3339()),
+        })),
+        Ok(None) => Err(BffError::NotFound("User not found".to_string())),
+        Err(e) => {
+            tracing::warn!(error = %e, "failed to load user profile");
+            Err(BffError::Internal(
+                "Failed to load user profile".to_string(),
+            ))
+        }
     }
 }
 
@@ -91,80 +78,50 @@ pub async fn get_user_profile(
 pub async fn get_user_tenants(
     State(state): State<BffState>,
     request_context: Option<Extension<RequestContext>>,
-) -> Result<(StatusCode, Json<Vec<UserTenantResponse>>), (StatusCode, Json<ErrorResponse>)> {
-    let user_sub = match extract_user_sub(request_context) {
-        Ok(id) => id,
-        Err(error) => return Err(error),
-    };
+) -> BffResult<Json<Vec<UserTenantResponse>>> {
+    let user_sub = extract_user_sub(request_context)?;
 
-    let (binding_repo, tenant_repo) = match state.user_read_repositories() {
-        Some(repos) => repos,
-        None => return Err(db_not_ready()),
-    };
+    let (binding_repo, tenant_repo) = state.user_read_repositories().ok_or_else(db_not_ready)?;
 
     match binding_repo.find_user_tenant(&user_sub).await {
         Ok(Some(binding)) => match tenant_repo.find_by_id(&binding.tenant_id).await {
-            Ok(Some(tenant_info)) => Ok((
-                StatusCode::OK,
-                Json(vec![UserTenantResponse {
-                    tenant_id: tenant_info.id,
-                    tenant_name: Some(tenant_info.name),
-                    role: binding.role,
-                    joined_at: binding.joined_at.to_rfc3339(),
-                }]),
-            )),
-            Ok(None) => Ok((
-                StatusCode::OK,
-                Json(vec![UserTenantResponse {
-                    tenant_id: binding.tenant_id,
-                    tenant_name: None,
-                    role: binding.role,
-                    joined_at: binding.joined_at.to_rfc3339(),
-                }]),
-            )),
-            Err(e) => Err((
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new(
-                    ErrorCode::InternalError,
-                    format!("Failed to load tenant details: {e}"),
-                )),
-            )),
+            Ok(Some(tenant_info)) => Ok(Json(vec![UserTenantResponse {
+                tenant_id: tenant_info.id,
+                tenant_name: Some(tenant_info.name),
+                role: binding.role,
+                joined_at: binding.joined_at.to_rfc3339(),
+            }])),
+            Ok(None) => Ok(Json(vec![UserTenantResponse {
+                tenant_id: binding.tenant_id,
+                tenant_name: None,
+                role: binding.role,
+                joined_at: binding.joined_at.to_rfc3339(),
+            }])),
+            Err(e) => {
+                tracing::warn!(error = %e, "failed to load tenant details");
+                Err(BffError::Internal(
+                    "Failed to load tenant details".to_string(),
+                ))
+            }
         },
-        Ok(None) => Ok((StatusCode::OK, Json(Vec::new()))),
-        Err(e) => Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new(
-                ErrorCode::InternalError,
-                format!("Failed to load user tenant bindings: {e}"),
-            )),
-        )),
+        Ok(None) => Ok(Json(Vec::new())),
+        Err(e) => {
+            tracing::warn!(error = %e, "failed to load user tenant bindings");
+            Err(BffError::Internal(
+                "Failed to load user tenant bindings".to_string(),
+            ))
+        }
     }
 }
 
 // ── Helpers ──────────────────────────────────────────────────
 
-fn db_not_ready() -> (StatusCode, Json<ErrorResponse>) {
-    (
-        StatusCode::INTERNAL_SERVER_ERROR,
-        Json(ErrorResponse::new(
-            ErrorCode::InternalError,
-            "Embedded database not initialized",
-        )),
-    )
+fn db_not_ready() -> BffError {
+    BffError::Internal("Embedded database not initialized".to_string())
 }
 
-fn extract_user_sub(
-    request_context: Option<Extension<RequestContext>>,
-) -> Result<String, (StatusCode, Json<ErrorResponse>)> {
+fn extract_user_sub(request_context: Option<Extension<RequestContext>>) -> BffResult<String> {
     request_context
         .map(|Extension(context)| context.user_sub)
-        .ok_or_else(|| {
-            (
-                StatusCode::UNAUTHORIZED,
-                Json(ErrorResponse::new(
-                    ErrorCode::Unauthorized,
-                    "Missing authenticated request context",
-                )),
-            )
-        })
+        .ok_or_else(|| BffError::Unauthorized("Missing authenticated request context".to_string()))
 }

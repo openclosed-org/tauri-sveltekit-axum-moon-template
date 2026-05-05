@@ -1,6 +1,6 @@
 # infra/security — Security Stack
 
-Lightweight security configuration for the application.
+Lightweight security configuration for the template. This directory describes declared security scaffolding, not a complete production security proof.
 
 ## Structure
 
@@ -54,10 +54,11 @@ kubectl apply -f infra/security/policies/pod-security.yaml
 
 ## Stack Compatibility
 
-- All container images run as **nonroot** (distroless/static)
-- **No postgres/redis** sidecars → reduced attack surface
-- **Pingora** (Rust) instead of nginx → memory safety
-- **Moka** (in-process) instead of Redis → no network-exposed cache
+- First-party application images should run as **nonroot** where enforced by Dockerfiles and Kubernetes security contexts.
+- Third-party image posture must be checked per manifest; do not infer nonroot or distroless behavior from this README.
+- The minimal backend-core path should not require PostgreSQL or Redis sidecars, but local/cluster profiles can include Valkey, NATS, MinIO, OpenFGA, Rauthy, OpenObserve, OTel Collector, and Vector.
+- **Pingora** remains the Rust gateway direction where the gateway is used.
+- **Moka** remains the in-process cache direction for backend-core code paths that do not need external cache infrastructure.
 
 ## Future Enhancements
 

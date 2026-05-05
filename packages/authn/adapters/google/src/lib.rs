@@ -1,4 +1,8 @@
-//! adapter-google — Tauri-specific Google OAuth adapter.
+//! adapter-google — legacy Tauri-specific Google OAuth client adapter.
+//!
+//! This optional lane starts a browser login flow for a desktop shell. It is not
+//! the backend resource-server verifier used by web-bff; generic OIDC bearer
+//! token verification lives in `authn-oidc-verifier`.
 //!
 //! Wraps adapter-google-backend (pure OAuth logic) with Tauri-specific capabilities:
 //! - Browser opener (via tauri-plugin-opener)

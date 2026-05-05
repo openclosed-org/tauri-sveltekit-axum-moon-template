@@ -632,6 +632,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "authn-oidc-verifier"
+version = "0.1.0"
+dependencies = [
+ "jsonwebtoken",
+ "reqwest 0.13.2",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "workspace-hack",
+]
+
+[[package]]
 name = "authz"
 version = "0.1.0"
 dependencies = [
@@ -10898,6 +10911,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
+ "authn-oidc-verifier",
  "authz",
  "axum 0.8.9",
  "axum-extra",

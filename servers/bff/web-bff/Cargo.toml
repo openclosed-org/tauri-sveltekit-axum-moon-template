@@ -19,6 +19,7 @@ kernel = { workspace = true }
 data = { workspace = true }
 storage_turso = { workspace = true }
 observability = { workspace = true }
+authn-oidc-verifier = { workspace = true }
 authz = { workspace = true }
 platform = { workspace = true }
 

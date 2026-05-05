@@ -1,4 +1,7 @@
 # Kustomization — Base resources
+# Application images in this base use `:template-local` placeholders. Do not
+# deploy them as-is to shared environments; overlays or CI release tooling must
+# replace them with an immutable digest or an explicit release tag.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 

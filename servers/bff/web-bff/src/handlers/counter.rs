@@ -6,18 +6,16 @@
 use axum::{
     Json,
     extract::{Extension, State},
-    http::{HeaderMap, StatusCode},
+    http::HeaderMap,
 };
 use contracts_api::CounterResponse;
-use contracts_errors::{ErrorCode, ErrorResponse};
-use counter_service::contracts::service::CounterCommandContext;
-use counter_service::contracts::service::{CounterError, CounterService};
-use counter_service::domain::CounterId;
-use user_service::ports::UserTenantRepository;
+use contracts_errors::ErrorResponse;
 use utoipa_axum::{router::OpenApiRouter, routes};
 
-use crate::composition::CounterServiceHandle;
-use crate::middleware::tenant::RequestContext;
+use crate::application::counter as counter_use_case;
+use crate::error::{BffError, BffResult};
+use crate::http::idempotency_key;
+use crate::request_context::RequestContext;
 use crate::state::BffState;
 
 pub fn openapi_router() -> OpenApiRouter<BffState> {
@@ -48,37 +46,13 @@ pub async fn increment(
     State(state): State<BffState>,
     headers: HeaderMap,
     request_context: Option<Extension<RequestContext>>,
-) -> Result<(StatusCode, Json<CounterResponse>), (StatusCode, Json<ErrorResponse>)> {
+) -> BffResult<Json<CounterResponse>> {
     let request_context = extract_request_context(request_context)?;
-    let tenant_id = resolve_tenant_id(&state, &request_context).await?;
-
-    // Authz check: user must have can_write on the counter resource
-    check_authz(
-        &state,
-        &request_context.user_sub,
-        "can_write",
-        &format!("counter:{}", tenant_id.as_str()),
-    )
-    .await?;
-
-    let command_context = build_command_context(request_context);
     let idempotency_key = idempotency_key(&headers)?;
-    let service = build_service(&state)?;
+    let value =
+        counter_use_case::increment(&state, &request_context, idempotency_key.as_deref()).await?;
 
-    let value = service
-        .increment_with_context(
-            &CounterId::new(tenant_id.as_str()),
-            idempotency_key.as_deref(),
-            &command_context,
-        )
-        .await
-        .map_err(map_counter_error)?;
-
-    // Invalidate cache on mutation
-    let cache_key = format!("counter:{}", tenant_id.as_str());
-    state.counter_cache.invalidate(&cache_key).await;
-
-    Ok((StatusCode::OK, Json(CounterResponse { value })))
+    Ok(Json(CounterResponse { value }))
 }
 
 /// Decrement the tenant's counter value.
@@ -101,36 +75,13 @@ pub async fn decrement(
     State(state): State<BffState>,
     headers: HeaderMap,
     request_context: Option<Extension<RequestContext>>,
-) -> Result<(StatusCode, Json<CounterResponse>), (StatusCode, Json<ErrorResponse>)> {
+) -> BffResult<Json<CounterResponse>> {
     let request_context = extract_request_context(request_context)?;
-    let tenant_id = resolve_tenant_id(&state, &request_context).await?;
-
-    check_authz(
-        &state,
-        &request_context.user_sub,
-        "can_write",
-        &format!("counter:{}", tenant_id.as_str()),
-    )
-    .await?;
-
-    let command_context = build_command_context(request_context);
     let idempotency_key = idempotency_key(&headers)?;
-    let service = build_service(&state)?;
+    let value =
+        counter_use_case::decrement(&state, &request_context, idempotency_key.as_deref()).await?;
 
-    let value = service
-        .decrement_with_context(
-            &CounterId::new(tenant_id.as_str()),
-            idempotency_key.as_deref(),
-            &command_context,
-        )
-        .await
-        .map_err(map_counter_error)?;
-
-    // Invalidate cache on mutation
-    let cache_key = format!("counter:{}", tenant_id.as_str());
-    state.counter_cache.invalidate(&cache_key).await;
-
-    Ok((StatusCode::OK, Json(CounterResponse { value })))
+    Ok(Json(CounterResponse { value }))
 }
 
 /// Reset the tenant's counter value to zero.
@@ -153,36 +104,13 @@ pub async fn reset(
     State(state): State<BffState>,
     headers: HeaderMap,
     request_context: Option<Extension<RequestContext>>,
-) -> Result<(StatusCode, Json<CounterResponse>), (StatusCode, Json<ErrorResponse>)> {
+) -> BffResult<Json<CounterResponse>> {
     let request_context = extract_request_context(request_context)?;
-    let tenant_id = resolve_tenant_id(&state, &request_context).await?;
-
-    check_authz(
-        &state,
-        &request_context.user_sub,
-        "can_write",
-        &format!("counter:{}", tenant_id.as_str()),
-    )
-    .await?;
-
-    let command_context = build_command_context(request_context);
     let idempotency_key = idempotency_key(&headers)?;
-    let service = build_service(&state)?;
+    let value =
+        counter_use_case::reset(&state, &request_context, idempotency_key.as_deref()).await?;
 
-    let value = service
-        .reset_with_context(
-            &CounterId::new(tenant_id.as_str()),
-            idempotency_key.as_deref(),
-            &command_context,
-        )
-        .await
-        .map_err(map_counter_error)?;
-
-    // Invalidate cache on mutation
-    let cache_key = format!("counter:{}", tenant_id.as_str());
-    state.counter_cache.invalidate(&cache_key).await;
-
-    Ok((StatusCode::OK, Json(CounterResponse { value })))
+    Ok(Json(CounterResponse { value }))
 }
 
 /// Get the current counter value for the authenticated tenant.
@@ -202,257 +130,19 @@ pub async fn reset(
 pub async fn get_value(
     State(state): State<BffState>,
     request_context: Option<Extension<RequestContext>>,
-) -> Result<(StatusCode, Json<CounterResponse>), (StatusCode, Json<ErrorResponse>)> {
+) -> BffResult<Json<CounterResponse>> {
     let request_context = extract_request_context(request_context)?;
-    let tenant_id = resolve_tenant_id(&state, &request_context).await?;
-    let cache_key = format!("counter:{}", tenant_id.as_str());
+    let value = counter_use_case::get_value(&state, &request_context).await?;
 
-    // Authz check: user must have can_read on the counter resource
-    check_authz(
-        &state,
-        &request_context.user_sub,
-        "can_read",
-        &format!("counter:{}", tenant_id.as_str()),
-    )
-    .await?;
-
-    // Cache-first: check cache before hitting database
-    if let Some(cached) = state.counter_cache.get(&cache_key).await {
-        return Ok((StatusCode::OK, Json(CounterResponse { value: cached })));
-    }
-
-    let service = build_service(&state)?;
-
-    let value = service
-        .get_value(&CounterId::new(tenant_id.as_str()))
-        .await
-        .map_err(map_counter_error)?;
-
-    // Populate cache on read
-    state.counter_cache.insert(cache_key.clone(), value).await;
-
-    Ok((StatusCode::OK, Json(CounterResponse { value })))
+    Ok(Json(CounterResponse { value }))
 }
 
 // ── Helpers ──────────────────────────────────────────────────
 
-/// Perform an authorization check against the authz adapter.
-/// Returns 403 Forbidden if the check fails.
-async fn check_authz(
-    state: &BffState,
-    user: &str,
-    relation: &str,
-    object: &str,
-) -> Result<(), (StatusCode, Json<ErrorResponse>)> {
-    let user_key = format!("user:{user}");
-    state
-        .authz
-        .check(&user_key, relation, object)
-        .await
-        .map_err(|e| {
-            tracing::warn!(error = %e, "authz check failed");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new(
-                    ErrorCode::InternalError,
-                    "Authorization check failed",
-                )),
-            )
-        })?
-        .then_some(())
-        .ok_or_else(|| {
-            tracing::warn!(
-                user = user,
-                relation = relation,
-                object = object,
-                "authz: permission denied"
-            );
-            (
-                StatusCode::FORBIDDEN,
-                Json(ErrorResponse::new(
-                    ErrorCode::Forbidden,
-                    format!("Permission denied: user {user} cannot {relation} {object}"),
-                )),
-            )
-        })
-}
-
-/// Build a boxed CounterService from the BFF state.
-/// Abstracts over embedded and remote database backends.
-fn build_service(
-    state: &BffState,
-) -> Result<CounterServiceHandle, (StatusCode, Json<ErrorResponse>)> {
-    state.counter_service().ok_or_else(|| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new(
-                ErrorCode::InternalError,
-                "Embedded database not initialized",
-            )),
-        )
-    })
-}
-
 fn extract_request_context(
     request_context: Option<Extension<RequestContext>>,
-) -> Result<RequestContext, (StatusCode, Json<ErrorResponse>)> {
+) -> BffResult<RequestContext> {
     request_context
         .map(|Extension(context)| context)
-        .ok_or_else(|| {
-            (
-                StatusCode::UNAUTHORIZED,
-                Json(ErrorResponse::new(
-                    ErrorCode::Unauthorized,
-                    "Missing authenticated request context",
-                )),
-            )
-        })
-}
-
-fn build_command_context(request_context: RequestContext) -> CounterCommandContext {
-    CounterCommandContext {
-        correlation_id: request_context.request_id.clone(),
-        causation_id: request_context.request_id.clone(),
-        actor: Some(request_context.actor.clone()),
-        trace_id: request_context.trace_id.clone(),
-        span_id: request_context.span_id.clone(),
-    }
-}
-
-fn idempotency_key(
-    headers: &HeaderMap,
-) -> Result<Option<String>, (StatusCode, Json<ErrorResponse>)> {
-    let Some(value) = headers.get("Idempotency-Key") else {
-        return Ok(None);
-    };
-
-    let key = value.to_str().map_err(|_| {
-        (
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::new(
-                ErrorCode::BadRequest,
-                "Idempotency-Key must be valid ASCII",
-            )),
-        )
-    })?;
-    let key = key.trim();
-    if key.is_empty() {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            Json(ErrorResponse::new(
-                ErrorCode::BadRequest,
-                "Idempotency-Key must not be empty",
-            )),
-        ));
-    }
-
-    Ok(Some(key.to_string()))
-}
-
-async fn resolve_tenant_id(
-    state: &BffState,
-    request_context: &RequestContext,
-) -> Result<kernel::TenantId, (StatusCode, Json<ErrorResponse>)> {
-    let user_sub = &request_context.user_sub;
-    let binding_repo = state.user_tenant_repository().ok_or_else(|| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse::new(
-                ErrorCode::InternalError,
-                "Database not initialized",
-            )),
-        )
-    })?;
-    let tenant_id = binding_repo
-        .find_user_tenant(user_sub)
-        .await
-        .map_err(map_tenant_resolution_error)?
-        .map(|binding| binding.tenant_id);
-
-    let resolved = tenant_id.map(kernel::TenantId).ok_or_else(|| {
-        (
-            StatusCode::UNAUTHORIZED,
-            Json(ErrorResponse::new(
-                ErrorCode::Unauthorized,
-                "No tenant binding found for authenticated user",
-            )),
-        )
-    })?;
-
-    if let Some(claim_tenant_id) = request_context.tenant_id.as_deref()
-        && claim_tenant_id != resolved.as_str()
-    {
-        tracing::warn!(
-            user_sub = %request_context.user_sub,
-            claim_tenant_id,
-            resolved_tenant_id = %resolved,
-            "tenant claim does not match persisted tenant binding"
-        );
-        return Err((
-            StatusCode::FORBIDDEN,
-            Json(ErrorResponse::new(
-                ErrorCode::Forbidden,
-                "Tenant claim does not match authenticated user binding",
-            )),
-        ));
-    }
-
-    Ok(resolved)
-}
-
-fn map_tenant_resolution_error(
-    error: user_service::domain::error::UserError,
-) -> (StatusCode, Json<ErrorResponse>) {
-    let message = error.to_string();
-    if message.contains("no such table: user_tenant") {
-        return (
-            StatusCode::UNAUTHORIZED,
-            Json(ErrorResponse::new(
-                ErrorCode::Unauthorized,
-                "No tenant binding found for authenticated user",
-            )),
-        );
-    }
-
-    (
-        StatusCode::INTERNAL_SERVER_ERROR,
-        Json(ErrorResponse::new(
-            ErrorCode::DatabaseError,
-            format!("Failed to resolve tenant binding: {message}"),
-        )),
-    )
-}
-
-/// Map CounterError to HTTP status code and ErrorResponse.
-fn map_counter_error(err: CounterError) -> (StatusCode, Json<ErrorResponse>) {
-    match err {
-        CounterError::CasConflict | CounterError::CasConflictWithDetails { .. } => (
-            StatusCode::CONFLICT,
-            Json(ErrorResponse::new(
-                ErrorCode::Conflict,
-                "Counter was modified concurrently",
-            )),
-        ),
-        CounterError::NotFound(msg) => (
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse::new(ErrorCode::NotFound, &msg)),
-        ),
-        CounterError::IdempotencyConflict => (
-            StatusCode::CONFLICT,
-            Json(ErrorResponse::new(
-                ErrorCode::Conflict,
-                "Idempotency key was reused for a different counter command",
-            )),
-        ),
-        CounterError::Database(e) => {
-            tracing::error!(error = %e, "counter database error");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new(
-                    ErrorCode::DatabaseError,
-                    "Counter operation failed",
-                )),
-            )
-        }
-    }
+        .ok_or_else(|| BffError::Unauthorized("Missing authenticated request context".to_string()))
 }

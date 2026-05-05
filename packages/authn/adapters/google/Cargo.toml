@@ -4,7 +4,7 @@ name = "adapter-google"
 version = "0.1.0"
 edition = "2024"
 rust-version.workspace = true
-publish = false  # Tauri-specific OAuth adapter only - excluded from backend CI
+publish = false  # Legacy optional Tauri OAuth client lane; not the BFF resource-server verifier.
 
 [dependencies]
 adapter-google-backend = { workspace = true }

@@ -36,7 +36,8 @@ spec:
           type: RuntimeDefault
       containers:
         - name: api-server
-          image: api-server:latest
+          # Template placeholder. Release overlays or CI must replace this with a tag or digest.
+          image: api-server:template-local
           imagePullPolicy: IfNotPresent
           ports:
             - name: http

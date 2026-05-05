@@ -1,13 +1,12 @@
-# ADR-005: AuthN/AuthZ with Zitadel + OpenFGA
+# ADR-005: Historical AuthN/AuthZ Direction With Zitadel + OpenFGA
 
 ## Status
 - [x] Proposed
 - [ ] Accepted
-- [ ] Deprecated
-- [ ] Superseded
+- [x] Deprecated
+- [x] Superseded
 
-> **Implementation Status**: Local Zitadel resource-server validation, OpenFGA adapter, and Podman bootstrap scripts now exist for optional local/backend auth flows.
-> They are not the default backend admission path. The canonical backend reference remains the counter chain, and auth stays an optional lane.
+> **Implementation Status**: Superseded by ADR-010. The current local auth lane is Generic OIDC + OpenFGA with Rauthy as the local reference IdP. This ADR is retained as historical rationale only.
 
 ## Context
 The system needs robust authentication and authorization capabilities that support:
@@ -27,7 +26,7 @@ Building auth from scratch is risky and time-consuming. Options considered:
 5. **Supabase Auth**: Easy but limited customization
 
 ## Decision
-We keep **Zitadel + OpenFGA** as the preferred future auth platform direction, but it is not yet part of the default backend reference path.
+Historical decision: keep **Zitadel + OpenFGA** as a candidate auth platform direction. Current decision is superseded by ADR-010: `web-bff` uses Generic OIDC, local auth uses Rauthy + OpenFGA, and provider-specific names stay out of runtime env.
 
 ### Authentication (Zitadel)
 - OIDC/OAuth2 compliant: Standard protocols
@@ -73,12 +72,12 @@ services/auth-service/
 ### Development vs Production
 - **Development**: MockOAuthProvider for local testing
 - **Backend-first local development**: `web-bff` may use `APP_AUTH_MODE=dev_headers` to debug handler/service flows without OAuth bootstrap
-- **Production**: Replace with Zitadel + real OAuth providers when auth becomes part of the chosen deployable path
+- **Production**: Use a generic OIDC provider and OpenFGA when auth becomes part of the chosen deployable path
 - **Authorization**: OpenFGA is available as an optional integration path, not a default prerequisite for the primary backend lane
 
 ### Rationale
 1. **Security**: Auth is critical; battle-tested solutions are safer
-2. **Flexibility**: Zitadel + OpenFGA covers both authN and authZ
+2. **Flexibility**: OIDC + OpenFGA covers both authN and authZ without binding runtime code to one provider
 3. **Self-hosted**: No vendor lock-in, full data control
 4. **Modern**: Both projects are actively developed
 5. **Standard**: OIDC/OAuth2 ensures compatibility
@@ -105,14 +104,14 @@ services/auth-service/
 - ✅ JWT token repository implemented
 - ✅ LibSQL session repository implemented
 - ✅ MockOAuthProvider for development
-- ✅ `web-bff` supports Zitadel OIDC/JWKS and introspection-based resource-server validation
+- ✅ `web-bff` supports generic OIDC/JWKS and introspection-based resource-server validation
 - ✅ `packages/authz` includes an OpenFGA adapter
-- ✅ Local Podman bootstrap exists for Zitadel + OpenFGA (`infra/docker/compose/auth.yaml`, `repo-tools infra auth bootstrap`)
+- ✅ Local Podman bootstrap exists for Rauthy + OpenFGA (`infra/docker/compose/auth.yaml`, `repo-tools infra auth bootstrap`)
 - ⏳ Interactive end-user frontend OIDC login is still not the default repository path
 
 ## References
 - `services/auth-service/src/infrastructure/` - Auth infrastructure adapters
 - `packages/authn/` - Authentication package
 - `packages/authz/` - Authorization package
-- [Zitadel Documentation](https://zitadel.com/docs/)
+- ADR-010: Generic OIDC With Rauthy + OpenFGA Local Auth Lane
 - [OpenFGA Documentation](https://openfga.dev/)

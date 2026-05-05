@@ -29,7 +29,7 @@ cargo run -p repo-tools -- infra auth down
 2. Valkey
 3. MinIO
 4. 可选的 sqld/libSQL client-server 形态
-5. 可选的本地 auth 栈：`Zitadel + OpenFGA`
+5. 可选的本地 auth 栈：`Generic OIDC + OpenFGA`，当前本地参考 IdP 是 Rauthy
 
 ## 不要这样用
 

@@ -25,9 +25,10 @@ services:
   # For now, databases are created via application code.
   #
   # If you need a standalone libSQL server for testing:
-  # Use sqld (libSQL server) instead of embedded mode.
+  # Use libsql-server instead of embedded mode. This is optional and only starts
+  # with `--profile full`; the default backend path remains embedded libSQL.
   sqld:
-    image: ghcr.io/tursodatabase/sqld:latest
+    image: ghcr.io/tursodatabase/libsql-server:e4beaca
     ports:
       - "8080:8080"  # HTTP API
       - "5001:5001"  # gRPC
@@ -50,7 +51,7 @@ services:
   # ── NATS Message Broker ────────────────────────────────────
   # Used for: Event bus, pub/sub messaging, worker communication
   nats:
-    image: nats:2.10-alpine
+    image: nats:2.14.0-alpine
     ports:
       - "4222:4222"  # Client port
       - "8222:8222"  # Monitoring HTTP
@@ -74,7 +75,7 @@ services:
   # ── Valkey Cache (Redis-compatible) ────────────────────────
   # Used for: Caching, session storage, rate limiting
   valkey:
-    image: valkey/valkey:7-alpine
+    image: valkey/valkey:9.0.3-alpine
     ports:
       - "6379:6379"
     command: valkey-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
@@ -90,7 +91,7 @@ services:
   # ── MinIO Object Storage ───────────────────────────────────
   # Used for: File uploads, backups, blob storage
   minio:
-    image: minio/minio:latest
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
     ports:
       - "9000:9000"  # API
       - "9001:9001"  # Console UI
@@ -111,7 +112,7 @@ services:
   # ── MinIO Bucket Initialization ────────────────────────────
   # Creates default buckets after MinIO starts
   minio-init:
-    image: minio/mc:latest
+    image: minio/mc:RELEASE.2025-08-13T08-35-41Z
     depends_on:
       minio:
         condition: service_healthy

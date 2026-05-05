@@ -36,7 +36,8 @@ spec:
           type: RuntimeDefault
       containers:
         - name: projector-worker
-          image: projector-worker:latest
+          # Template placeholder. Release overlays or CI must replace this with a tag or digest.
+          image: projector-worker:template-local
           imagePullPolicy: IfNotPresent
           ports:
             - name: health

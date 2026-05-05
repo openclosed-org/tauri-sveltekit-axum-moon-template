@@ -1,31 +1,22 @@
 # Vector Configuration — Log Router (Podman-compatible)
 #
-# This config collects Podman container logs and forwards them to OpenObserve.
+# This config collects container logs and forwards them to OpenObserve.
 # Used by: infra/docker/compose/observability.yaml
 #
-# Podman compatibility: Vector reads logs via the Podman socket
-# (/run/podman/podman.sock) instead of Docker's /var/lib/docker/containers.
+# Podman compatibility: compose mounts the Podman Docker-compatible socket at
+# /var/run/docker.sock and sets DOCKER_HOST=unix:///var/run/docker.sock.
 
-data_dir: /tmp/vector
+data_dir: /var/lib/vector
 
 # ── Sources ──────────────────────────────────────────────────
-# Read Podman container logs via the Podman API socket
+# Read container logs via the Docker-compatible API socket.
 sources:
-  podman_logs:
-    type: podman_logs
-    endpoint: "/run/podman/podman.sock"
+  container_logs:
+    type: docker_logs
+    docker_host: "unix:///var/run/docker.sock"
     exclude_containers:
       - vector
       - openobserve
-
-# Fallback: if podman_logs source isn't available, use Docker logs source
-# (Podman's API is Docker-compatible for the logs endpoint)
-# sources:
-#   docker_logs:
-#     type: docker_logs
-#     exclude_containers:
-#       - vector
-#       - openobserve
 
 # ── Transforms ───────────────────────────────────────────────
 transforms:
@@ -33,10 +24,10 @@ transforms:
   add_metadata:
     type: remap
     inputs:
-      - podman_logs
+      - container_logs
     source: |
       .environment = "dev"
-      .service = .container_name ?? "unknown"
+      .service = if exists(.container_name) { .container_name } else { "unknown" }
 
   # Parse JSON logs (if the app outputs structured JSON logs)
   parse_json:
@@ -47,7 +38,13 @@ transforms:
       parsed, err = parse_json(.message)
       if err == null {
           .structured = parsed
-          .level = parsed.level ?? .level ?? "info"
+          .level = if exists(parsed.level) {
+              parsed.level
+          } else if exists(.level) {
+              .level
+          } else {
+              "info"
+          }
       } else {
           .level = "info"
       }

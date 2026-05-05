@@ -21,10 +21,13 @@ use crate::support::{
 const AUTH_COMPOSE_FILE: &str = "infra/docker/compose/auth.yaml";
 const LOCAL_COMPOSE_FILE: &str = "infra/docker/compose/core.yaml";
 const LOCAL_PROJECT_NAME: &str = "tauri-sveltekit-dev";
+const OBSERVABILITY_PROJECT_NAME: &str = "tauri-sveltekit-observability";
 const AUTH_STATE_DIR: &str = "infra/local/state";
 const AUTH_GENERATED_DIR: &str = "infra/local/generated";
 const AUTH_ENV_FILE: &str = "infra/local/generated/auth.env";
 const OPENFGA_MODEL_FILE: &str = "fixtures/authz-tuples/counter-model.openfga.json";
+const RAUTHY_ISSUER: &str = "http://localhost:8082/auth/v1/";
+const RAUTHY_INTROSPECTION_URL: &str = "http://localhost:8082/auth/v1/oidc/introspect";
 const K3S_OVERLAYS_DIR: &str = "infra/k3s/overlays";
 const OBSERVABILITY_COMPOSE_FILE: &str = "infra/docker/compose/observability.yaml";
 
@@ -118,12 +121,13 @@ fn run_observability(root: &Path, command: InfraObservabilityCommand) -> Result<
 
 fn observability_up(root: &Path, args: InfraObservabilityUpArgs) -> Result<()> {
     let runtime = resolve_runtime(args.runtime)?;
+    let podman_socket = observability_podman_socket(runtime)?;
     let mut subcommand = vec!["up"];
     if args.detach {
         subcommand.push("-d");
     }
     println!("Starting observability stack with {}", runtime.label());
-    run_observability_compose(root, runtime, &subcommand)?;
+    run_observability_compose(root, runtime, &subcommand, podman_socket.as_deref())?;
     print_observability_connection_info();
     Ok(())
 }
@@ -131,7 +135,7 @@ fn observability_up(root: &Path, args: InfraObservabilityUpArgs) -> Result<()> {
 fn observability_down(root: &Path, args: InfraObservabilityDownArgs) -> Result<()> {
     let runtime = resolve_runtime(args.runtime)?;
     println!("Stopping observability stack with {}", runtime.label());
-    run_observability_compose(root, runtime, &["down"])
+    run_observability_compose(root, runtime, &["down"], None)
 }
 
 fn observability_status(root: &Path, args: InfraObservabilityStatusArgs) -> Result<()> {
@@ -141,7 +145,7 @@ fn observability_status(root: &Path, args: InfraObservabilityStatusArgs) -> Resu
         subcommand.push("--format");
         subcommand.push("json");
     }
-    run_observability_compose(root, runtime, &subcommand)?;
+    run_observability_compose(root, runtime, &subcommand, None)?;
     if !args.json {
         print_observability_connection_info();
     }
@@ -157,7 +161,32 @@ fn observability_logs(root: &Path, args: InfraObservabilityLogsArgs) -> Result<(
     if let Some(service) = args.service.as_deref() {
         subcommand.push(service);
     }
-    run_observability_compose(root, runtime, &subcommand)
+    run_observability_compose(root, runtime, &subcommand, None)
+}
+
+fn observability_podman_socket(runtime: ContainerRuntime) -> Result<Option<String>> {
+    if runtime != ContainerRuntime::Podman {
+        return Ok(None);
+    }
+    if let Ok(socket) = std::env::var("PODMAN_SOCKET") {
+        if !socket.trim().is_empty() {
+            return Ok(Some(socket));
+        }
+    }
+    let output = run_capture(
+        "podman",
+        &[
+            "machine",
+            "inspect",
+            "--format",
+            "{{.ConnectionInfo.PodmanSocket.Path}}",
+        ],
+        None,
+    )?;
+    if output.success && !output.output.trim().is_empty() {
+        return Ok(Some(output.output.trim().to_string()));
+    }
+    Ok(None)
 }
 
 fn resolve_runtime(requested: Option<ContainerRuntime>) -> Result<ContainerRuntime> {
@@ -212,6 +241,7 @@ fn run_observability_compose(
     root: &Path,
     runtime: ContainerRuntime,
     subcommand: &[&str],
+    podman_socket: Option<&str>,
 ) -> Result<()> {
     let compose_file = root.join(OBSERVABILITY_COMPOSE_FILE);
     if !compose_file.is_file() {
@@ -221,9 +251,27 @@ fn run_observability_compose(
         );
     }
 
-    let mut args = vec!["compose", "-f", OBSERVABILITY_COMPOSE_FILE];
-    args.extend_from_slice(subcommand);
-    let code = run_inherit(runtime.binary(), &args, Some(root))?;
+    let mut command = Command::new(runtime.binary());
+    command
+        .current_dir(root)
+        .args([
+            "compose",
+            "-f",
+            OBSERVABILITY_COMPOSE_FILE,
+            "-p",
+            OBSERVABILITY_PROJECT_NAME,
+        ])
+        .args(subcommand)
+        .stdin(Stdio::inherit())
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit());
+    if let Some(socket) = podman_socket {
+        command.env("PODMAN_SOCKET", socket);
+    }
+    let status = command
+        .status()
+        .with_context(|| format!("failed to run {} observability compose", runtime.label()))?;
+    let code = status.code().unwrap_or(1);
     if code != 0 {
         bail!("{} failed with status {code}", runtime.label());
     }
@@ -291,18 +339,19 @@ fn auth_bootstrap(root: &Path) -> Result<()> {
     println!("Starting local auth stack...");
     auth_compose(root, &["up", "-d"])?;
     wait_http("localhost", 8081, "OpenFGA")?;
-    wait_http("localhost", 8082, "Zitadel")?;
+    wait_http("localhost", 8082, "Rauthy")?;
 
-    bootstrap_openfga(root)?;
-    bootstrap_zitadel(root)?;
+    let openfga = bootstrap_openfga(root)?;
+    write_rauthy_state(root)?;
+    write_auth_env(root, &openfga)?;
 
     println!("Local auth stack is running.");
     println!("Next:");
     println!("1. source {AUTH_ENV_FILE}");
     println!("2. export APP_DATABASE_URL=file:./.data/web-bff.db");
     println!("3. cargo run -p web-bff");
-    println!("Zitadel console: http://localhost:8082/ui/console");
-    println!("Admin user: zitadel-admin@zitadel.localhost");
+    println!("Rauthy local reference IdP: {RAUTHY_ISSUER}");
+    println!("OpenFGA API: http://localhost:8081");
     Ok(())
 }
 
@@ -314,7 +363,12 @@ fn wait_http(host: &str, port: u16, name: &str) -> Result<()> {
     }
 }
 
-fn bootstrap_openfga(root: &Path) -> Result<()> {
+struct OpenFgaBootstrap {
+    store_id: String,
+    model_id: String,
+}
+
+fn bootstrap_openfga(root: &Path) -> Result<OpenFgaBootstrap> {
     let model_file = root.join(OPENFGA_MODEL_FILE);
     if !model_file.is_file() {
         bail!("OpenFGA model file not found: {}", model_file.display());
@@ -337,12 +391,6 @@ fn bootstrap_openfga(root: &Path) -> Result<()> {
     let model_id = json_string(&model_resp, &["authorization_model_id"])?;
 
     write(
-        root.join(AUTH_ENV_FILE),
-        &format!(
-            "APP_ZITADEL_ISSUER=http://localhost:8082\nAPP_ZITADEL_AUDIENCE=web-bff-local\nAPP_OPENFGA_ENDPOINT=http://localhost:8081\nAPP_OPENFGA_STORE_ID={store_id}\nAPP_OPENFGA_AUTHORIZATION_MODEL_ID={model_id}\n"
-        ),
-    )?;
-    write(
         root.join(AUTH_STATE_DIR).join("openfga.store_id"),
         &format!("{store_id}\n"),
     )?;
@@ -353,158 +401,31 @@ fn bootstrap_openfga(root: &Path) -> Result<()> {
 
     println!("OpenFGA store: {store_id}");
     println!("OpenFGA model: {model_id}");
-    println!("Wrote {AUTH_ENV_FILE}");
+    Ok(OpenFgaBootstrap { store_id, model_id })
+}
+
+fn write_rauthy_state(root: &Path) -> Result<()> {
+    write(
+        root.join(AUTH_STATE_DIR).join("rauthy.issuer"),
+        &format!("{RAUTHY_ISSUER}\n"),
+    )?;
+    write(
+        root.join(AUTH_STATE_DIR).join("rauthy.introspection_url"),
+        &format!("{RAUTHY_INTROSPECTION_URL}\n"),
+    )?;
     Ok(())
 }
 
-fn bootstrap_zitadel(root: &Path) -> Result<()> {
-    let suffix = unix_timestamp()?;
-    let admin_pat = root.join(AUTH_STATE_DIR).join("zitadel-admin.pat");
-    let login_client_pat = root.join(AUTH_STATE_DIR).join("zitadel-login-client.pat");
-    podman_cp("compose_zitadel_1:/zitadel/bootstrap/admin.pat", &admin_pat)?;
-    podman_cp(
-        "compose_zitadel_1:/zitadel/bootstrap/login-client.pat",
-        &login_client_pat,
-    )?;
-    let token = trim_file(&admin_pat)?;
-
-    let org_resp = zitadel_api("GET", "/management/v1/orgs/me", &token, None)?;
-    let org_id = json_string(&org_resp, &["org", "id"])?;
-
-    let project_resp = zitadel_api(
-        "POST",
-        "/management/v1/projects",
-        &token,
-        Some(&format!(
-            r#"{{"name":"local-web-bff-{suffix}","projectRoleAssertion":true,"projectRoleCheck":false,"hasProjectCheck":false,"privateLabelingSetting":"PRIVATE_LABELING_SETTING_UNSPECIFIED"}}"#
-        )),
-    )?;
-    let project_id = json_string(&project_resp, &["id"])?;
-    zitadel_api(
-        "POST",
-        &format!("/management/v1/projects/{project_id}/roles"),
-        &token,
-        Some(r#"{"roleKey":"member","displayName":"Member"}"#),
-    )?;
-
-    let api_app_resp = zitadel_api(
-        "POST",
-        &format!("/management/v1/projects/{project_id}/apps/api"),
-        &token,
-        Some(&format!(
-            r#"{{"name":"web-bff-introspection-{suffix}","authMethodType":"API_AUTH_METHOD_TYPE_BASIC"}}"#
-        )),
-    )?;
-    let api_app_id = json_string(&api_app_resp, &["appId"])?;
-    let api_client_id = json_string(&api_app_resp, &["clientId"])?;
-    let api_client_secret = json_string(&api_app_resp, &["clientSecret"])?;
-
-    let machine_resp = http_json(
-        "POST",
-        "http://localhost:8082/v2/users/new",
-        &[auth_header(&token)],
-        Some(&format!(
-            r#"{{"organizationId":{},"username":"local-web-bff-machine-{suffix}","machine":{{"name":"Local Web BFF Machine","description":"Local smoke token issuer","accessTokenType":"ACCESS_TOKEN_TYPE_JWT"}}}}"#,
-            serde_json::to_string(&org_id)?
-        )),
-    )?;
-    let machine_user_id = json_string(&machine_resp, &["id"])?;
-    let machine_pat_resp = http_json(
-        "POST",
-        &format!("http://localhost:8082/v2/users/{machine_user_id}/pats"),
-        &[auth_header(&token)],
-        Some(r#"{"expirationDate":"2099-01-01T00:00:00Z"}"#),
-    )?;
-    let machine_secret_resp = http_json(
-        "POST",
-        &format!("http://localhost:8082/v2/users/{machine_user_id}/secret"),
-        &[auth_header(&token)],
-        None,
-    )?;
-
+fn write_auth_env(root: &Path, openfga: &OpenFgaBootstrap) -> Result<()> {
     write(
-        root.join(AUTH_STATE_DIR).join("zitadel.project_id"),
-        &format!("{project_id}\n"),
-    )?;
-    write(
-        root.join(AUTH_STATE_DIR).join("zitadel.api_app_id"),
-        &format!("{api_app_id}\n"),
-    )?;
-    write(
-        root.join(AUTH_STATE_DIR).join("zitadel.api_client_id"),
-        &format!("{api_client_id}\n"),
-    )?;
-    write(
-        root.join(AUTH_STATE_DIR).join("zitadel.api_client_secret"),
-        &format!("{api_client_secret}\n"),
-    )?;
-    write(
-        root.join(AUTH_STATE_DIR).join("zitadel.machine_user_id"),
-        &format!("{machine_user_id}\n"),
-    )?;
-    write(
-        root.join(AUTH_STATE_DIR).join("zitadel.machine_user.pat"),
-        &format!("{}\n", json_string(&machine_pat_resp, &["token"])?),
-    )?;
-    write(
-        root.join(AUTH_STATE_DIR)
-            .join("zitadel.machine_user.secret"),
+        root.join(AUTH_ENV_FILE),
         &format!(
-            "{}\n",
-            json_string(&machine_secret_resp, &["clientSecret"])?
+            "APP_OIDC_ISSUER={RAUTHY_ISSUER}\nAPP_OIDC_AUDIENCE=web-bff-local\nAPP_OIDC_INTROSPECTION_URL={RAUTHY_INTROSPECTION_URL}\nAPP_AUTHZ_PROVIDER=openfga\nAPP_AUTHZ_ENDPOINT=http://localhost:8081\nAPP_AUTHZ_STORE_ID={}\nAPP_AUTHZ_MODEL_ID={}\n",
+            openfga.store_id, openfga.model_id,
         ),
     )?;
-    append_auth_env(
-        &root.join(AUTH_ENV_FILE),
-        &api_client_id,
-        &api_client_secret,
-    )?;
-
-    println!("Zitadel org: {org_id}");
-    println!("Zitadel project: {project_id}");
-    println!("Zitadel API app: {api_app_id}");
-    println!("Zitadel machine user: {machine_user_id}");
-    println!("Wrote local Zitadel state files and {AUTH_ENV_FILE}");
+    println!("Wrote {AUTH_ENV_FILE}");
     Ok(())
-}
-
-fn append_auth_env(path: &Path, client_id: &str, client_secret: &str) -> Result<()> {
-    let mut existing = if path.is_file() {
-        read(path)?
-    } else {
-        String::new()
-    };
-    existing.push_str(&format!(
-        "APP_ZITADEL_INTROSPECTION_CLIENT_ID={client_id}\nAPP_ZITADEL_INTROSPECTION_CLIENT_SECRET={client_secret}\n"
-    ));
-    write(path, &existing)
-}
-
-fn podman_cp(source: &str, target: &Path) -> Result<()> {
-    let target = target.to_string_lossy().into_owned();
-    let code = run_inherit("podman", &["cp", source, &target], None)?;
-    if code != 0 {
-        bail!("podman cp failed for {source}");
-    }
-    Ok(())
-}
-
-fn zitadel_api(
-    method: &str,
-    path: &str,
-    token: &str,
-    body: Option<&str>,
-) -> Result<serde_json::Value> {
-    http_json(
-        method,
-        &format!("http://localhost:8082{path}"),
-        &[auth_header(token)],
-        body,
-    )
-}
-
-fn auth_header(token: &str) -> String {
-    format!("Authorization: Bearer {token}")
 }
 
 fn http_json(
@@ -548,17 +469,6 @@ fn json_string(value: &serde_json::Value, path: &[&str]) -> Result<String> {
         .as_str()
         .map(str::to_string)
         .with_context(|| format!("JSON response field {} is not a string", path.join(".")))
-}
-
-fn trim_file(path: &Path) -> Result<String> {
-    Ok(read(path)?.trim_matches(['\r', '\n']).to_string())
-}
-
-fn unix_timestamp() -> Result<u64> {
-    Ok(std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .context("system clock is before UNIX epoch")?
-        .as_secs())
 }
 
 fn k3s_deploy(args: InfraK3sDeployArgs) -> Result<()> {

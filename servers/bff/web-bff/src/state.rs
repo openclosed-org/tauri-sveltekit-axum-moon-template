@@ -10,6 +10,7 @@ use crate::composition::{
     UserTenantInfoRepositoryHandle, UserTenantRepositoryHandle,
 };
 use crate::config::Config;
+use authn_oidc_verifier::OidcVerifier;
 use authz::{AuthzPort, AuthzTupleKey};
 use moka::future::Cache;
 use std::sync::Arc;
@@ -27,31 +28,34 @@ pub enum DatabaseBackend {
 /// All fields are cheaply cloneable (Arc-wrapped internally where needed).
 #[derive(Clone)]
 pub struct BffState {
-    pub config: Config,
+    pub(crate) config: Config,
 
     /// Database backend — embedded or remote Turso.
-    pub db: Option<DatabaseBackend>,
+    pub(crate) db: Option<DatabaseBackend>,
 
     /// Prebuilt application wiring owned by the Web BFF composition root.
-    pub composition: Option<BffCompositionRoot>,
+    pub(crate) composition: Option<BffCompositionRoot>,
 
     /// In-process cache for counter values (tenant_id → value).
-    pub counter_cache: Cache<String, i64>,
+    pub(crate) counter_cache: Cache<String, i64>,
 
     /// Shared HTTP client for external service calls.
-    pub http_client: reqwest::Client,
+    pub(crate) http_client: reqwest::Client,
 
     /// Authorization adapter — mock for dev, OpenFGA when explicitly configured.
-    pub authz: Arc<dyn AuthzPort>,
+    pub(crate) authz: Arc<dyn AuthzPort>,
+
+    /// Shared OIDC verifier. Present only when generic OIDC issuer is configured.
+    pub(crate) oidc_verifier: Option<OidcVerifier>,
 }
 
 #[derive(Clone)]
 pub struct BffCompositionRoot {
-    pub counter_service: CounterServiceHandle,
-    pub tenant_service: TenantServiceHandle,
-    pub user_profile_repository: UserProfileRepositoryHandle,
-    pub user_tenant_repository: UserTenantRepositoryHandle,
-    pub user_tenant_info_repository: UserTenantInfoRepositoryHandle,
+    pub(crate) counter_service: CounterServiceHandle,
+    pub(crate) tenant_service: TenantServiceHandle,
+    pub(crate) user_profile_repository: UserProfileRepositoryHandle,
+    pub(crate) user_tenant_repository: UserTenantRepositoryHandle,
+    pub(crate) user_tenant_info_repository: UserTenantInfoRepositoryHandle,
 }
 
 impl BffState {
@@ -65,6 +69,51 @@ impl BffState {
         bootstrap_test_state(db)
             .await
             .expect("failed to bootstrap test BFF state")
+    }
+
+    pub fn config(&self) -> &Config {
+        &self.config
+    }
+
+    pub fn config_mut(&mut self) -> &mut Config {
+        &mut self.config
+    }
+
+    pub fn http_client(&self) -> reqwest::Client {
+        self.http_client.clone()
+    }
+
+    pub fn authz(&self) -> Arc<dyn AuthzPort> {
+        self.authz.clone()
+    }
+
+    pub fn oidc_verifier(&self) -> Option<OidcVerifier> {
+        self.oidc_verifier.clone()
+    }
+
+    pub fn set_oidc_verifier(&mut self, verifier: Option<OidcVerifier>) {
+        self.oidc_verifier = verifier;
+    }
+
+    pub fn counter_cache(&self) -> &Cache<String, i64> {
+        &self.counter_cache
+    }
+
+    pub fn clear_database_and_composition_for_test(&mut self) {
+        self.db = None;
+        self.composition = None;
+    }
+
+    pub fn readiness(&self) -> ReadinessStatus {
+        let mut unavailable = Vec::new();
+        if self.db.is_none() {
+            unavailable.push("database".to_string());
+        }
+        if self.composition.is_none() {
+            unavailable.push("composition".to_string());
+        }
+
+        ReadinessStatus { unavailable }
     }
 
     pub async fn seed_dev_counter_authz(
@@ -127,5 +176,19 @@ impl BffState {
         self.composition
             .as_ref()
             .map(|composition| composition.tenant_service.clone())
+    }
+}
+
+pub struct ReadinessStatus {
+    unavailable: Vec<String>,
+}
+
+impl ReadinessStatus {
+    pub fn is_ready(&self) -> bool {
+        self.unavailable.is_empty()
+    }
+
+    pub fn unavailable(&self) -> &[String] {
+        &self.unavailable
     }
 }

@@ -28,7 +28,7 @@ deploy-dev-full:
     cargo run -p repo-tools -- infra local up
     cargo run -p repo-tools -- infra local observability up
 
-# 启动本地 auth stack（Zitadel + OpenFGA）
+# 启动本地 auth stack（Rauthy + OpenFGA local reference）
 auth-up:
     @echo "Starting local auth stack..."
     cargo run -p repo-tools -- infra auth up

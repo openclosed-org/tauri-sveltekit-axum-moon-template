@@ -1,6 +1,6 @@
 # fixtures/seeds — Test seed data
 
-Phase 1: Initial data for testing.
+Initial seed data for tests and local development.
 
 - Tenant fixtures
 - User fixtures

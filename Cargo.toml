@@ -64,6 +64,7 @@ members = [
     "packages/data-adapters/turso",
     "packages/authn/adapters/google",
     "packages/authn/adapters/google-backend",
+    "packages/authn/oidc-verifier",
     # AuthZ
     "packages/authz",
     # SDK
@@ -153,6 +154,7 @@ storage_surrealdb = { path = "packages/data-adapters/surrealdb", version = "0.1.
 storage_turso = { path = "packages/data-adapters/turso", version = "0.1.0" }
 adapter-google = { path = "packages/authn/adapters/google", version = "0.1.0" }
 adapter-google-backend = { path = "packages/authn/adapters/google-backend", version = "0.1.0" }
+authn-oidc-verifier = { path = "packages/authn/oidc-verifier", version = "0.1.0" }
 authz = { path = "packages/authz", version = "0.1.0" }
 workspace-hack = { path = "packages/workspace-hack", version = "0.1.0" }
 observability = { path = "packages/observability", version = "0.1.0" }

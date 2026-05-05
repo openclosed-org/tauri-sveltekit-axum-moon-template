@@ -4,15 +4,20 @@
 
 #![deny(unused_imports, unused_variables)]
 
+pub mod application;
+pub mod authz;
 pub mod bootstrap;
 pub mod composition;
 pub mod config;
 pub mod error;
 pub mod handlers;
+pub mod http;
 pub mod middleware;
+pub mod request_context;
 pub mod state;
+pub mod tenant_context;
 
-use axum::{Json, Router, response::IntoResponse};
+use axum::{Json, Router, extract::DefaultBodyLimit, response::IntoResponse};
 use state::BffState;
 use std::time::Duration;
 use tower_http::{
@@ -85,7 +90,7 @@ fn openapi_router() -> OpenApiRouter<BffState> {
         .merge(handlers::counter::openapi_router())
         .merge(handlers::user::openapi_router())
         .route_layer(axum::middleware::from_fn(
-            middleware::tenant::tenant_middleware,
+            middleware::auth_context::auth_context_middleware,
         ));
 
     OpenApiRouter::with_openapi(api_doc)
@@ -95,8 +100,9 @@ fn openapi_router() -> OpenApiRouter<BffState> {
 
 /// 构建路由器。
 pub fn create_router(state: BffState) -> Router {
-    let cors = build_cors_layer(&state.config.cors_allowed_origins);
-    let config = state.config.clone();
+    let cors = build_cors_layer(&state.config().cors_allowed_origins);
+    let config = state.config().clone();
+    let oidc_verifier = state.oidc_verifier();
     let (router, openapi) = openapi_router()
         .layer(axum::Extension(config))
         .split_for_parts();
@@ -107,7 +113,7 @@ pub fn create_router(state: BffState) -> Router {
         .to_yaml()
         .expect("OpenAPI YAML serialization must succeed");
 
-    router
+    let router = router
         .route(
             "/scalar",
             axum::routing::get(move || {
@@ -136,7 +142,15 @@ pub fn create_router(state: BffState) -> Router {
             }),
         )
         .with_state(state)
+        .layer(DefaultBodyLimit::max(1024 * 1024))
         .layer(cors)
+        .layer(PropagateRequestIdLayer::new(
+            axum::http::HeaderName::from_static("x-request-id"),
+        ))
+        .layer(SetRequestIdLayer::new(
+            axum::http::HeaderName::from_static("x-request-id"),
+            MakeRequestUuidV7,
+        ))
         .layer(
             TraceLayer::new_for_http().make_span_with(|req: &axum::http::Request<_>| {
                 let request_id = req
@@ -152,17 +166,16 @@ pub fn create_router(state: BffState) -> Router {
                 )
             }),
         )
-        .layer(PropagateRequestIdLayer::new(
-            axum::http::HeaderName::from_static("x-request-id"),
-        ))
-        .layer(SetRequestIdLayer::new(
-            axum::http::HeaderName::from_static("x-request-id"),
-            MakeRequestUuidV7,
-        ))
         .layer(TimeoutLayer::with_status_code(
             axum::http::StatusCode::REQUEST_TIMEOUT,
             Duration::from_secs(30),
-        ))
+        ));
+
+    if let Some(oidc_verifier) = oidc_verifier {
+        router.layer(axum::Extension(oidc_verifier))
+    } else {
+        router
+    }
 }
 
 /// CORS 层构建。

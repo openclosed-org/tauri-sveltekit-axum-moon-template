@@ -9,7 +9,7 @@
 当前本地开发应优先理解为两层：
 
 1. 基础依赖层：`repo-tools infra local ...` 管理 NATS、Valkey、MinIO，以及可选的 sqld 相关基础设施。
-2. 本地 auth 层：`repo-tools infra auth ...` 管理 `Zitadel + OpenFGA`，用于 Phase 5 本地闭环。
+2. 本地 auth 层：`repo-tools infra auth ...` 管理 `Generic OIDC + OpenFGA`，当前本地参考 IdP 是 Rauthy。
 3. 应用运行层：通过 `just` / `moon` 启动 `web-bff`、其他 BFF 或需要的开发进程。
 
 后端默认入口不是 `.env` 驱动的全仓库教程，而是围绕 `counter-service` 主链建立的最小本地闭环。
@@ -17,7 +17,7 @@
 当前对 auth 的推荐理解也应分层：
 
 1. `counter-service + tenant-service + web-bff` 是默认后端主链。
-2. `Zitadel + OpenFGA` 是可选增强，不应成为所有本地后端开发的前提。
+2. `Generic OIDC + OpenFGA` 是可选增强，不应成为所有本地后端开发的前提。
 3. 若当前任务只关心后端 handler / service / contracts，可优先使用 `APP_AUTH_MODE=dev_headers` 做本地接口调试。
 
 当前本地与 CI 的验证入口也按这两条 lane 区分：
@@ -77,7 +77,7 @@ just deploy-dev
 just status-dev
 ```
 
-当任务涉及本地 `Zitadel/OpenFGA` 时，再额外启动：
+当任务涉及本地 `Generic OIDC/OpenFGA` 时，再额外启动：
 
 ```bash
 just auth-bootstrap
@@ -90,7 +90,7 @@ just auth-bootstrap
 2. Valkey
 3. MinIO
 4. 可选的 Turso/libSQL client-server 模式相关端口信息
-5. 可选的本地 auth 栈：`http://localhost:8082` (Zitadel), `http://localhost:8081` (OpenFGA)
+5. 可选的本地 auth 栈：`http://localhost:8082/auth/v1/` (Rauthy local reference IdP), `http://localhost:8081` (OpenFGA)
 
 需要注意：
 
@@ -113,7 +113,7 @@ just auth-down
 
 1. `just dev-api` 是更贴近后端默认视角的入口之一。
 2. root backend-core contract 不再暴露前端或桌面壳层入口。
-3. `just auth-bootstrap` 会把本地 `Zitadel/OpenFGA` 起起来，并生成 `infra/local/generated/auth.env` 供 `web-bff` 直接读取。
+3. `just auth-bootstrap` 会把本地 `Rauthy/OpenFGA` 起起来，并生成 generic `APP_OIDC_*` / `APP_AUTHZ_*` 到 `infra/local/generated/auth.env` 供 `web-bff` 直接读取。
 4. `just check-backend-primary` / `just test-backend-primary` 对应默认后端 admission lane。
 5. `just verify-auth-optional` / `just test-auth-optional` 仅在 auth lane 变更时需要额外运行。
 
@@ -123,9 +123,37 @@ just auth-down
 2. 如果你的任务涉及桌面壳层，请在对应 shell 自己的目录和命令面上验证，不要把这些要求带回 root backend-core contract。
 3. 不要假设 Ubuntu CI 能替代 macOS / Windows 桌面行为。
 
-### 3.3.1 后端优先的最小调试模式
+### 3.3.1 本地存储和缓存维护
 
-如果当前任务只围绕后端接口、tenant flow、counter flow，而不希望被 `web` / `tauri` / `Zitadel` 阻塞，可以直接使用：
+Template 使用者会频繁升级依赖和镜像。默认清理入口必须安全、可重复、不会意外删除业务状态：
+
+```bash
+just clean-local-storage
+```
+
+该入口只做保守维护：
+
+1. 截断 `.tmp` 中过大的测试日志。
+2. 清理当前 Cargo workspace 不再使用的依赖构建缓存。
+3. 清理 7 天未访问的 Cargo build artifacts。
+
+不会自动删除：
+
+1. Compose volumes，例如 MinIO、Valkey、NATS、OpenFGA 本地状态。
+2. 全局 mise、Bun、Node、Cargo registry 缓存。
+3. SOPS、age、Kubernetes 或 GitOps 相关本地状态。
+
+如果确实要删除本地 compose volumes，必须显式使用对应 infra 命令和 destructive flag，例如：
+
+```bash
+cargo run -p repo-tools -- infra local down --volumes
+```
+
+这条原则和版本升级策略一致：先 pin 和 smoke，再清理过期缓存；不要用大范围删除来掩盖版本或迁移问题。
+
+### 3.3.2 后端优先的最小调试模式
+
+如果当前任务只围绕后端接口、tenant flow、counter flow，而不希望被 `web` / `tauri` / 本地 OIDC provider 阻塞，可以直接使用：
 
 ```bash
 export APP_DATABASE_URL=file:./.data/web-bff.db

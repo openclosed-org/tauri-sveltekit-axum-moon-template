@@ -14,27 +14,31 @@ pub struct Config {
     ///   `x-dev-tenant-id` / `x-dev-user-roles` before falling back to Bearer auth.
     pub auth_mode: String,
     pub jwt_secret: String,
-    /// Zitadel issuer URL (e.g., "https://zitadel.example.com").
-    /// When set, the middleware validates JWTs against Zitadel's OIDC discovery.
-    /// Dev fallback: empty string → uses `jwt_secret` for HS256 validation.
-    pub zitadel_issuer: String,
+    /// OIDC issuer URL (e.g., "https://idp.example.com").
+    /// When set, the middleware validates JWTs against OIDC discovery.
+    /// Dev fallback: empty string -> uses `jwt_secret` for HS256 validation.
+    pub oidc_issuer: String,
     /// Expected audience in JWT `aud` claim.
     /// Dev fallback: empty string → audience check skipped.
-    pub zitadel_audience: String,
-    /// Optional Zitadel introspection client id.
-    /// When set together with `zitadel_introspection_client_secret`, the BFF
-    /// validates access tokens through Zitadel introspection instead of local JWKS verification.
-    pub zitadel_introspection_client_id: String,
-    /// Optional Zitadel introspection client secret.
-    pub zitadel_introspection_client_secret: String,
-    /// OpenFGA API endpoint (e.g., "http://localhost:8081").
-    /// When set, the BFF uses the real OpenFGA adapter for authorization.
+    pub oidc_audience: String,
+    /// Optional explicit OIDC introspection URL. When omitted, discovery metadata may provide it.
+    pub oidc_introspection_url: String,
+    /// Optional OIDC introspection client id.
+    /// When set together with `oidc_introspection_client_secret`, the BFF
+    /// validates opaque access tokens through introspection instead of local JWKS verification.
+    pub oidc_introspection_client_id: String,
+    /// Optional OIDC introspection client secret.
+    pub oidc_introspection_client_secret: String,
+    /// Authorization provider. The template ships `openfga` as the local reference adapter.
+    pub authz_provider: String,
+    /// Authorization provider endpoint (e.g., "http://localhost:8081" for OpenFGA).
+    /// When set, the BFF uses the configured real authorization adapter.
     /// Dev fallback: empty string → uses MockAuthzAdapter (allow-all).
-    pub openfga_endpoint: String,
-    /// OpenFGA store id used by the real adapter.
-    pub openfga_store_id: String,
-    /// Optional OpenFGA authorization model id.
-    pub openfga_authorization_model_id: String,
+    pub authz_endpoint: String,
+    /// Authorization store id used by the real adapter.
+    pub authz_store_id: String,
+    /// Optional authorization model id.
+    pub authz_model_id: String,
     /// Embedded Turso database URL (e.g., "file:path.db" or "memory").
     /// Used when turso_url is not set.
     pub database_url: Option<String>,
@@ -60,13 +64,15 @@ impl Default for Config {
             cors_allowed_origins: vec![],
             auth_mode: "jwt".to_string(),
             jwt_secret: "dev-secret-change-in-production".to_string(),
-            zitadel_issuer: String::new(),
-            zitadel_audience: String::new(),
-            zitadel_introspection_client_id: String::new(),
-            zitadel_introspection_client_secret: String::new(),
-            openfga_endpoint: String::new(),
-            openfga_store_id: String::new(),
-            openfga_authorization_model_id: String::new(),
+            oidc_issuer: String::new(),
+            oidc_audience: String::new(),
+            oidc_introspection_url: String::new(),
+            oidc_introspection_client_id: String::new(),
+            oidc_introspection_client_secret: String::new(),
+            authz_provider: "openfga".to_string(),
+            authz_endpoint: String::new(),
+            authz_store_id: String::new(),
+            authz_model_id: String::new(),
             database_url: None,
             turso_url: None,
             turso_auth_token: None,
@@ -77,5 +83,138 @@ impl Default for Config {
 impl Config {
     pub fn allows_dev_headers(&self) -> bool {
         self.auth_mode.eq_ignore_ascii_case("dev_headers")
+    }
+
+    pub fn validate_runtime(&self) -> anyhow::Result<()> {
+        if !self.is_production() {
+            return Ok(());
+        }
+
+        if self.allows_dev_headers() {
+            anyhow::bail!("APP_AUTH_MODE=dev_headers is not allowed in production");
+        }
+
+        if self.oidc_issuer.trim().is_empty() && self.jwt_secret == Self::dev_secret() {
+            anyhow::bail!("production requires APP_OIDC_ISSUER or a non-default APP_JWT_SECRET");
+        }
+
+        if self.authz_endpoint.trim().is_empty() {
+            anyhow::bail!("production requires APP_AUTHZ_ENDPOINT");
+        }
+
+        if self.cors_allowed_origins.is_empty() {
+            anyhow::bail!("production requires APP_CORS_ALLOWED_ORIGINS allowlist");
+        }
+
+        Ok(())
+    }
+
+    fn is_production(&self) -> bool {
+        std::env::var("APP_ENV")
+            .or_else(|_| std::env::var("APP_PROFILE"))
+            .map(|value| value.eq_ignore_ascii_case("production"))
+            .unwrap_or(false)
+    }
+
+    fn dev_secret() -> &'static str {
+        "dev-secret-change-in-production"
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::Mutex;
+
+    static ENV_LOCK: Mutex<()> = Mutex::new(());
+
+    fn with_production_env(test: impl FnOnce()) {
+        let _guard = ENV_LOCK.lock().unwrap();
+        unsafe {
+            std::env::set_var("APP_ENV", "production");
+            std::env::remove_var("APP_PROFILE");
+        }
+        test();
+        unsafe {
+            std::env::remove_var("APP_ENV");
+        }
+    }
+
+    fn production_ready_config() -> Config {
+        Config {
+            jwt_secret: "safe-production-secret".to_string(),
+            authz_endpoint: "http://localhost:8081".to_string(),
+            cors_allowed_origins: vec!["https://example.com".to_string()],
+            ..Config::default()
+        }
+    }
+
+    #[test]
+    fn production_rejects_default_jwt_secret_without_oidc_issuer() {
+        with_production_env(|| {
+            let config = production_ready_config();
+            let config = Config {
+                jwt_secret: Config::dev_secret().to_string(),
+                oidc_issuer: String::new(),
+                ..config
+            };
+
+            let error = config.validate_runtime().unwrap_err().to_string();
+            assert!(error.contains("APP_OIDC_ISSUER"));
+        });
+    }
+
+    #[test]
+    fn production_rejects_missing_authz_endpoint() {
+        with_production_env(|| {
+            let config = Config {
+                authz_endpoint: String::new(),
+                ..production_ready_config()
+            };
+
+            let error = config.validate_runtime().unwrap_err().to_string();
+            assert!(error.contains("APP_AUTHZ_ENDPOINT"));
+        });
+    }
+
+    #[test]
+    fn production_rejects_permissive_cors_default() {
+        with_production_env(|| {
+            let config = Config {
+                cors_allowed_origins: Vec::new(),
+                ..production_ready_config()
+            };
+
+            let error = config.validate_runtime().unwrap_err().to_string();
+            assert!(error.contains("APP_CORS_ALLOWED_ORIGINS"));
+        });
+    }
+
+    #[test]
+    fn production_rejects_dev_headers() {
+        with_production_env(|| {
+            let config = Config {
+                auth_mode: "dev_headers".to_string(),
+                ..production_ready_config()
+            };
+
+            let error = config.validate_runtime().unwrap_err().to_string();
+            assert!(error.contains("APP_AUTH_MODE"));
+        });
+    }
+
+    #[test]
+    fn non_production_allows_dev_headers() {
+        let _guard = ENV_LOCK.lock().unwrap();
+        unsafe {
+            std::env::remove_var("APP_ENV");
+            std::env::remove_var("APP_PROFILE");
+        }
+        let config = Config {
+            auth_mode: "dev_headers".to_string(),
+            ..Config::default()
+        };
+
+        config.validate_runtime().unwrap();
     }
 }
