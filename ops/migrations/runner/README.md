@@ -1,6 +1,6 @@
 # Migration runner
 
-Phase 1: CLI tool to run SQL migrations against Turso/LibSQL databases. Migrations live per-service under `services/<name>/migrations/`.
+CLI tool placeholder for running SQL migrations against Turso/libSQL databases. Migrations live per-service under `services/<name>/migrations/`.
 
 ```
 just migrate up        # Apply all pending migrations

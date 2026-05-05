@@ -1,26 +1,26 @@
 # Podman Compose — Observability Stack (Lightweight)
 #
 # Usage:
-#   podman compose -f infra/docker/compose/observability.yaml up -d
+  #   repo-tools infra local observability up
 #
 # Provides local-dev observability:
 #   - OpenObserve: logs/metrics/traces UI (single binary, replaces Loki+Grafana+Tempo)
 #   - OTel Collector: unified OTLP ingress for Rust tracing
-#   - Vector: log routing + transformation (ships logs from containers to OpenObserve)
+#   - Vector: optional log routing + transformation (profile: logs)
 #
 # This stack is intentionally lightweight. Production uses the k3s-native stack.
 #
 # Note: Podman does not expose container logs via /var/lib/docker/containers.
-# Vector reads logs via the podman API socket or directly from journald.
+# Vector reads logs via the Docker-compatible Podman API socket.
 # For dev simplicity, you can also pipe logs manually:
-#   podman logs <container> | vector --config ops/observability/vector/vector.yaml
+  #   podman logs <container> | vector --config ops/observability/vector/vector.yaml
 
 services:
   # ── OpenObserve ─────────────────────────────────────────────
   # Single-binary observability platform (logs + metrics + traces)
   # Docs: https://openobserve.ai/docs/
   openobserve:
-    image: public.ecr.aws/zinclabs/openobserve:v0.14.1
+    image: public.ecr.aws/zinclabs/openobserve:v0.80.1
     ports:
       - "5080:5080"
     environment:
@@ -29,49 +29,45 @@ services:
       - ZO_DATA_DIR=/data
     volumes:
       - openobserve-data:/data
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:5080/healthz"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
     restart: unless-stopped
 
   # ── OTel Collector ──────────────────────────────────────────
   # Receives OTLP traces from Rust services and forwards them to OpenObserve.
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:0.110.0
+    image: otel/opentelemetry-collector-contrib:0.151.0
     command: ["--config=/etc/otelcol-contrib/config.yaml"]
     ports:
       - "4317:4317"
       - "4318:4318"
+      - "13133:13133"
     volumes:
       - ../../../ops/observability/otel/otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml:ro
     depends_on:
       openobserve:
-        condition: service_healthy
+        condition: service_started
     restart: unless-stopped
 
   # ── Vector (Log Router) ────────────────────────────────────
   # Collects Podman container logs and forwards them to OpenObserve.
   # Config: ops/observability/vector/
   #
-  # Podman compatibility: Vector reads logs via the Podman socket
-  # or via journald. For dev simplicity, we use the podman-events
-  # source + direct container log streaming.
+  # Podman compatibility: mount the Podman socket to Docker's default socket path.
+  # Vector 0.55 supports docker_logs, not a podman_logs source.
   vector:
-    image: ghcr.io/vectordotdev/vector:0.46.0-alpine
+    image: ghcr.io/vectordotdev/vector:0.55.0-alpine
+    profiles:
+      - logs
     volumes:
       # Podman socket (rootless or rootful)
-      - /run/podman/podman.sock:/run/podman/podman.sock:ro
+      - ${PODMAN_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock:ro
       # Vector config
       - ../../../ops/observability/vector/vector.yaml:/etc/vector/vector.yaml:ro
     environment:
       - VECTOR_LOG=openobserve
-      - PODMAN_SOCKET=/run/podman/podman.sock
+      - DOCKER_HOST=unix:///var/run/docker.sock
     depends_on:
       openobserve:
-        condition: service_healthy
+        condition: service_started
     restart: unless-stopped
 
 volumes:

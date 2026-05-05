@@ -1,4 +1,4 @@
-# Podman Compose — Local Auth Stack (Zitadel + OpenFGA)
+# Podman Compose — Local Auth Stack (Rauthy + OpenFGA)
 #
 # Usage:
 #   podman compose -f infra/docker/compose/auth.yaml up -d
@@ -6,65 +6,34 @@
 #
 # Notes:
 # - This is a local-only single-node stack.
-# - `repo-tools infra auth bootstrap` provisions OpenFGA store/model and scaffolds Zitadel resources.
+# - `repo-tools infra auth bootstrap` provisions OpenFGA and writes generic APP_OIDC_* / APP_AUTHZ_* env.
 
 services:
-  zitadel-postgres:
-    image: postgres:17.2-alpine
-    environment:
-      - POSTGRES_DB=zitadel
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
+  mailcrab:
+    image: marlonb/mailcrab:v1.1.0
     ports:
-      - "5434:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -d zitadel -U postgres"]
-      interval: 10s
-      timeout: 10s
-      retries: 10
-      start_period: 15s
-    volumes:
-      - zitadel-postgres-data:/var/lib/postgresql/data
+      - "1080:1080"
 
-  zitadel:
-    image: ghcr.io/zitadel/zitadel:v4.13.0
-    command: start-from-init --masterkey "MasterkeyNeedsToHave32Characters"
+  rauthy:
+    image: ghcr.io/sebadob/rauthy:0.35.1
     environment:
-      - ZITADEL_PORT=8080
-      - ZITADEL_EXTERNALDOMAIN=localhost
-      - ZITADEL_EXTERNALPORT=8082
-      - ZITADEL_EXTERNALSECURE=false
-      - ZITADEL_TLS_ENABLED=false
-      - ZITADEL_DATABASE_POSTGRES_DSN=postgresql://postgres:postgres@zitadel-postgres:5432/zitadel?sslmode=disable
-      - ZITADEL_FIRSTINSTANCE_ORG_HUMAN_USERNAME=zitadel-admin
-      - ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORD=Password1!
-      - ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORDCHANGEREQUIRED=false
-      - ZITADEL_FIRSTINSTANCE_ORG_HUMAN_EMAIL_VERIFIED=true
-      - ZITADEL_FIRSTINSTANCE_PATPATH=/zitadel/bootstrap/admin.pat
-      - ZITADEL_FIRSTINSTANCE_ORG_MACHINE_MACHINE_USERNAME=bootstrap-admin
-      - ZITADEL_FIRSTINSTANCE_ORG_MACHINE_MACHINE_NAME=Bootstrap Admin
-      - ZITADEL_FIRSTINSTANCE_ORG_MACHINE_PAT_EXPIRATIONDATE=2099-01-01T00:00:00Z
-      - ZITADEL_FIRSTINSTANCE_LOGINCLIENTPATPATH=/zitadel/bootstrap/login-client.pat
-      - ZITADEL_FIRSTINSTANCE_ORG_LOGINCLIENT_MACHINE_USERNAME=login-client
-      - ZITADEL_FIRSTINSTANCE_ORG_LOGINCLIENT_MACHINE_NAME=Login Client
-      - ZITADEL_FIRSTINSTANCE_ORG_LOGINCLIENT_PAT_EXPIRATIONDATE=2099-01-01T00:00:00Z
-      - ZITADEL_DEFAULTINSTANCE_FEATURES_LOGINV2_REQUIRED=false
+      - LOCAL_TEST=true
+      - LISTEN_SCHEME=http
+      - PUB_URL=localhost:8082
+      - COOKIE_MODE=danger-insecure
+      - HQL_INSECURE_COOKIE=true
+      - SMTP_URL=mailcrab
+      - SMTP_PORT=1025
+      - SMTP_DANGER_INSECURE=true
     ports:
       - "8082:8080"
     volumes:
-      - zitadel-bootstrap:/zitadel/bootstrap
+      - rauthy-data:/app/data
     depends_on:
-      zitadel-postgres:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "/app/zitadel", "ready"]
-      interval: 10s
-      timeout: 30s
-      retries: 12
-      start_period: 20s
+      - mailcrab
 
   openfga-migrate:
-    image: openfga/openfga:latest
+    image: openfga/openfga:v1.15.0
     command:
       - migrate
       - --datastore-engine
@@ -76,7 +45,7 @@ services:
       - openfga-data:/home/nonroot
 
   openfga:
-    image: openfga/openfga:latest
+    image: openfga/openfga:v1.15.0
     command:
       - run
       - --datastore-engine
@@ -101,6 +70,5 @@ services:
       start_period: 10s
 
 volumes:
-  zitadel-postgres-data:
-  zitadel-bootstrap:
+  rauthy-data:
   openfga-data:

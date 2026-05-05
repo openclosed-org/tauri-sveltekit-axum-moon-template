@@ -100,7 +100,7 @@ services:
   # Phase 1: in-memory (kv-mem) for local dev
   # Phase 2: switch to persistent storage (tikv/rocksdb backend)
   surrealdb:
-    image: surrealdb/surrealdb:latest
+    image: surrealdb/surrealdb:v3.0.5
     expose:
       - "8000"
     command: >

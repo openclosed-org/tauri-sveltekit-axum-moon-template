@@ -3,6 +3,7 @@
 //! Uses axum::Router + tower::ServiceExt::oneshot to simulate real HTTP requests
 //! without needing a running server. Turso runs in-memory for isolation.
 
+use authn_oidc_verifier::{OidcVerifier, OidcVerifierConfig};
 use axum::{
     body::Body,
     http::{self, Request, StatusCode},
@@ -43,27 +44,44 @@ async fn build_test_state() -> BffState {
 
 async fn build_oidc_test_state(issuer: &str, audience: &str) -> BffState {
     let mut state = build_test_state().await;
-    state.config.jwt_secret = "unused-when-zitadel-is-enabled".to_string();
-    state.config.zitadel_issuer = issuer.to_string();
-    state.config.zitadel_audience = audience.to_string();
+    state.config_mut().jwt_secret = "unused-when-oidc-is-enabled".to_string();
+    state.config_mut().oidc_issuer = issuer.to_string();
+    state.config_mut().oidc_audience = audience.to_string();
+    state.set_oidc_verifier(Some(test_oidc_verifier(&state)));
     state
 }
 
 async fn build_introspection_test_state(
     issuer: &str,
     audience: &str,
+    introspection_url: &str,
     client_id: &str,
     client_secret: &str,
 ) -> BffState {
     let mut state = build_oidc_test_state(issuer, audience).await;
-    state.config.zitadel_introspection_client_id = client_id.to_string();
-    state.config.zitadel_introspection_client_secret = client_secret.to_string();
+    state.config_mut().oidc_introspection_url = introspection_url.to_string();
+    state.config_mut().oidc_introspection_client_id = client_id.to_string();
+    state.config_mut().oidc_introspection_client_secret = client_secret.to_string();
+    state.set_oidc_verifier(Some(test_oidc_verifier(&state)));
     state
+}
+
+fn test_oidc_verifier(state: &BffState) -> OidcVerifier {
+    OidcVerifier::new(
+        OidcVerifierConfig {
+            issuer: state.config().oidc_issuer.clone(),
+            audience: state.config().oidc_audience.clone(),
+            introspection_url: state.config().oidc_introspection_url.clone(),
+            introspection_client_id: state.config().oidc_introspection_client_id.clone(),
+            introspection_client_secret: state.config().oidc_introspection_client_secret.clone(),
+        },
+        state.http_client(),
+    )
 }
 
 async fn build_dev_headers_state() -> BffState {
     let mut state = build_test_state().await;
-    state.config.auth_mode = "dev_headers".to_string();
+    state.config_mut().auth_mode = "dev_headers".to_string();
     state
 }
 
@@ -120,7 +138,7 @@ const TEST_JWKS: &str = r#"{
   "keys": [
     {
       "kty": "RSA",
-      "kid": "zitadel-test-key",
+      "kid": "oidc-test-key",
       "alg": "RS256",
       "use": "sig",
       "n": "z4AqUeLL8eS2JMiujO4wBjbvArTO0ZatdqZ6INnj02T3Y_hPbX4WiBx0fR2YGlX2cn0RXHQOMgTejsjnYDe4UpQDRCXlIQUSHrZL8xjhKby4jxorBnNQ5GHgOG801D4s2y--2ps9kk2zKtXUjabb_bK-3QflUqRH1Feui_So75usdvGKsAw31cBPJsV8yEd3GTlxSUzP52IX91GfKGH6hi_CZgk6mov55DnKTO6o_Alq7V53kp_hUWDDP05xdxOLZUWE4PxVTqIOfvA3yI8PU4X_MvF21SiT0CbdFAsXP2uR2_-1E8Q5eTFTevAQhLy3WxyB4zFetW5970FMGFZLpQ",
@@ -129,7 +147,7 @@ const TEST_JWKS: &str = r#"{
   ]
 }"#;
 
-fn make_zitadel_test_token(sub: &str, issuer: &str, audience: &str) -> String {
+fn make_oidc_test_token(sub: &str, issuer: &str, audience: &str) -> String {
     use jsonwebtoken::{Algorithm, EncodingKey, Header, encode};
 
     #[derive(serde::Serialize)]
@@ -141,7 +159,7 @@ fn make_zitadel_test_token(sub: &str, issuer: &str, audience: &str) -> String {
     }
 
     let mut header = Header::new(Algorithm::RS256);
-    header.kid = Some("zitadel-test-key".to_string());
+    header.kid = Some("oidc-test-key".to_string());
 
     encode(
         &header,
@@ -196,6 +214,84 @@ async fn readyz_returns_200_when_db_is_connected() {
     assert_eq!(response.status(), StatusCode::OK);
     let body: serde_json::Value = body_to_json(response).await;
     assert_eq!(body.get("status").unwrap(), "ready");
+}
+
+#[tokio::test]
+async fn readyz_returns_503_when_dependencies_are_missing() {
+    let mut state = build_test_state().await;
+    state.clear_database_and_composition_for_test();
+    let app = create_router(state);
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/readyz")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+    let body: serde_json::Value = body_to_json(response).await;
+    assert_eq!(body.get("status").unwrap(), "not_ready");
+    let unavailable = body
+        .get("unavailable")
+        .and_then(|value| value.as_array())
+        .expect("readyz should include unavailable dependency summary");
+    assert!(unavailable.iter().any(|value| value == "database"));
+    assert!(unavailable.iter().any(|value| value == "composition"));
+}
+
+#[tokio::test]
+async fn response_includes_generated_request_id_when_missing() {
+    let state = build_test_state().await;
+    let app = create_router(state);
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/healthz")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let request_id = response
+        .headers()
+        .get("x-request-id")
+        .and_then(|value| value.to_str().ok())
+        .expect("response should include x-request-id");
+    let parsed = uuid::Uuid::parse_str(request_id).expect("request id should be a UUID");
+    assert_eq!(parsed.get_version_num(), 7);
+}
+
+#[tokio::test]
+async fn response_propagates_existing_request_id() {
+    let state = build_test_state().await;
+    let app = create_router(state);
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/healthz")
+                .header("x-request-id", "req-123")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(
+        response
+            .headers()
+            .get("x-request-id")
+            .and_then(|value| value.to_str().ok()),
+        Some("req-123")
+    );
 }
 
 #[test]
@@ -303,7 +399,7 @@ async fn api_route_with_valid_jwt_and_missing_fields_returns_400() {
 }
 
 #[tokio::test]
-async fn api_route_accepts_zitadel_jwks_token() {
+async fn api_route_accepts_oidc_jwks_token() {
     let mut oidc = Server::new_async().await;
     let discovery_body = serde_json::json!({
         "jwks_uri": format!("{}/oauth/v2/keys", oidc.url()),
@@ -324,7 +420,7 @@ async fn api_route_accepts_zitadel_jwks_token() {
     let audience = "web-bff-local";
     let state = build_oidc_test_state(&oidc.url(), audience).await;
     let app = create_router(state);
-    let token = make_zitadel_test_token("zitadel-user", &oidc.url(), audience);
+    let token = make_oidc_test_token("oidc-user", &oidc.url(), audience);
 
     let response = app
         .oneshot(
@@ -334,7 +430,7 @@ async fn api_route_accepts_zitadel_jwks_token() {
                 .header(http::header::AUTHORIZATION, format!("Bearer {token}"))
                 .header(http::header::CONTENT_TYPE, "application/json")
                 .body(Body::from(
-                    r#"{"user_sub":"zitadel-user","user_name":"Zitadel User"}"#,
+                    r#"{"user_sub":"oidc-user","user_name":"OIDC User"}"#,
                 ))
                 .unwrap(),
         )
@@ -345,7 +441,61 @@ async fn api_route_accepts_zitadel_jwks_token() {
 }
 
 #[tokio::test]
-async fn api_route_rejects_zitadel_token_with_wrong_audience() {
+async fn oidc_jwks_requests_are_cached_across_matching_kid_requests() {
+    let mut oidc = Server::new_async().await;
+    let discovery_body = serde_json::json!({
+        "jwks_uri": format!("{}/oauth/v2/keys", oidc.url()),
+    });
+    let discovery = oidc
+        .mock("GET", "/.well-known/openid-configuration")
+        .expect(1)
+        .with_status(200)
+        .with_header("content-type", "application/json")
+        .with_body(discovery_body.to_string())
+        .create();
+    let jwks = oidc
+        .mock("GET", "/oauth/v2/keys")
+        .expect(1)
+        .with_status(200)
+        .with_header("content-type", "application/json")
+        .with_body(TEST_JWKS)
+        .create();
+
+    let audience = "web-bff-local";
+    let state = build_oidc_test_state(&oidc.url(), audience).await;
+    let app = create_router(state);
+    let token_a = make_oidc_test_token("cached-oidc-user-a", &oidc.url(), audience);
+    let token_b = make_oidc_test_token("cached-oidc-user-b", &oidc.url(), audience);
+
+    for (user_sub, token) in [
+        ("cached-oidc-user-a", token_a),
+        ("cached-oidc-user-b", token_b),
+    ] {
+        let response = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/api/tenant/init")
+                    .method(http::Method::POST)
+                    .header(http::header::AUTHORIZATION, format!("Bearer {token}"))
+                    .header(http::header::CONTENT_TYPE, "application/json")
+                    .body(Body::from(format!(
+                        r#"{{"user_sub":"{user_sub}","user_name":"Cached OIDC User"}}"#
+                    )))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+    }
+
+    discovery.assert();
+    jwks.assert();
+}
+
+#[tokio::test]
+async fn api_route_rejects_oidc_token_with_wrong_audience() {
     let mut oidc = Server::new_async().await;
     let discovery_body = serde_json::json!({
         "jwks_uri": format!("{}/oauth/v2/keys", oidc.url()),
@@ -365,7 +515,7 @@ async fn api_route_rejects_zitadel_token_with_wrong_audience() {
 
     let state = build_oidc_test_state(&oidc.url(), "expected-aud").await;
     let app = create_router(state);
-    let token = make_zitadel_test_token("zitadel-user", &oidc.url(), "wrong-aud");
+    let token = make_oidc_test_token("oidc-user", &oidc.url(), "wrong-aud");
 
     let response = app
         .oneshot(
@@ -375,7 +525,7 @@ async fn api_route_rejects_zitadel_token_with_wrong_audience() {
                 .header(http::header::AUTHORIZATION, format!("Bearer {token}"))
                 .header(http::header::CONTENT_TYPE, "application/json")
                 .body(Body::from(
-                    r#"{"user_sub":"zitadel-user","user_name":"Zitadel User"}"#,
+                    r#"{"user_sub":"oidc-user","user_name":"OIDC User"}"#,
                 ))
                 .unwrap(),
         )
@@ -386,7 +536,7 @@ async fn api_route_rejects_zitadel_token_with_wrong_audience() {
 }
 
 #[tokio::test]
-async fn api_route_accepts_opaque_token_via_zitadel_introspection() {
+async fn api_route_accepts_opaque_token_via_explicit_oidc_introspection_url() {
     let mut oidc = Server::new_async().await;
     let _introspect = oidc
         .mock("POST", "/oauth/v2/introspect")
@@ -408,9 +558,75 @@ async fn api_route_accepts_opaque_token_via_zitadel_introspection() {
         )
         .create();
 
-    let state =
-        build_introspection_test_state(&oidc.url(), "web-bff-local", "api-client", "api-secret")
-            .await;
+    let state = build_introspection_test_state(
+        &oidc.url(),
+        "web-bff-local",
+        &format!("{}/oauth/v2/introspect", oidc.url()),
+        "api-client",
+        "api-secret",
+    )
+    .await;
+    let app = create_router(state);
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/tenant/init")
+                .method(http::Method::POST)
+                .header(http::header::AUTHORIZATION, "Bearer opaque-token")
+                .header(http::header::CONTENT_TYPE, "application/json")
+                .body(Body::from(
+                    r#"{"user_sub":"opaque-user","user_name":"Opaque User"}"#,
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn api_route_accepts_opaque_token_via_discovered_rauthy_style_introspection() {
+    let mut oidc = Server::new_async().await;
+    let discovery_body = serde_json::json!({
+        "jwks_uri": format!("{}/oidc/jwks", oidc.url()),
+        "introspection_endpoint": format!("{}/oidc/introspect", oidc.url()),
+    });
+    let _discovery = oidc
+        .mock("GET", "/.well-known/openid-configuration")
+        .with_status(200)
+        .with_header("content-type", "application/json")
+        .with_body(discovery_body.to_string())
+        .create();
+    let _introspect = oidc
+        .mock("POST", "/oidc/introspect")
+        .match_header("authorization", "Basic YXBpLWNsaWVudDphcGktc2VjcmV0")
+        .match_body(mockito::Matcher::AllOf(vec![
+            mockito::Matcher::UrlEncoded("token".into(), "opaque-token".into()),
+            mockito::Matcher::UrlEncoded("token_type_hint".into(), "access_token".into()),
+        ]))
+        .with_status(200)
+        .with_header("content-type", "application/json")
+        .with_body(
+            serde_json::json!({
+                "active": true,
+                "sub": "opaque-user",
+                "iss": oidc.url(),
+                "aud": ["web-bff-local"],
+            })
+            .to_string(),
+        )
+        .create();
+
+    let state = build_introspection_test_state(
+        &oidc.url(),
+        "web-bff-local",
+        "",
+        "api-client",
+        "api-secret",
+    )
+    .await;
     let app = create_router(state);
 
     let response = app
@@ -1168,7 +1384,7 @@ async fn counter_endpoint_rejects_tenant_claim_mismatch_with_forbidden_contract(
 #[tokio::test]
 async fn healthz_includes_cors_headers_on_preflight() {
     let mut state = build_test_state().await;
-    state.config.cors_allowed_origins = vec!["http://localhost:5173".to_string()];
+    state.config_mut().cors_allowed_origins = vec!["http://localhost:5173".to_string()];
     let app = create_router(state);
 
     let response = app
@@ -1299,6 +1515,37 @@ async fn tenant_init_with_malformed_json_body() {
     let body: serde_json::Value = body_to_json(response).await;
     assert_eq!(body.get("code").unwrap(), "BadRequest");
     assert_eq!(body.get("message").unwrap(), "Malformed JSON request body");
+}
+
+#[tokio::test]
+async fn tenant_init_rejects_body_over_application_limit() {
+    let state = build_test_state().await;
+    let app = create_router(state);
+    let token = make_test_token("oversized-body-user");
+    let oversized_name = "x".repeat(1024 * 1024);
+    let body = serde_json::json!({
+        "user_sub": "oversized-body-user",
+        "user_name": oversized_name,
+    })
+    .to_string();
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/tenant/init")
+                .method(http::Method::POST)
+                .header(http::header::AUTHORIZATION, format!("Bearer {token}"))
+                .header(http::header::CONTENT_TYPE, "application/json")
+                .body(Body::from(body))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::PAYLOAD_TOO_LARGE);
+    let body: serde_json::Value = body_to_json(response).await;
+    assert_eq!(body.get("code").unwrap(), "RateLimited");
+    assert_eq!(body.get("message").unwrap(), "Request body too large");
 }
 
 #[tokio::test]

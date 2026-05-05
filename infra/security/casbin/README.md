@@ -2,4 +2,4 @@
 
 > Access control policies — RBAC, ABAC.
 
-Phase 2: Implement casbin policy definitions.
+Planned Casbin policy definition area. No current runtime authorization behavior should be inferred from this placeholder.

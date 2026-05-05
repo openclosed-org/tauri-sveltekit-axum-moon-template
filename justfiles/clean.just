@@ -1,4 +1,6 @@
-# Clean — cleanup commands for caches and build artifacts
+# Clean — cleanup commands for local caches and build artifacts.
+# Default cleanup is conservative: it avoids container volumes and global tool caches
+# unless the command name makes that destructive scope explicit.
 
 # 暴力清理所有 cargo 缓存（慢，下次全量重建）
 clean:
@@ -7,6 +9,10 @@ clean:
 # 智能清理 7 天未访问的构建缓存
 clean-sweep:
     cargo run -p repo-tools -- clean-sweep
+
+# 本地磁盘维护：安全清理过期构建缓存、陈旧依赖缓存和大测试日志
+clean-local-storage: clean-tmp-truncate clean-sweep-deps clean-sweep
+    @echo "✓ 本地缓存维护完成；如需删除 compose volumes，请显式运行 infra local down --volumes"
 
 # 清理不在当前 Cargo.toml 中的依赖缓存
 clean-sweep-deps:

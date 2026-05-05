@@ -1,0 +1,19 @@
+[package]
+name = "authn-oidc-verifier"
+version = "0.1.0"
+edition = "2024"
+rust-version.workspace = true
+license = "Apache-2.0"
+description = "Provider-neutral OIDC resource-server token verifier"
+
+[dependencies]
+jsonwebtoken = { workspace = true }
+reqwest = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+workspace-hack = { workspace = true }
+
+[lints]
+workspace = true

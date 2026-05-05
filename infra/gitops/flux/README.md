@@ -1,15 +1,17 @@
 # Flux GitOps Configuration
 
-This directory contains Flux CD configuration for GitOps-based deployment to Kubernetes (k3s staging and production).
+This directory contains Flux CD configuration for the repository's GitOps delivery shape. It is a declared cluster-profile landing zone, not proof that staging or production delivery is fully verified.
+
+Do not edit generated or rendered manifests to change behavior. Prefer `infra/k3s/**`, SOPS templates, platform model sources, validators, and gates as the current evidence path.
 
 ## Structure
 
 ```
 infra/gitops/flux/
 ├── apps/                  # Application definitions
-│   ├── api.yaml           # API service deployment
-│   ├── web.yaml           # Web BFF deployment
-│   ├── gateway.yaml       # Edge gateway deployment
+│   ├── api.yaml           # API/BFF delivery wiring
+│   ├── web.yaml           # Web shell delivery wiring
+│   ├── gateway.yaml       # Edge gateway delivery wiring
 │   ├── outbox-relay-worker.yaml
 │   └── projector-worker.yaml
 ├── infrastructure/        # Infrastructure components
@@ -112,20 +114,19 @@ flux resume kustomization api
 
 ## Current Status
 
-### ✅ Implemented
-- Core infrastructure (NATS, Valkey, MinIO)
-- Application deployments (API, Web BFF, Admin BFF, Edge Gateway)
-- Dedicated outbox-relay-worker Flux Kustomization (disabled by default until shared libSQL/Turso secret is configured)
-- Dedicated projector-worker Flux Kustomization (disabled by default until shared libSQL/Turso secret is configured)
-- Namespace, RBAC, and Resource Quota policies
-- SOPS decryption integration
-- Health checks for all components
+### Declared / Checked Shape
 
-### ⏳ TODO
-- Worker Kustomizations (indexer, scheduler, sync-reconciler)
-- Observability stack (OpenObserve, Grafana)
-- Dragonfly cache configuration (for k3s-staging topology)
-- Network policies (Cilium)
+- Core infrastructure Kustomizations exist for NATS, Valkey, and MinIO.
+- Application Kustomizations exist for API/BFF, web shell, gateway, outbox relay worker, and projector worker wiring.
+- SOPS decryption is wired into the relevant Flux Kustomizations.
+- Namespace, RBAC, and ResourceQuota manifests exist.
+
+### Not Proven By This README
+
+- Staging and production overlays are not automatically equivalent to verified runtime environments.
+- Independent `counter-service` deployment, promotion, rollback, and drift handling still need executable delivery evidence before being described as complete.
+- Health checks, target resource names, rendered paths, and image references must be checked against current manifests and gates before claiming readiness.
+- Additional workers, observability, cache variants, and network policies remain topology-specific follow-up work unless a concrete file and gate prove otherwise.
 
 ## See Also
 

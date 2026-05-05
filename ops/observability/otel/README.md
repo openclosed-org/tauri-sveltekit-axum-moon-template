@@ -1,17 +1,18 @@
 # OpenTelemetry Collector
 
-本目录承载 Phase 3 的统一 OTLP 入口配置。
+本目录承载本地统一 OTLP 入口配置。
 
 当前约定：
 
 1. Rust 进程统一通过 `OTEL_EXPORTER_OTLP_ENDPOINT` 指向 Collector，而不是直接连 OpenObserve。
 2. 本地默认 gRPC 入口是 `http://localhost:4317`。
-3. Collector 再把 traces/metrics/logs 转发到 OpenObserve。
+3. Collector 再把 OTLP traces/metrics/logs 转发到 OpenObserve。
+4. 本地 health endpoint 是 `http://localhost:13133/`。
 
 本地启动：
 
 ```bash
-podman compose -f infra/docker/compose/observability.yaml up -d
+cargo run -p repo-tools -- infra local observability up
 ```
 
 应用侧最小环境变量：

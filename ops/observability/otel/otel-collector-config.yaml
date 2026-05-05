@@ -29,6 +29,10 @@ processors:
         value: "dev"
         action: upsert
 
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
 exporters:
   # Export to OpenObserve via OTLP HTTP
   otlphttp/openobserve:
@@ -42,6 +46,7 @@ exporters:
     verbosity: detailed
 
 service:
+  extensions: [health_check]
   pipelines:
     traces:
       receivers: [otlp]

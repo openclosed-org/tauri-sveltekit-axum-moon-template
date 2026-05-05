@@ -2,10 +2,7 @@
 //!
 //! POST /api/tenant/init — ensure tenant exists for user (auto-create on first login).
 
-use axum::{
-    Json,
-    extract::{FromRequest, Request, State, rejection::JsonRejection},
-};
+use axum::{Json, extract::State};
 use contracts_errors::ErrorResponse;
 use utoipa_axum::{router::OpenApiRouter, routes};
 
@@ -14,37 +11,12 @@ use tenant_service::application::TenantServiceTrait;
 use validator::Validate;
 
 use crate::error::{BffError, BffResult};
-use crate::middleware::tenant::RequestContext;
+use crate::http::ContractJson;
+use crate::request_context::RequestContext;
 use crate::state::BffState;
 
 pub fn openapi_router() -> OpenApiRouter<BffState> {
     OpenApiRouter::new().routes(routes!(init_tenant))
-}
-
-pub struct ContractJson<T>(T);
-
-impl<S, T> FromRequest<S> for ContractJson<T>
-where
-    Json<T>: FromRequest<S, Rejection = JsonRejection>,
-    S: Send + Sync,
-{
-    type Rejection = BffError;
-
-    async fn from_request(req: Request, state: &S) -> Result<Self, Self::Rejection> {
-        match Json::<T>::from_request(req, state).await {
-            Ok(Json(value)) => Ok(Self(value)),
-            Err(JsonRejection::MissingJsonContentType(_)) => Err(BffError::UnsupportedMediaType(
-                "Expected content-type: application/json".to_string(),
-            )),
-            Err(JsonRejection::JsonSyntaxError(_)) => Err(BffError::BadRequest(
-                "Malformed JSON request body".to_string(),
-            )),
-            Err(JsonRejection::JsonDataError(error)) => {
-                Err(BffError::Validation(error.body_text()))
-            }
-            Err(error) => Err(BffError::BadRequest(error.body_text())),
-        }
-    }
 }
 
 /// POST /api/tenant/init

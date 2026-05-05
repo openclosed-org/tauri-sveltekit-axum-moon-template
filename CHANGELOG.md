@@ -13,6 +13,68 @@ Preferred release views:
 - Releases: <https://github.com/openclosed-org/axum-harness/releases>
 - Tags: <https://github.com/openclosed-org/axum-harness/tags>
 
+## v0.4.1 - 2026-05-05
+
+### BFF And Auth Runtime
+
+- Added `packages/authn/oidc-verifier` as the shared generic OIDC resource-server verifier for discovery, JWKS validation, introspection, verifier caching, and identity extraction.
+- Moved `web-bff` runtime auth configuration from Zitadel-specific `APP_ZITADEL_*` variables to provider-neutral `APP_OIDC_*` variables.
+- Moved `web-bff` authorization configuration from OpenFGA-specific `APP_OPENFGA_*` runtime names to provider-neutral `APP_AUTHZ_*` names while keeping OpenFGA as the local reference provider.
+- Added production runtime validation so `web-bff` rejects unsafe auth defaults such as `APP_AUTH_MODE=dev_headers`, empty CORS origins, default JWT secrets, missing OIDC issuer configuration, or incomplete authz provider settings in production profiles.
+- Split the protected request context path into clearer BFF-local modules for auth context middleware, request context construction, HTTP extractors, tenant resolution, and route-level authz checks.
+- Moved counter BFF composition into `servers/bff/web-bff/src/application/counter.rs` so handlers stay focused on HTTP extraction and response wrapping while the BFF application layer owns route-level authorization, tenant resolution, cache handling, and service calls.
+- Expanded protected endpoint error handling around dependency failures, forbidden access, not found, conflict, unsupported media type, validation failures, and payload-size rejection.
+- Preserved Google OAuth adapters as legacy optional client-lane adapters and documented that they are not the server-side resource-server verifier path.
+
+### Local Auth And Infrastructure
+
+- Replaced the local auth compose lane from Zitadel plus Postgres to Rauthy plus OpenFGA, with Rauthy used only as the local reference OIDC provider.
+- Updated `repo-tools infra auth bootstrap` to provision OpenFGA and write generic `APP_OIDC_*` and `APP_AUTHZ_*` environment output for `web-bff`.
+- Pinned local third-party infrastructure images instead of relying on `latest`, including OpenFGA, NATS, Valkey, MinIO, MinIO Client, SurrealDB, and the optional libSQL server profile.
+- Replaced the inaccessible `ghcr.io/tursodatabase/sqld:latest` path with the verified `ghcr.io/tursodatabase/libsql-server:e4beaca` image for the optional full local profile.
+- Added `just clean-local-storage` as a conservative local maintenance entrypoint that cleans temporary logs and stale build artifacts without deleting compose volumes, global tool caches, SOPS state, Kubernetes state, or GitOps state.
+- Updated local-development docs to describe the current Generic OIDC plus OpenFGA lane, the conservative cleanup contract, and backend-first dev-header debugging path.
+
+### Observability
+
+- Upgraded the local observability stack to OpenObserve `v0.80.1`, OTel Collector Contrib `0.151.0`, and Vector `0.55.0-alpine`.
+- Added the OTel Collector health extension on port `13133` and documented the collector as the Rust tracing ingress instead of direct OpenObserve writes.
+- Moved Vector behind the optional `logs` compose profile because container log socket behavior differs across Linux Docker, Linux Podman, and macOS Podman machines.
+- Updated Vector configuration to use the Docker-compatible Podman socket through the `docker_logs` source supported by Vector `0.55`.
+- Scoped `repo-tools infra local observability` to its own compose project name so observability lifecycle commands do not accidentally affect the auth stack.
+
+### Delivery, GitOps, And Runbooks
+
+- Replaced K3s base application image `latest` tags with explicit `:template-local` placeholders that must be replaced by overlays or release tooling with immutable tags or digests.
+- Updated Kubernetes addon and Flux infrastructure manifests to use the same pinned NATS, Valkey, MinIO, and MinIO Client image tags as local compose.
+- Clarified Flux GitOps docs as a declared cluster-profile landing zone rather than proof that staging, production, health checks, promotion, rollback, or drift handling are fully verified.
+- Clarified Terraform docs as a planning placeholder rather than the current default deployment path.
+- Reframed runbook and security README files as template/operator starting points and removed absolute production claims about contacts, nonroot posture, sidecar absence, and deployment readiness.
+- Pinned the backup/restore runbook Alpine example to `alpine:3.22.2` instead of `alpine:latest`.
+
+### Docs And Agent Context
+
+- Added ADR-010 to record the Generic OIDC plus Rauthy/OpenFGA local auth lane and marked ADR-005 as historical and superseded.
+- Updated `.env.example`, BFF docs, local infra docs, Docker docs, authz fixture docs, and operations docs to avoid provider-specific runtime env names as current guidance.
+- Audited README and agent context entrypoints to remove stale Phase language, overstated target-state claims, old observability assumptions, placeholder contact details, and statements that could make agents treat scratch plans or rendered manifests as current behavior.
+- Confirmed `AGENTS.md`, `agent/README.md`, `docs/agents/README.md`, `.agents/skills/README.md`, `agent/codemap.yml`, `routing-rules.yml`, and `gate-matrix.yml` remain aligned around executable evidence, scratch-doc boundaries, generated-readonly paths, and path/risk-based gate selection.
+
+### Verification
+
+- Verified the updated BFF and repo-tools paths with `rtk cargo fmt -p repo-tools -p web-bff`, `rtk cargo check -p repo-tools -p web-bff`, `rtk cargo test -p repo-tools -p web-bff`, and `rtk cargo clippy -p repo-tools -p web-bff --all-targets -- -D warnings`.
+- Verified shared auth package integration with `rtk cargo check -p authz -p authn-oidc-verifier -p repo-tools -p web-bff`.
+- Verified platform and topology guardrails with `just validate-platform`, `just validate-topology`, and `just boundary-check`.
+- Smoke-tested local auth, core infrastructure, and observability startup paths through `repo-tools` commands and direct HTTP probes for Rauthy discovery, Rauthy JWKS, OpenFGA, NATS, MinIO, OpenObserve, and OTel Collector health.
+- Validated the updated OTel Collector and Vector configuration with their pinned container images.
+
+### Migration Notes
+
+- Replace `APP_ZITADEL_*` with `APP_OIDC_*` in local and deployment environments.
+- Replace `APP_OPENFGA_ENDPOINT`, `APP_OPENFGA_STORE_ID`, and `APP_OPENFGA_AUTHORIZATION_MODEL_ID` with `APP_AUTHZ_ENDPOINT`, `APP_AUTHZ_STORE_ID`, and `APP_AUTHZ_MODEL_ID`; set `APP_AUTHZ_PROVIDER=openfga` when using the local OpenFGA adapter.
+- Use `cargo run -p repo-tools -- infra auth bootstrap` to regenerate local auth env after the provider-neutral env migration.
+- Treat K3s `:template-local` image references as placeholders only; overlays, CI, or release tooling must inject real image tags or digests before shared-environment use.
+- Do not assume Vector starts with the default observability stack; enable the `logs` profile only when the host container socket path is known and intentionally mounted.
+
 ## v0.4.0 - 2026-05-04
 
 ### Changed

@@ -1,13 +1,18 @@
-//! adapter-google-backend — Pure Google OAuth PKCE adapter (no Tauri dependencies).
+//! adapter-google-backend — legacy Google OAuth PKCE client adapter (no Tauri dependencies).
 //!
-//! Provides backend-compatible OAuth operations:
+//! This crate is an optional authorization-code login client lane. It is not the
+//! backend resource-server token verifier used by web-bff. Generic OIDC bearer
+//! token verification lives in `authn-oidc-verifier`.
+//!
+//! Provides Google-specific OAuth operations:
 //! - PKCE code verifier/challenge generation
 //! - Authorization URL construction
 //! - Token exchange
 //! - Session management
 //! - Token refresh
 //!
-//! This crate contains NO Tauri dependencies and can run in backend servers.
+//! This crate contains NO Tauri dependencies, but it should not be used as a
+//! server-side trust boundary without adding id_token signature validation.
 
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
@@ -190,7 +195,8 @@ pub async fn exchange_code_for_tokens(
 
     tracing::debug!("token exchange successful, decoding id_token");
 
-    // Decode id_token to extract user profile (JWT payload only, signature verification deferred to v2)
+    // Legacy client-lane decode only: extracts display profile from JWT payload.
+    // This is not server-side identity verification; use authn-oidc-verifier for that boundary.
     let id_token_parts: Vec<&str> = token_resp.id_token.split('.').collect();
     if id_token_parts.len() < 2 {
         return Err(AuthError::TokenExchange("Invalid id_token format".into()));
