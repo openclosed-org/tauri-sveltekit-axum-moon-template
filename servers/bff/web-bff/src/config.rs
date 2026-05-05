@@ -86,7 +86,11 @@ impl Config {
     }
 
     pub fn validate_runtime(&self) -> anyhow::Result<()> {
-        if !self.is_production() {
+        self.validate_runtime_for_profile(Self::is_runtime_production())
+    }
+
+    fn validate_runtime_for_profile(&self, is_production: bool) -> anyhow::Result<()> {
+        if !is_production {
             return Ok(());
         }
 
@@ -109,7 +113,7 @@ impl Config {
         Ok(())
     }
 
-    fn is_production(&self) -> bool {
+    fn is_runtime_production() -> bool {
         std::env::var("APP_ENV")
             .or_else(|_| std::env::var("APP_PROFILE"))
             .map(|value| value.eq_ignore_ascii_case("production"))
@@ -124,21 +128,6 @@ impl Config {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Mutex;
-
-    static ENV_LOCK: Mutex<()> = Mutex::new(());
-
-    fn with_production_env(test: impl FnOnce()) {
-        let _guard = ENV_LOCK.lock().unwrap();
-        unsafe {
-            std::env::set_var("APP_ENV", "production");
-            std::env::remove_var("APP_PROFILE");
-        }
-        test();
-        unsafe {
-            std::env::remove_var("APP_ENV");
-        }
-    }
 
     fn production_ready_config() -> Config {
         Config {
@@ -151,70 +140,69 @@ mod tests {
 
     #[test]
     fn production_rejects_default_jwt_secret_without_oidc_issuer() {
-        with_production_env(|| {
-            let config = production_ready_config();
-            let config = Config {
-                jwt_secret: Config::dev_secret().to_string(),
-                oidc_issuer: String::new(),
-                ..config
-            };
+        let config = production_ready_config();
+        let config = Config {
+            jwt_secret: Config::dev_secret().to_string(),
+            oidc_issuer: String::new(),
+            ..config
+        };
 
-            let error = config.validate_runtime().unwrap_err().to_string();
-            assert!(error.contains("APP_OIDC_ISSUER"));
-        });
+        let error = config
+            .validate_runtime_for_profile(true)
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("APP_OIDC_ISSUER"));
     }
 
     #[test]
     fn production_rejects_missing_authz_endpoint() {
-        with_production_env(|| {
-            let config = Config {
-                authz_endpoint: String::new(),
-                ..production_ready_config()
-            };
+        let config = Config {
+            authz_endpoint: String::new(),
+            ..production_ready_config()
+        };
 
-            let error = config.validate_runtime().unwrap_err().to_string();
-            assert!(error.contains("APP_AUTHZ_ENDPOINT"));
-        });
+        let error = config
+            .validate_runtime_for_profile(true)
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("APP_AUTHZ_ENDPOINT"));
     }
 
     #[test]
     fn production_rejects_permissive_cors_default() {
-        with_production_env(|| {
-            let config = Config {
-                cors_allowed_origins: Vec::new(),
-                ..production_ready_config()
-            };
+        let config = Config {
+            cors_allowed_origins: Vec::new(),
+            ..production_ready_config()
+        };
 
-            let error = config.validate_runtime().unwrap_err().to_string();
-            assert!(error.contains("APP_CORS_ALLOWED_ORIGINS"));
-        });
+        let error = config
+            .validate_runtime_for_profile(true)
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("APP_CORS_ALLOWED_ORIGINS"));
     }
 
     #[test]
     fn production_rejects_dev_headers() {
-        with_production_env(|| {
-            let config = Config {
-                auth_mode: "dev_headers".to_string(),
-                ..production_ready_config()
-            };
+        let config = Config {
+            auth_mode: "dev_headers".to_string(),
+            ..production_ready_config()
+        };
 
-            let error = config.validate_runtime().unwrap_err().to_string();
-            assert!(error.contains("APP_AUTH_MODE"));
-        });
+        let error = config
+            .validate_runtime_for_profile(true)
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("APP_AUTH_MODE"));
     }
 
     #[test]
     fn non_production_allows_dev_headers() {
-        let _guard = ENV_LOCK.lock().unwrap();
-        unsafe {
-            std::env::remove_var("APP_ENV");
-            std::env::remove_var("APP_PROFILE");
-        }
         let config = Config {
             auth_mode: "dev_headers".to_string(),
             ..Config::default()
         };
 
-        config.validate_runtime().unwrap();
+        config.validate_runtime_for_profile(false).unwrap();
     }
 }
